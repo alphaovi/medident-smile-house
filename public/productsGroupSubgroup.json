@@ -1,0 +1,82 @@
+[
+  {
+    "group": "Porcelain Powder",
+    "subGroup": [
+      "Dentin",
+      "Opaque",
+      "Enamel"
+    ]
+  },
+  {
+    "group": "Acrylic Powder",
+    "subGroup": [
+      "Heat Cure",
+      "Self Cure",
+      "Orthodontic"
+    ]
+  },
+  {
+    "group": "Acrylic Teeth",
+    "subGroup": [
+      "Anterior",
+      "Posterior",
+      "Premium"
+    ]
+  },
+  {
+    "group": "Metal Alloy",
+    "subGroup": [
+      "Non Precious",
+      "Semi Precious",
+      "Precious"
+    ]
+  },
+  {
+    "group": "Investment Material",
+    "subGroup": [
+      "Casting",
+      "Press",
+      "Rapid Heat"
+    ]
+  },
+  {
+    "group": "Wax",
+    "subGroup": [
+      "Inlay Wax",
+      "Casting Wax",
+      "Base Plate Wax"
+    ]
+  },
+  {
+    "group": "Finishing Material",
+    "subGroup": [
+      "Polishing Paste",
+      "Rubber Wheel",
+      "Brush"
+    ]
+  },
+  {
+    "group": "CAD/CAM Material",
+    "subGroup": [
+      "PMMA Disc",
+      "Zirconia Disc",
+      "Wax Disc"
+    ]
+  },
+  {
+    "group": "Zirconia",
+    "subGroup": [
+      "White",
+      "Pre-Shaded",
+      "Multilayer"
+    ]
+  },
+  {
+    "group": "Impression Material",
+    "subGroup": [
+      "Putty",
+      "Light Body",
+      "Heavy Body"
+    ]
+  }
+]

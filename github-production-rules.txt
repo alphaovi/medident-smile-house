@@ -1,0 +1,4 @@
+git switch main
+git pull origin main
+git merge production
+git push origin main

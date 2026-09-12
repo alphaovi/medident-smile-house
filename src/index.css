@@ -1,0 +1,46 @@
+@import "tailwindcss";
+@plugin "daisyui";
+
+.primaryColor {
+  background-color: rgb(17, 120, 216);
+}
+
+.secondaryColor {
+  background-color: rgb(101, 80, 220);
+}
+
+.primaryButtonColor {
+  background-color: rgb(51, 136, 216);
+}
+
+.secondayButtonColor {
+  background-color: rgb(51, 136, 216);
+}
+
+.warningButtonColor {
+  background-color: rgb(204, 241, 67);
+}
+
+.greenColor{
+  background-color:rgb(72, 154, 14) ;
+}
+
+.warningColor {
+  background-color: rgb(239, 90, 35);
+}
+
+.deleteButtonColor {
+  background-color: rgb(61, 90, 221);
+}
+
+:root {
+  --font-primary: 'Poppins', sans-serif;
+}
+
+/* react-datepicker full width support */
+.react-datepicker-wrapper {
+  width: 100% !important;
+}
+.react-datepicker__input-container {
+  width: 100% !important;
+}
