@@ -1,21 +1,59 @@
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Edit, Trash2, Printer, Image as ImageIcon } from "lucide-react";
+import { Edit, Image as ImageIcon } from "lucide-react";
 
-// Product List Table with Print and Edit Action functionality
-const ProductTable = ({ 
-  products, 
-  searchTerm, 
-  entries, 
-  onDeleteProduct, 
-  onPrintProduct, 
-  onEditProduct // 👈 onEditProduct prop যুক্ত করা হয়েছে
+const ProductTable = ({
+  products: initialProducts = [],
+  searchTerm = "",
+  entries = 10,
+  onEditProduct,
+  onToggleStatus,
 }) => {
-  // Filter product by search keyword
-  const filteredProducts = products.filter(
+  // Table Table Local State handle
+  const [productList, setProductList] = useState(initialProducts);
+
+  // Sync state when props change
+  useEffect(() => {
+    setProductList(initialProducts);
+  }, [initialProducts]);
+
+  // Handle Toggle directly
+  const handleToggle = (product, index) => {
+    const targetId = product.productId || product.code || product.id;
+
+    setProductList((prevList) =>
+      prevList.map((item, i) => {
+        const itemId = item.productId || item.code || item.id;
+
+        // Match by ID or by Index if ID missing
+        if ((targetId && itemId === targetId) || i === index) {
+          const updatedItem = {
+            ...item,
+            isActive: !(item.isActive ?? true),
+          };
+
+          // Optional Parent callback
+          if (onToggleStatus) onToggleStatus(updatedItem);
+
+          return updatedItem;
+        }
+        return item;
+      }),
+    );
+  };
+
+  // Filter products by search keyword
+  const filteredProducts = productList.filter(
     (p) =>
-      (p.productName || p.name || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.productId || p.code || p.id || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (p.productGroup || p.group || "").toLowerCase().includes(searchTerm.toLowerCase())
+      (p.productName || p.name || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (p.productId || p.code || p.id || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()) ||
+      (p.productGroup || p.group || "")
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase()),
   );
 
   return (
@@ -25,14 +63,13 @@ const ProductTable = ({
         <thead>
           <tr className="bg-base-200/80 text-base-content text-xs uppercase font-bold border-b border-base-300">
             <th className="py-3 px-4">#SN.</th>
-            <th className="py-3 px-4">Image</th>
+
             <th className="py-3 px-4">Code</th>
             <th className="py-3 px-4">Name</th>
             <th className="py-3 px-4">Group / SubGroup</th>
             <th className="py-3 px-4">Unit</th>
-            <th className="py-3 px-4">P-Price</th>
-            <th className="py-3 px-4">T.P-Price</th>
-            <th className="py-3 px-4">Stock</th>
+            <th className="py-3 px-4">Purchase-Price</th>
+            <th className="py-3 px-4">Selling-Price</th>
             <th className="py-3 px-4 text-center">Action</th>
           </tr>
         </thead>
@@ -41,6 +78,7 @@ const ProductTable = ({
         <tbody className="divide-y divide-base-300 text-sm">
           {filteredProducts.slice(0, entries).map((product, index) => {
             const pId = product.productId || product.code || product.id;
+            const isActive = product.isActive ?? true;
 
             return (
               <motion.tr
@@ -49,21 +87,27 @@ const ProductTable = ({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.2, delay: index * 0.02 }}
-                className="hover:bg-base-200/40 transition-colors"
+                className={`hover:bg-base-200/40 transition-colors ${
+                  !isActive ? "opacity-50 bg-base-200/40" : ""
+                }`}
               >
-                <td className="font-medium text-base-content/70 px-4 py-3">{index + 1}</td>
-                <td className="px-4 py-3">
-                  <div className="size-10 bg-base-200 rounded-lg border border-base-300 flex items-center justify-center text-base-content/50">
-                    <ImageIcon className="size-5" />
-                  </div>
+                <td className="font-medium text-base-content/70 px-4 py-3">
+                  {index + 1}
                 </td>
-                <td className="font-semibold text-primary font-mono px-4 py-3">{pId}</td>
+
+                <td className="font-semibold text-primary font-mono px-4 py-3">
+                  {pId}
+                </td>
                 <td className="font-medium text-base-content px-4 py-3 max-w-xs truncate">
                   {product.productName || product.name}
                 </td>
                 <td className="px-4 py-3 text-xs">
-                  <span className="font-semibold block">{product.productGroup || product.group}</span>
-                  <span className="text-base-content/60">{product.productSubGroup || product.subGroup}</span>
+                  <span className="font-semibold block">
+                    {product.productGroup || product.group}
+                  </span>
+                  <span className="text-base-content/60">
+                    {product.productSubGroup || product.subGroup}
+                  </span>
                 </td>
                 <td className="px-4 py-3">
                   <span className="badge badge-ghost badge-sm font-semibold uppercase">
@@ -71,30 +115,25 @@ const ProductTable = ({
                   </span>
                 </td>
                 <td className="px-4 py-3 font-medium">
-                  ৳ {Number(product.purchasePrice || product.price || 0).toLocaleString()}
+                  {" "}
+                  {Number(
+                    product.purchasePrice || product.price || 0,
+                  ).toLocaleString()}
                 </td>
                 <td className="px-4 py-3 font-semibold text-success">
-                  ৳ {Number(product.unitPrice || product.tpPrice || product.price || 0).toLocaleString()}
-                </td>
-                <td className="px-4 py-3">
-                  <span
-                    className={`badge badge-sm font-bold ${
-                      (product.quantity ?? product.stock ?? 0) > 10
-                        ? "badge-success/20 text-success"
-                        : "badge-warning/20 text-warning"
-                    }`}
-                  >
-                    {product.quantity ?? product.stock ?? 0}
-                  </span>
+                  {" "}
+                  {Number(
+                    product.unitPrice || product.tpPrice || product.price || 0,
+                  ).toLocaleString()}
                 </td>
 
                 {/* Action Column */}
                 <td className="px-4 py-3">
-                  <div className="flex items-center justify-center gap-1">
-                    {/* Edit Button - Connected with onClick and console.log */}
+                  <div className="flex items-center justify-center gap-1.5">
+                    {/* Edit Button */}
                     <button
+                      type="button"
                       onClick={() => {
-                        console.log("👉 [ProductTable] Edit clicked for product:", product);
                         if (onEditProduct) onEditProduct(product);
                       }}
                       className="btn btn-square btn-xs bg-emerald-500 hover:bg-emerald-600 text-white border-0"
@@ -103,22 +142,27 @@ const ProductTable = ({
                       <Edit className="size-3.5" />
                     </button>
 
-                    {/* Delete Button */}
+                    {/* Active/Inactive Toggle Button */}
                     <button
-                      onClick={() => onDeleteProduct(pId)}
-                      className="btn btn-square btn-xs bg-rose-500 hover:bg-rose-600 text-white border-0"
-                      title="Delete"
+                      type="button"
+                      onClick={() => handleToggle(product, index)}
+                      className={`btn btn-xs gap-1 border-0 ${
+                        isActive
+                          ? "bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25"
+                          : "bg-rose-500/15 text-rose-600 hover:bg-rose-500/25"
+                      }`}
+                      title={
+                        isActive ? "Click to Deactivate" : "Click to Activate"
+                      }
                     >
-                      <Trash2 className="size-3.5" />
-                    </button>
-
-                    {/* Print Button */}
-                    <button
-                      onClick={() => onPrintProduct(product)}
-                      className="btn btn-square btn-xs bg-blue-500 hover:bg-blue-600 text-white border-0"
-                      title="Print Details"
-                    >
-                      <Printer className="size-3.5" />
+                      <span
+                        className={`size-1.5 rounded-full ${
+                          isActive ? "bg-emerald-500" : "bg-rose-500"
+                        }`}
+                      />
+                      <span className="text-[10px] font-bold uppercase">
+                        {isActive ? "Active" : "Inactive"}
+                      </span>
                     </button>
                   </div>
                 </td>

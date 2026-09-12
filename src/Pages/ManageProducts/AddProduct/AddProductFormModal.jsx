@@ -1,14 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, PackagePlus, Sparkles } from "lucide-react";
-import { toast } from "react-toastify"; // Toastify Import
+import { toast } from "react-toastify";
 
-// Modal component to add a new product dynamically
 const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
   const [selectedGroup, setSelectedGroup] = useState("");
   const [subGroups, setSubGroups] = useState([]);
 
-  // Controlled Form State matching the JSON Schema
+  // Controlled Form State matching the updated Schema
   const [formData, setFormData] = useState({
     productId: "",
     productName: "",
@@ -17,10 +16,10 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
     selectedUnit: "pcs",
     purchasePrice: "",
     unitPrice: "",
-    quantity: 1,
+    weight: "", // quantity replaced with weight
   });
 
-  // Generate an automatic formatted Product ID when modal opens
+  // Generate automatic formatted Product ID when modal opens
   useEffect(() => {
     if (isOpen) {
       const generatedId = `PRD-${Math.floor(1000 + Math.random() * 9000)}`;
@@ -32,41 +31,36 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
         selectedUnit: "pcs",
         purchasePrice: "",
         unitPrice: "",
-        quantity: 1,
+        weight: "",
       });
       setSelectedGroup("");
       setSubGroups([]);
     }
   }, [isOpen]);
 
-  // Dynamic cascading dropdown: Update subgroups based on group selection
   const handleGroupChange = (e) => {
     const groupName = e.target.value;
     setSelectedGroup(groupName);
 
-    // Find matched group item in JSON structure
     const groupObj = groups.find((g) => g.group === groupName);
     setSubGroups(groupObj ? groupObj.subGroup : []);
 
     setFormData((prev) => ({
       ...prev,
       productGroup: groupName,
-      productSubGroup: "", // Reset subGroup on group change
+      productSubGroup: "",
     }));
   };
 
-  // Generic input handler
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Form submission handler with Toastify notification
   const handleSubmit = (e) => {
     e.preventDefault();
     onAddProduct(formData);
 
-    // Toast Notification (Quick 2-second timeout)
     toast.success("New product added successfully!", {
       position: "top-right",
       autoClose: 2000,
@@ -106,6 +100,7 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
                 <h3 className="font-bold text-lg">Add New Product</h3>
               </div>
               <button
+                type="button"
                 onClick={onClose}
                 className="btn btn-sm btn-circle btn-ghost"
               >
@@ -204,19 +199,21 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
                     <option value="pcs">pcs</option>
                     <option value="cartoon">cartoon</option>
                     <option value="box">box</option>
+                    <option value="gm">gm</option>
+                    <option value="kg">kg</option>
                   </select>
                 </div>
 
-                {/* Stock Quantity */}
+                {/* Weight Input Field */}
                 <div>
                   <label className="label text-xs font-semibold">
-                    Quantity / Stock
+                    Weight (e.g., 500g, 1.5kg)
                   </label>
                   <input
-                    type="number"
-                    name="quantity"
-                    min="1"
-                    value={formData.quantity}
+                    type="text"
+                    name="weight"
+                    placeholder="Enter product weight"
+                    value={formData.weight}
                     onChange={handleChange}
                     className="input input-bordered w-full text-sm"
                   />

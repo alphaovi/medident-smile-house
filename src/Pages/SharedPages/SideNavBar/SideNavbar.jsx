@@ -50,11 +50,7 @@ const SideNavbar = () => {
           icon: <PackagePlus className="size-4 shrink-0" />,
           link: "/manage-product/add-product",
         },
-        {
-          name: "View Product",
-          icon: <PackageSearch className="size-4 shrink-0" />,
-          link: "/manage-product/view-product",
-        },
+        
         {
           name: "Store",
           icon: <Boxes className="size-4 shrink-0" />,

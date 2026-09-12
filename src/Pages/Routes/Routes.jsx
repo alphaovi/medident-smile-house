@@ -6,6 +6,7 @@ import AddProduct from "../ManageProducts/AddProduct/AddProduct";
 import ViewProducts from "../ManageProducts/ViewProducts/ViewProducts";
 import LostItems from "../ManageProducts/LostItems/LostItems";
 import Store from "../ManageProducts/Store/Store";
+import PurchaseOrder from "../Purchase/PurchaseOrder/PurchaseOrder";
 
 const router = createBrowserRouter([
   {
@@ -31,6 +32,10 @@ const router = createBrowserRouter([
       {
         path: "/manage-product/lost-items",
         element: <LostItems></LostItems>,
+      },
+      {
+        path: "/purchase/purchase-order",
+        element: <PurchaseOrder></PurchaseOrder>,
       },
     ],
   },

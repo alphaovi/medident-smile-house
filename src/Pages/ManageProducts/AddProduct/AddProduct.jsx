@@ -1,15 +1,13 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Plus, Store, Search, ChevronRight, Loader2 } from "lucide-react";
+import { Plus, FolderPlus, Search, ChevronRight, Loader2 } from "lucide-react";
 import Swal from "sweetalert2";
 import ProductTable from "./ProductTable";
 import AddProductFormModal from "./AddProductFormModal";
-import StoreProductModal from "./StoreProduct/StoreProductModal";
 import EditProductModal from "./EditProductModal";
 
 const AddProduct = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isStoreModalOpen, setIsStoreModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   
@@ -48,20 +46,17 @@ const AddProduct = () => {
     setProducts((prev) => [newProduct, ...prev]);
   };
 
-  // 🔍 LOG 1: এডিট বাটন চাপলে ডেটা মোডালে আসছে কি না
   const handleEditProduct = (product) => {
     console.log("👉 1. [AddProduct] Edit button clicked. Product selected:", product);
     setEditingProduct(product);
     setIsEditModalOpen(true);
   };
 
-  // 🔍 LOG 2: মোডাল থেকে সাবমিট করার পর আপডেট ডেটা এখানে আসছে কি না
   const handleUpdateProduct = (updatedProduct) => {
     console.log("👉 3. [AddProduct] Receiving updated product from modal:", updatedProduct);
 
     setProducts((prev) => {
       const updatedList = prev.map((item) => {
-        // বিভিন্ন ধরনের ID চেক করার লজিক
         const itemId = item.productId || item.code || item.id || item._id;
         const updatedId = updatedProduct.productId || updatedProduct.code || updatedProduct.id || updatedProduct._id;
 
@@ -77,21 +72,26 @@ const AddProduct = () => {
     });
   };
 
-  const handleSaveStoreProduct = (purchaseData) => {
-    const updatedProducts = [...products];
+  // Status Toggle Function
+  const handleToggleStatus = (targetProduct) => {
+    const targetId = targetProduct.productId || targetProduct.code || targetProduct.id;
 
-    purchaseData.purchasedItems.forEach((item) => {
-      const existingIndex = updatedProducts.findIndex((p) => (p.productId || p.id) === (item.productId || item.id));
-      if (existingIndex !== -1) {
-        updatedProducts[existingIndex] = {
-          ...updatedProducts[existingIndex],
-          quantity: updatedProducts[existingIndex].quantity + item.quantity,
-          purchasePrice: Math.round(item.finalUnitBuyingPrice),
-        };
-      }
-    });
+    setProducts((prevProducts) =>
+      prevProducts.map((p) => {
+        const pId = p.productId || p.code || p.id;
+        if (pId === targetId) {
+          const currentStatus = p.isActive !== undefined ? p.isActive : true;
+          return { ...p, isActive: !currentStatus };
+        }
+        return p;
+      })
+    );
+  };
 
-    setProducts(updatedProducts);
+  // Add Group / Subgroup click handler placeholder
+  const handleAddGroupSubgroup = () => {
+    console.log("Add Group / Subgroup button clicked");
+    // TODO: Implement Group/Subgroup modal or logic later
   };
 
   const handleDeleteProduct = (productId) => {
@@ -231,11 +231,12 @@ const AddProduct = () => {
           <h2 className="text-lg font-bold">Products List</h2>
 
           <div className="flex items-center gap-3">
+            {/* New Add Group / Subgroup Button */}
             <button
-              onClick={() => setIsStoreModalOpen(true)}
+              onClick={handleAddGroupSubgroup}
               className="btn text-white bg-teal-600 hover:bg-teal-700 btn-sm gap-2 border-0"
             >
-              <Store className="size-4" /> Store Product
+              <FolderPlus className="size-4" /> Add Group / Subgroup
             </button>
             <button
               onClick={() => setIsAddModalOpen(true)}
@@ -286,6 +287,7 @@ const AddProduct = () => {
             onDeleteProduct={handleDeleteProduct}
             onPrintProduct={handlePrintProduct}
             onEditProduct={handleEditProduct}
+            onToggleStatus={handleToggleStatus}
           />
         )}
       </div>
@@ -295,13 +297,6 @@ const AddProduct = () => {
         onClose={() => setIsAddModalOpen(false)}
         onAddProduct={handleAddProduct}
         groups={groups}
-      />
-
-      <StoreProductModal
-        isOpen={isStoreModalOpen}
-        onClose={() => setIsStoreModalOpen(false)}
-        products={products}
-        onSaveStoreProduct={handleSaveStoreProduct}
       />
 
       <EditProductModal
