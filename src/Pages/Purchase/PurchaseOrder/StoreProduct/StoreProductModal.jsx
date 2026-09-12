@@ -73,7 +73,6 @@ const StoreProductModal = ({
         currentRow.unitWeight = selectedProd.unitWeight ?? selectedProd.weight ?? 1;
       }
     } else if (["orderQty", "unitPrice", "unitWeight"].includes(field)) {
-      // Allow empty string to fix backspace issue when value is 0
       currentRow[field] = value === "" ? "" : Number(value);
     }
 
@@ -152,22 +151,24 @@ const StoreProductModal = ({
       };
     });
 
+    // Subtotal of all active items including their allocated shipping and VAT (Total + Ship er jogfol)
+    const totalItemsWithShipping = calculatedItems
+      .filter((item) => item.productId !== "")
+      .reduce((acc, item) => acc + (item.totalWithShipping || 0), 0);
+
     const transitCostNum = Number(expenses.transitCost) || 0;
     const otherCostNum = Number(expenses.otherCost) || 0;
 
-    const totalExtraExpenses =
-      shippingCostNum +
-      calculatedVatAmount +
-      transitCostNum +
-      otherCostNum;
+    const totalExtraExpenses = transitCostNum + otherCostNum;
 
-    const grandTotal = rawSubtotal + totalExtraExpenses;
+    const grandTotal = totalItemsWithShipping + totalExtraExpenses;
 
     return {
       totalCurrentStock,
       totalTransitStock,
       totalOrderQty,
       rawSubtotal,
+      totalItemsWithShipping,
       totalBatchWeight,
       shippingCostPerKg,
       calculatedVatAmount,
@@ -216,6 +217,7 @@ const StoreProductModal = ({
             orderQty: calculations.totalOrderQty,
             batchWeight: calculations.totalBatchWeight,
             rawSubtotal: calculations.rawSubtotal,
+            totalItemsWithShipping: calculations.totalItemsWithShipping,
             grandTotal: calculations.grandTotal,
           },
           date: new Date().toISOString(),
@@ -274,7 +276,7 @@ const StoreProductModal = ({
                   </span>
                 </div>
 
-                {/* Table Header for One-Line Layout */}
+                {/* Table Header */}
                 <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-base-300/40 rounded-lg text-[11px] font-semibold text-base-content/70 text-center">
                   <div className="w-32 text-left">Group</div>
                   <div className="w-32 text-left">Sub-Group</div>
@@ -289,7 +291,7 @@ const StoreProductModal = ({
                   <div className="w-8"></div>
                 </div>
 
-                {/* Single Line Compact Rows */}
+                {/* Rows */}
                 {items.map((item, idx) => {
                   const matchedGroupObj = Array.isArray(productsGroupSubgroup)
                     ? productsGroupSubgroup.find(
@@ -423,7 +425,7 @@ const StoreProductModal = ({
                         />
                       </div>
 
-                      {/* Unit Cost (Incl. VAT & Ship) */}
+                      {/* Unit Cost */}
                       <div className="w-24 text-right">
                         <span className="font-bold text-xs text-info block px-1">
                           ৳{calcItem?.unitCostAfterCalc ? calcItem.unitCostAfterCalc.toFixed(2) : "0.00"}
@@ -437,7 +439,7 @@ const StoreProductModal = ({
                         </span>
                       </div>
 
-                      {/* Delete Icon */}
+                      {/* Delete */}
                       <div className="w-8 flex justify-center">
                         <button
                           type="button"
@@ -485,10 +487,10 @@ const StoreProductModal = ({
                 </div>
                 <div className="col-span-2 sm:col-span-1">
                   <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    Base Subtotal
+                    Subtotal (W/ Ship & VAT)
                   </span>
                   <span className="font-bold text-teal-600">
-                    ৳ {calculations.rawSubtotal.toLocaleString()}
+                    ৳ {calculations.totalItemsWithShipping.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>
@@ -578,14 +580,14 @@ const StoreProductModal = ({
                       <span>৳ {(Number(expenses.shippingCost) || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
-                      <span>• Transit Cost:</span>
-                      <span>৳ {(Number(expenses.transitCost) || 0).toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
                       <span>
                         • VAT ({expenses.vatType === "percent" ? `${expenses.vatValue || 0}%` : "Fixed"}):
                       </span>
                       <span>৳ {calculations.calculatedVatAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                      <span>• Transit Cost:</span>
+                      <span>৳ {(Number(expenses.transitCost) || 0).toLocaleString()}</span>
                     </div>
                     <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
                       <span>• Other Expenses:</span>
@@ -595,7 +597,7 @@ const StoreProductModal = ({
                     <div className="divider my-1"></div>
                     <div className="flex justify-between text-sm font-bold text-teal-600">
                       <span>Grand Total:</span>
-                      <span>৳ {calculations.grandTotal.toLocaleString()}</span>
+                      <span>৳ {calculations.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
                 </div>
