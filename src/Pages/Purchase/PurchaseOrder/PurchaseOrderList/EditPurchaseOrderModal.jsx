@@ -4,7 +4,6 @@ import {
   X,
   Trash2,
   Store,
-  Calculator,
   Box,
   Calendar,
   Building2,
@@ -19,12 +18,11 @@ const EditPurchaseOrderModal = ({
   products = [],
   productsGroupSubgroup = [],
   onSaveStoreProduct,
-  editData = null, // Added editData prop for editing mode
+  editData = null,
 }) => {
   const [suppliers, setSuppliers] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState("");
 
-  // Helper to get today's date in YYYY-MM-DD for the HTML date input
   const getTodayISO = () => {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -33,7 +31,6 @@ const EditPurchaseOrderModal = ({
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  // Helper to convert DD/MM/YYYY or other formats to YYYY-MM-DD for date inputs
   const parseDateToISO = (dateStr) => {
     if (!dateStr) return getTodayISO();
     if (dateStr.includes("/")) {
@@ -47,7 +44,7 @@ const EditPurchaseOrderModal = ({
 
   const [orderDate, setOrderDate] = useState(getTodayISO());
   const [expectedReceiveDate, setExpectedReceiveDate] = useState("");
-  const [orderStatus, setOrderStatus] = useState("Pending"); // New state for status
+  const [orderStatus, setOrderStatus] = useState("Pending");
 
   const initialRow = {
     selectedGroup: "",
@@ -72,9 +69,9 @@ const EditPurchaseOrderModal = ({
   const [items, setItems] = useState([initialRow]);
   const [expenses, setExpenses] = useState(initialExpenses);
 
-  // Pre-fill form when editData changes or modal opens
+  // ইনফিনিটি লুপ রোধ করতে এখানে products কে ডিপেন্ডেন্সি থেকে বাদ দেওয়া হয়েছে
   useEffect(() => {
-    if (editData) {
+    if (isOpen && editData) {
       setSelectedSupplier(editData.supplierName || "");
       setOrderDate(parseDateToISO(editData.orderDate));
       setExpectedReceiveDate(parseDateToISO(editData.expectedReceiveDate));
@@ -92,9 +89,8 @@ const EditPurchaseOrderModal = ({
 
       if (editData.purchasedItems && editData.purchasedItems.length > 0) {
         const mappedItems = editData.purchasedItems.map((item) => {
-          // Try to match product group/subgroup from products list if missing
           const matchedProd = products.find(
-            (p) => (p.productId || p._id) === (item.productId || item._id),
+            (p) => (p.productId || p._id) === (item.productId || item._id)
           );
           return {
             selectedGroup:
@@ -120,11 +116,9 @@ const EditPurchaseOrderModal = ({
             unitWeight: item.unitWeight ?? 1,
           };
         });
-        // Ensure there's an empty trailing row if desired, or keep exact items
         setItems([...mappedItems, { ...initialRow }]);
       }
-    } else {
-      // Reset to defaults for Create mode
+    } else if (isOpen && !editData) {
       setItems([{ ...initialRow }]);
       setExpenses(initialExpenses);
       setSelectedSupplier("");
@@ -132,9 +126,8 @@ const EditPurchaseOrderModal = ({
       setExpectedReceiveDate("");
       setOrderStatus("Pending");
     }
-  }, [editData, isOpen, products]);
+  }, [isOpen, editData]);
 
-  // Fetch suppliers data from public/suppliersData.json
   useEffect(() => {
     fetch("/suppliersData.json")
       .then((res) => {
@@ -146,7 +139,6 @@ const EditPurchaseOrderModal = ({
       })
       .catch((err) => {
         console.error(err);
-        toast.error("Could not load suppliers data for dropdown!");
       });
   }, []);
 
@@ -179,7 +171,7 @@ const EditPurchaseOrderModal = ({
     } else if (field === "productId") {
       currentRow.productId = value;
       const selectedProd = products.find(
-        (p) => p.productId === value || p._id === value,
+        (p) => (p.productId || p._id) === value
       );
       if (selectedProd) {
         currentRow.productName =
@@ -220,13 +212,11 @@ const EditPurchaseOrderModal = ({
     }));
   };
 
-  // Handler for Status Change with Toast Notification
   const handleStatusChange = (newStatus) => {
     setOrderStatus(newStatus);
     toast.info(`Status updated to: ${newStatus}`, { autoClose: 2000 });
   };
 
-  // Function to convert YYYY-MM-DD into DD/MM/YYYY for final save/display
   const convertToDDMMYYYY = (dateString) => {
     if (!dateString) return "";
     const parts = dateString.split("-");
@@ -241,27 +231,27 @@ const EditPurchaseOrderModal = ({
 
     const totalCurrentStock = activeItems.reduce(
       (acc, item) => acc + (Number(item.currentStock) || 0),
-      0,
+      0
     );
     const totalTransitStock = activeItems.reduce(
       (acc, item) => acc + (Number(item.transitStock) || 0),
-      0,
+      0
     );
     const totalOrderQty = activeItems.reduce(
       (acc, item) => acc + (Number(item.orderQty) || 0),
-      0,
+      0
     );
 
     const rawSubtotal = activeItems.reduce(
       (acc, item) =>
         acc + (Number(item.orderQty) || 0) * (Number(item.unitPrice) || 0),
-      0,
+      0
     );
 
     const totalBatchWeight = activeItems.reduce(
       (acc, item) =>
         acc + (Number(item.orderQty) || 0) * (Number(item.unitWeight) || 0),
-      0,
+      0
     );
 
     const shippingCostNum = Number(expenses.shippingCost) || 0;
@@ -310,9 +300,7 @@ const EditPurchaseOrderModal = ({
 
     const transitCostNum = Number(expenses.transitCost) || 0;
     const otherCostNum = Number(expenses.otherCost) || 0;
-
     const totalExtraExpenses = transitCostNum + otherCostNum;
-
     const grandTotal = totalItemsWithShipping + totalExtraExpenses;
 
     return {
@@ -334,7 +322,7 @@ const EditPurchaseOrderModal = ({
     e.preventDefault();
 
     const validItems = calculations.calculatedItems.filter(
-      (item) => item.productId !== "",
+      (item) => item.productId !== ""
     );
 
     if (validItems.length === 0) {
@@ -396,7 +384,7 @@ const EditPurchaseOrderModal = ({
           editData
             ? "Purchase order batch updated successfully!"
             : "Purchase order batch created successfully!",
-          { autoClose: 2000 },
+          { autoClose: 2000 }
         );
         onClose();
       }
@@ -430,7 +418,6 @@ const EditPurchaseOrderModal = ({
                     ? "Edit Batch Purchase Order"
                     : "Batch Purchase Order Entry"}
                 </h3>
-                {/* Status badge / quick switcher */}
                 <div className="flex items-center gap-1.5 ml-4 bg-base-100 px-3 py-1 rounded-lg border border-base-300 text-xs">
                   <span className="font-semibold text-base-content/70">
                     Status:
@@ -459,11 +446,9 @@ const EditPurchaseOrderModal = ({
             {/* Form Content */}
             <form
               onSubmit={handleSubmit}
-              className="p-4 overflow-y-auto space-y-4 grow"
+              className="p-4 overflow-y-auto space-y-4 grow flex flex-col"
             >
-              {/* Supplier & Dates Selection Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300">
-                {/* Supplier Name Dropdown */}
                 <div>
                   <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
                     <Building2 className="size-3.5 text-teal-600" /> Supplier
@@ -487,7 +472,6 @@ const EditPurchaseOrderModal = ({
                   </select>
                 </div>
 
-                {/* Order Date */}
                 <div>
                   <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
                     <Calendar className="size-3.5 text-teal-600" /> Order Date{" "}
@@ -504,7 +488,6 @@ const EditPurchaseOrderModal = ({
                   />
                 </div>
 
-                {/* Expected Receive Date */}
                 <div>
                   <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
                     <Calendar className="size-3.5 text-teal-600" /> Expected
@@ -539,7 +522,6 @@ const EditPurchaseOrderModal = ({
                   </span>
                 </div>
 
-                {/* Table Header */}
                 <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-base-300/40 rounded-lg text-[11px] font-semibold text-base-content/70 text-center">
                   <div className="w-32 text-left">Group</div>
                   <div className="w-32 text-left">Sub-Group</div>
@@ -554,13 +536,12 @@ const EditPurchaseOrderModal = ({
                   <div className="w-8"></div>
                 </div>
 
-                {/* Rows */}
                 {items.map((item, idx) => {
                   const matchedGroupObj = Array.isArray(productsGroupSubgroup)
                     ? productsGroupSubgroup.find(
                         (g) =>
                           (g.group || g.groupName || g.name) ===
-                          item.selectedGroup,
+                          item.selectedGroup
                       )
                     : null;
 
@@ -593,7 +574,6 @@ const EditPurchaseOrderModal = ({
                       animate={{ opacity: 1 }}
                       className="flex flex-wrap lg:flex-nowrap items-center gap-2 bg-base-200/50 p-2 rounded-xl border border-base-300 text-xs"
                     >
-                      {/* Group */}
                       <div className="w-full sm:w-32">
                         <select
                           value={item.selectedGroup}
@@ -601,7 +581,7 @@ const EditPurchaseOrderModal = ({
                             handleItemChange(
                               idx,
                               "selectedGroup",
-                              e.target.value,
+                              e.target.value
                             )
                           }
                           className="select select-bordered select-xs w-full"
@@ -615,7 +595,6 @@ const EditPurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      {/* Sub-Group */}
                       <div className="w-full sm:w-32">
                         <select
                           value={item.selectedSubGroup}
@@ -624,7 +603,7 @@ const EditPurchaseOrderModal = ({
                             handleItemChange(
                               idx,
                               "selectedSubGroup",
-                              e.target.value,
+                              e.target.value
                             )
                           }
                           className="select select-bordered select-xs w-full disabled:opacity-50"
@@ -641,7 +620,6 @@ const EditPurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      {/* Product */}
                       <div className="flex-1 min-w-[150px]">
                         <select
                           value={item.productId}
@@ -663,21 +641,18 @@ const EditPurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      {/* Current Stock */}
                       <div className="w-16 text-center">
                         <span className="badge badge-ghost badge-sm w-full font-medium text-[11px] py-1">
                           {item.currentStock}
                         </span>
                       </div>
 
-                      {/* In Transit */}
                       <div className="w-16 text-center">
                         <span className="badge badge-warning/20 text-warning-content badge-sm w-full font-medium text-[11px] py-1">
                           {item.transitStock}
                         </span>
                       </div>
 
-                      {/* Order Qty */}
                       <div className="w-16">
                         <input
                           type="number"
@@ -690,7 +665,6 @@ const EditPurchaseOrderModal = ({
                         />
                       </div>
 
-                      {/* Price */}
                       <div className="w-20">
                         <input
                           type="number"
@@ -703,7 +677,6 @@ const EditPurchaseOrderModal = ({
                         />
                       </div>
 
-                      {/* Weight */}
                       <div className="w-16">
                         <input
                           type="number"
@@ -717,7 +690,6 @@ const EditPurchaseOrderModal = ({
                         />
                       </div>
 
-                      {/* Unit Cost */}
                       <div className="w-24 text-right">
                         <span className="font-bold text-xs text-info block px-1">
                           ৳
@@ -727,7 +699,6 @@ const EditPurchaseOrderModal = ({
                         </span>
                       </div>
 
-                      {/* Total + Ship */}
                       <div className="w-24 text-right">
                         <span className="font-bold text-xs text-teal-600 block px-1">
                           ৳
@@ -737,7 +708,6 @@ const EditPurchaseOrderModal = ({
                         </span>
                       </div>
 
-                      {/* Delete */}
                       <div className="w-8 flex justify-center">
                         <button
                           type="button"
@@ -753,7 +723,6 @@ const EditPurchaseOrderModal = ({
                 })}
               </div>
 
-              {/* Summary Bar */}
               <div className="bg-base-200 p-2.5 rounded-xl border border-base-300 grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
                 <div>
                   <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
@@ -765,17 +734,17 @@ const EditPurchaseOrderModal = ({
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    In Transit
+                    Transit Stock
                   </span>
-                  <span className="font-bold text-warning">
+                  <span className="font-bold">
                     {calculations.totalTransitStock}
                   </span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    Order Qty
+                    Total Qty
                   </span>
-                  <span className="font-bold text-primary">
+                  <span className="font-bold text-teal-600">
                     {calculations.totalOrderQty}
                   </span>
                 </div>
@@ -789,165 +758,115 @@ const EditPurchaseOrderModal = ({
                 </div>
                 <div className="col-span-2 sm:col-span-1">
                   <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    Subtotal (W/ Ship & VAT)
+                    Raw Subtotal
                   </span>
-                  <span className="font-bold text-teal-600">
-                    ৳{" "}
-                    {calculations.totalItemsWithShipping.toLocaleString(
-                      undefined,
-                      { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-                    )}
+                  <span className="font-bold">
+                    ৳ {calculations.rawSubtotal.toFixed(2)}
                   </span>
                 </div>
               </div>
 
-              {/* Expenses Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                <div className="space-y-2 bg-base-200/40 p-3 rounded-xl border border-base-300">
-                  <h5 className="font-bold text-xs uppercase text-base-content/70 flex items-center gap-1.5">
-                    <Calculator className="size-4" /> Expenses Breakdown
-                  </h5>
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300">
+                <div>
+                  <label className="label py-0.5 text-xs font-semibold text-base-content/70">
+                    Shipping Cost (৳)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    name="shippingCost"
+                    value={expenses.shippingCost}
+                    onChange={handleExpenseChange}
+                    className="input input-bordered input-xs w-full font-medium"
+                  />
+                </div>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
-                        Shipping Cost (৳)
-                      </label>
-                      <input
-                        type="number"
-                        name="shippingCost"
-                        value={expenses.shippingCost}
-                        onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
-                      />
-                    </div>
-                    <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
-                        Transit Cost (৳)
-                      </label>
-                      <input
-                        type="number"
-                        name="transitCost"
-                        value={expenses.transitCost}
-                        onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
-                        VAT {expenses.vatType === "percent" ? "(%)" : "(৳)"}
-                      </label>
-                      <div className="flex gap-1">
-                        <input
-                          type="number"
-                          name="vatValue"
-                          value={expenses.vatValue}
-                          onChange={handleExpenseChange}
-                          placeholder={
-                            expenses.vatType === "percent" ? "%" : "৳"
-                          }
-                          className="input input-bordered input-xs w-full"
-                        />
-                        <select
-                          name="vatType"
-                          value={expenses.vatType}
-                          onChange={handleExpenseChange}
-                          className="select select-bordered select-xs font-bold text-primary"
-                        >
-                          <option value="percent">%</option>
-                          <option value="amount">৳</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
-                        Other Cost (৳)
-                      </label>
-                      <input
-                        type="number"
-                        name="otherCost"
-                        value={expenses.otherCost}
-                        onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
-                      />
-                    </div>
+                <div>
+                  <label className="label py-0.5 text-xs font-semibold text-base-content/70">
+                    VAT ({calculations.calculatedVatAmount.toFixed(2)} ৳)
+                  </label>
+                  <div className="flex gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      name="vatValue"
+                      value={expenses.vatValue}
+                      onChange={handleExpenseChange}
+                      className="input input-bordered input-xs w-full font-medium"
+                    />
+                    <select
+                      name="vatType"
+                      value={expenses.vatType}
+                      onChange={handleExpenseChange}
+                      className="select select-bordered select-xs w-20"
+                    >
+                      <option value="percent">%</option>
+                      <option value="fixed">৳</option>
+                    </select>
                   </div>
                 </div>
 
-                <div className="bg-base-200/70 p-3 rounded-xl border border-base-300 flex flex-col justify-between space-y-1">
-                  <h5 className="font-bold text-xs uppercase text-base-content/70">
-                    Grand Order Calculation
-                  </h5>
+                <div>
+                  <label className="label py-0.5 text-xs font-semibold text-base-content/70">
+                    Transit Cost (৳)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    name="transitCost"
+                    value={expenses.transitCost}
+                    onChange={handleExpenseChange}
+                    className="input input-bordered input-xs w-full font-medium"
+                  />
+                </div>
 
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between text-base-content/70">
-                      <span>Base Subtotal:</span>
-                      <span className="font-semibold">
-                        ৳ {calculations.rawSubtotal.toLocaleString()}
-                      </span>
-                    </div>
+                <div>
+                  <label className="label py-0.5 text-xs font-semibold text-base-content/70">
+                    Other Cost (৳)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    name="otherCost"
+                    value={expenses.otherCost}
+                    onChange={handleExpenseChange}
+                    className="input input-bordered input-xs w-full font-medium"
+                  />
+                </div>
+              </div>
 
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
-                      <span>
-                        • Shipping ({calculations.totalBatchWeight.toFixed(2)}{" "}
-                        kg @ ৳{calculations.shippingCostPerKg.toFixed(2)}/kg):
-                      </span>
-                      <span>
-                        ৳{" "}
-                        {(Number(expenses.shippingCost) || 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
-                      <span>
-                        • VAT (
-                        {expenses.vatType === "percent"
-                          ? `${expenses.vatValue || 0}%`
-                          : "Fixed"}
-                        ):
-                      </span>
-                      <span>
-                        ৳ {calculations.calculatedVatAmount.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
-                      <span>• Transit Cost:</span>
-                      <span>
-                        ৳ {(Number(expenses.transitCost) || 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
-                      <span>• Other Expenses:</span>
-                      <span>
-                        ৳ {(Number(expenses.otherCost) || 0).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="divider my-1"></div>
-
-                    <div className="flex justify-between font-bold text-teal-600 text-sm">
-                      <span>Grand Total:</span>
-                      <span>
-                        ৳{" "}
-                        {calculations.grandTotal.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                    </div>
+              {/* Footer / Grand Total Actions */}
+              <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-t border-base-300 mt-auto -mx-4 -mb-4">
+                <div className="flex items-center gap-4 text-xs">
+                  <div>
+                    <span className="text-base-content/60 font-medium">Items + Ship: </span>
+                    <span className="font-bold text-teal-600">
+                      ৳ {calculations.totalItemsWithShipping.toFixed(2)}
+                    </span>
                   </div>
-
-                  <div className="card-actions justify-end pt-2">
-                    <button
-                      type="submit"
-                      className="btn btn-sm btn-primary w-full text-white bg-teal-600 hover:bg-teal-700 border-0"
-                    >
-                      {editData
-                        ? "Update Purchase Order"
-                        : "Save Purchase Order"}
-                    </button>
+                  <div>
+                    <span className="text-base-content/60 font-medium">Grand Total: </span>
+                    <span className="font-bold text-sm text-teal-600">
+                      ৳ {calculations.grandTotal.toFixed(2)}
+                    </span>
                   </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="btn btn-sm btn-ghost"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white border-0 gap-1.5"
+                  >
+                    <CheckCircle2 className="size-4" />
+                    {editData ? "Update Order" : "Create Order"}
+                  </button>
                 </div>
               </div>
             </form>
