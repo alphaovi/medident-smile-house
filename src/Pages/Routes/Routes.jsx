@@ -7,6 +7,8 @@ import ViewProducts from "../ManageProducts/ViewProducts/ViewProducts";
 import LostItems from "../ManageProducts/LostItems/LostItems";
 import Store from "../ManageProducts/Store/Store";
 import PurchaseOrder from "../Purchase/PurchaseOrder/PurchaseOrder";
+import Settings from "../Settings/Settings/Settings";
+import ManageSuppliers from "../Settings/ManageSuppliers/ManageSuppliers";
 
 const router = createBrowserRouter([
   {
@@ -14,12 +16,16 @@ const router = createBrowserRouter([
     element: <Main />,
     children: [
       {
-        path: "",
-        element: <Dashboard></Dashboard>,
+        index: true, 
+        element: <Dashboard />,
       },
       {
-        path: "/manage-product/add-product",
-        element: <AddProduct></AddProduct>,
+        path: "dashboard", 
+        element: <Dashboard />,
+      },
+      {
+        path: "manage-product/add-product",
+        element: <AddProduct />,
       },
       {
         path: "/manage-product/view-product",
@@ -36,6 +42,14 @@ const router = createBrowserRouter([
       {
         path: "/purchase/purchase-order",
         element: <PurchaseOrder></PurchaseOrder>,
+      },
+      {
+        path: "/settings",
+        element: <Settings></Settings>,
+      },
+      {
+        path: "/settings/manage-suppliers",
+        element: <ManageSuppliers></ManageSuppliers>,
       },
     ],
   },

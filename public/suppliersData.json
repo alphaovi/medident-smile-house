@@ -1,0 +1,142 @@
+[
+  {
+    "supplierID": "SUP-001",
+    "supplierName": "Alpha Trading Corp",
+    "supplierPhone": "+8801711234567",
+    "supplierAddress": "12/A, Motijheel C/A, Dhaka",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-002",
+    "supplierName": "Beta Fabrics Ltd",
+    "supplierPhone": "+8801812345678",
+    "supplierAddress": "45, Agrabad C/A, Chattogram",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-003",
+    "supplierName": "Gamma Electronics",
+    "supplierPhone": "+8801913456789",
+    "supplierAddress": "78, Station Road, Sylhet",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-004",
+    "supplierName": "Delta Steel Mills",
+    "supplierPhone": "+8801614567890",
+    "supplierAddress": "90, Industrial Area, Tongi, Gazipur",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-005",
+    "supplierName": "Epsilon Agro Products",
+    "supplierPhone": "+8801515678901",
+    "supplierAddress": "34, KB Fazlul Kader Road, Chattogram",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-006",
+    "supplierName": "Zeta Packaging Industries",
+    "supplierPhone": "+8801726789012",
+    "supplierAddress": "56, BSCIC Industrial Estate, Bogura",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-007",
+    "supplierName": "Eta Chemical Works",
+    "supplierPhone": "+8801837890123",
+    "supplierAddress": "23, Tejgaon I/A, Dhaka",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-008",
+    "supplierName": "Theta Hardware Store",
+    "supplierPhone": "+8801948901234",
+    "supplierAddress": "67, Nawabpur Road, Dhaka",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-009",
+    "supplierName": "Iota Garments Accessories",
+    "supplierPhone": "+8801659012345",
+    "supplierAddress": "11, Uttara Sector 7, Dhaka",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-010",
+    "supplierName": "Kappa Plastics Ltd",
+    "supplierPhone": "+8801560123456",
+    "supplierAddress": "88, Chowkbazar, Chattogram",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-011",
+    "supplierName": "Lambda Paper & Stationery",
+    "supplierPhone": "+8801771234568",
+    "supplierAddress": "19, Nilkhet, Dhaka",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-012",
+    "supplierName": "Mu Construction Materials",
+    "supplierPhone": "+8801882345679",
+    "supplierAddress": "42, Strand Road, Barishal",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-013",
+    "supplierName": "Nu Food & Beverage Co.",
+    "supplierPhone": "+8801993456780",
+    "supplierAddress": "55, BSCIC, Rajshahi",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-014",
+    "supplierName": "Xi Medical Supplies",
+    "supplierPhone": "+8801604567891",
+    "supplierAddress": "77, Elephant Road, Dhaka",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-015",
+    "supplierName": "Omicron Auto Parts",
+    "supplierPhone": "+8801515678902",
+    "supplierAddress": "31, 3rd Mile, Sylhet Road, Mymensingh",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-016",
+    "supplierName": "Pi Furniture Hub",
+    "supplierPhone": "+8801726789013",
+    "supplierAddress": "89, Ring Road, Mohammadpur, Dhaka",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-017",
+    "supplierName": "Rho Agro Feed Mills",
+    "supplierPhone": "+8801837890124",
+    "supplierAddress": "14, Comilla Sadar, Comilla",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-018",
+    "supplierName": "Sigma IT Hardware",
+    "supplierPhone": "+8801948901235",
+    "supplierAddress": "45, Agargaon, Dhaka",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-019",
+    "supplierName": "Tau Solar Energy Solutions",
+    "supplierPhone": "+8801659012346",
+    "supplierAddress": "60, GEC Circle, Chattogram",
+    "status": true
+  },
+  {
+    "supplierID": "SUP-020",
+    "supplierName": "Upsilon Cold Storage",
+    "supplierPhone": "+8801570123457",
+    "supplierAddress": "22, Bypass Road, Khulna",
+    "status": true
+  }
+]

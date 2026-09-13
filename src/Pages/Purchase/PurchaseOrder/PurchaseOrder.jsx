@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { PlusCircle, ShoppingBag } from "lucide-react";
-import StoreProductModal from "./StoreProduct/StoreProductModal";
+import PurchaseOrderModal from "./PurchaseOrderModal/PurchaseOrderModal";
+import PurchaseOrderList from "./PurchaseOrderList/PurchaseOrderList"; // Import the table list component
 
 const PurchaseOrder = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -58,15 +59,18 @@ const PurchaseOrder = () => {
         <button
           onClick={() => setIsModalOpen(true)}
           disabled={isLoading}
-          className="btn text-white bg-teal-600 hover:bg-teal-700 btn-md gap-2 shadow-md border-0 disabled:opacity-50"
+          className="btn text-white bg-teal-600 hover:bg-teal-700 btn-md gap-2 shadow-md border-0 disabled:opacity-50 cursor-pointer"
         >
           <PlusCircle className="size-5" />
           {isLoading ? "Loading Data..." : "Create Purchase Order"}
         </button>
       </div>
 
+      {/* Purchase Order List Table Section */}
+      <PurchaseOrderList />
+
       {/* Render Store Purchase Modal */}
-      <StoreProductModal
+      <PurchaseOrderModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         products={products}

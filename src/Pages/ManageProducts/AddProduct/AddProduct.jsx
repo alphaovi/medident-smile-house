@@ -5,12 +5,14 @@ import Swal from "sweetalert2";
 import ProductTable from "./ProductTable";
 import AddProductFormModal from "./AddProductFormModal";
 import EditProductModal from "./EditProductModal";
+import ManageGroupModal from "./ManageGroupSubgroup/ManageGroupModal"; // নতুন মডাল ইম্পোর্ট করা হলো
 
 const AddProduct = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false); // গ্রুপ ম্যানেজ মডালের স্টেট
   const [editingProduct, setEditingProduct] = useState(null);
-  
+
   const [searchTerm, setSearchTerm] = useState("");
   const [entries, setEntries] = useState(10);
 
@@ -47,34 +49,33 @@ const AddProduct = () => {
   };
 
   const handleEditProduct = (product) => {
-    console.log("👉 1. [AddProduct] Edit button clicked. Product selected:", product);
     setEditingProduct(product);
     setIsEditModalOpen(true);
   };
 
   const handleUpdateProduct = (updatedProduct) => {
-    console.log("👉 3. [AddProduct] Receiving updated product from modal:", updatedProduct);
-
     setProducts((prev) => {
       const updatedList = prev.map((item) => {
         const itemId = item.productId || item.code || item.id || item._id;
-        const updatedId = updatedProduct.productId || updatedProduct.code || updatedProduct.id || updatedProduct._id;
+        const updatedId =
+          updatedProduct.productId ||
+          updatedProduct.code ||
+          updatedProduct.id ||
+          updatedProduct._id;
 
         if (String(itemId) === String(updatedId)) {
-          console.log("✅ 4. [AddProduct] Match found! Updating item:", itemId);
           return { ...item, ...updatedProduct };
         }
         return item;
       });
-
-      console.log("📊 5. [AddProduct] New Products List State:", updatedList);
       return updatedList;
     });
   };
 
   // Status Toggle Function
   const handleToggleStatus = (targetProduct) => {
-    const targetId = targetProduct.productId || targetProduct.code || targetProduct.id;
+    const targetId =
+      targetProduct.productId || targetProduct.code || targetProduct.id;
 
     setProducts((prevProducts) =>
       prevProducts.map((p) => {
@@ -84,14 +85,13 @@ const AddProduct = () => {
           return { ...p, isActive: !currentStatus };
         }
         return p;
-      })
+      }),
     );
   };
 
-  // Add Group / Subgroup click handler placeholder
+  // Add Group / Subgroup click handler
   const handleAddGroupSubgroup = () => {
-    console.log("Add Group / Subgroup button clicked");
-    // TODO: Implement Group/Subgroup modal or logic later
+    setIsGroupModalOpen(true);
   };
 
   const handleDeleteProduct = (productId) => {
@@ -104,17 +104,24 @@ const AddProduct = () => {
       cancelButtonText: "Cancel",
       reverseButtons: false,
       customClass: {
-        popup: "rounded-lg p-5 max-w-sm text-left font-sans shadow-xl border border-gray-200",
-        title: "text-xl font-normal text-gray-800 text-left border-b border-gray-200 pb-3 mb-4",
+        popup:
+          "rounded-lg p-5 max-w-sm text-left font-sans shadow-xl border border-gray-200",
+        title:
+          "text-xl font-normal text-gray-800 text-left border-b border-gray-200 pb-3 mb-4",
         htmlContainer: "text-gray-600 text-base text-left my-4 font-normal",
-        actions: "flex justify-end gap-2 border-t border-gray-200 pt-3 mt-4 w-full",
-        confirmButton: "bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded border-0 text-sm",
-        cancelButton: "bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded border border-gray-300 text-sm"
+        actions:
+          "flex justify-end gap-2 border-t border-gray-200 pt-3 mt-4 w-full",
+        confirmButton:
+          "bg-red-500 hover:bg-red-600 text-white font-medium px-4 py-2 rounded border-0 text-sm",
+        cancelButton:
+          "bg-white hover:bg-gray-50 text-gray-700 font-medium px-4 py-2 rounded border border-gray-300 text-sm",
       },
-      buttonsStyling: false
+      buttonsStyling: false,
     }).then((result) => {
       if (result.isConfirmed) {
-        setProducts((prev) => prev.filter((p) => (p.productId || p.id || p.code) !== productId));
+        setProducts((prev) =>
+          prev.filter((p) => (p.productId || p.id || p.code) !== productId),
+        );
       }
     });
   };
@@ -216,22 +223,17 @@ const AddProduct = () => {
   };
 
   return (
-    <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold tracking-tight">Products Management</h1>
-        <div className="flex items-center gap-2 text-xs text-base-content/70">
-          <span>Dashboard</span>
-          <ChevronRight className="size-3" />
-          <span className="font-semibold text-primary font-mono">Products</span>
-        </div>
-      </div>
-
+    <motion.div
+      initial={{ opacity: 0, y: 15 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="space-y-6"
+    >
       <div className="bg-base-100 rounded-2xl border border-base-300 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-base-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-lg font-bold">Products List</h2>
 
           <div className="flex items-center gap-3">
-            {/* New Add Group / Subgroup Button */}
+            {/* Add Group / Subgroup Button */}
             <button
               onClick={handleAddGroupSubgroup}
               className="btn text-white bg-teal-600 hover:bg-teal-700 btn-sm gap-2 border-0"
@@ -305,6 +307,14 @@ const AddProduct = () => {
         product={editingProduct}
         groups={groups}
         onUpdateProduct={handleUpdateProduct}
+      />
+
+      {/* Group & Subgroup Management Modal */}
+      <ManageGroupModal
+        isOpen={isGroupModalOpen}
+        onClose={() => setIsGroupModalOpen(false)}
+        groups={groups}
+        setGroups={setGroups}
       />
     </motion.div>
   );
