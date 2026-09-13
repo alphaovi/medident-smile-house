@@ -1,13 +1,14 @@
+// EditPurchaseOrderModal.jsx
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X,
   Trash2,
   Store,
+  Calculator,
   Box,
   Calendar,
   Building2,
-  CheckCircle2,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
@@ -31,20 +32,22 @@ const EditPurchaseOrderModal = ({
     return `${yyyy}-${mm}-${dd}`;
   };
 
-  const parseDateToISO = (dateStr) => {
-    if (!dateStr) return getTodayISO();
-    if (dateStr.includes("/")) {
-      const parts = dateStr.split("/");
-      if (parts.length === 3) {
-        return `${parts[2]}-${parts[1]}-${parts[0]}`;
-      }
-    }
-    return dateStr;
-  };
-
   const [orderDate, setOrderDate] = useState(getTodayISO());
   const [expectedReceiveDate, setExpectedReceiveDate] = useState("");
-  const [orderStatus, setOrderStatus] = useState("Pending");
+
+  useEffect(() => {
+    fetch("/suppliersData.json")
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch suppliers");
+        return res.json();
+      })
+      .then((data) => {
+        setSuppliers(data);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+  }, []);
 
   const initialRow = {
     selectedGroup: "",
@@ -69,78 +72,132 @@ const EditPurchaseOrderModal = ({
   const [items, setItems] = useState([initialRow]);
   const [expenses, setExpenses] = useState(initialExpenses);
 
-  // ইনফিনিটি লুপ রোধ করতে এখানে products কে ডিপেন্ডেন্সি থেকে বাদ দেওয়া হয়েছে
+  // Populate data when editing with robust group, subgroup, and product matching
   useEffect(() => {
-    if (isOpen && editData) {
-      setSelectedSupplier(editData.supplierName || "");
-      setOrderDate(parseDateToISO(editData.orderDate));
-      setExpectedReceiveDate(parseDateToISO(editData.expectedReceiveDate));
-      setOrderStatus(editData.status || "Pending");
+    if (editData) {
+      setSelectedSupplier(editData.supplierName || editData.supplier || "");
+
+      if (editData.orderDate) {
+        if (editData.orderDate.includes("/")) {
+          const parts = editData.orderDate.split("/");
+          if (parts.length === 3) {
+            setOrderDate(`${parts[2]}-${parts[1]}-${parts[0]}`);
+          }
+        } else {
+          setOrderDate(editData.orderDate);
+        }
+      }
+
+      const expDate = editData.expectedReceiveDate || editData.expectedDate;
+      if (expDate) {
+        if (expDate.includes("/")) {
+          const parts = expDate.split("/");
+          if (parts.length === 3) {
+            setExpectedReceiveDate(`${parts[2]}-${parts[1]}-${parts[0]}`);
+          }
+        } else {
+          setExpectedReceiveDate(expDate);
+        }
+      }
 
       if (editData.expenses) {
         setExpenses({
-          shippingCost: editData.expenses.shippingCost || 0,
-          vatValue: editData.expenses.vatValue || 0,
-          vatType: editData.expenses.vatType || "percent",
-          transitCost: editData.expenses.transitCost || 0,
-          otherCost: editData.expenses.otherCost || 0,
+          shippingCost:
+            editData.expenses.shippingCost ?? editData.expenses.shipping ?? 0,
+          transitCost:
+            editData.expenses.transitCost ?? editData.expenses.transit ?? 0,
+          vatValue: editData.expenses.vatValue ?? editData.expenses.vat ?? 0,
+          // Default to amount instead of percent if raw JSON only provides "vat" > 0
+          vatType:
+            editData.expenses.vatType ||
+            (editData.expenses.vat ? "amount" : "percent"),
+          otherCost:
+            editData.expenses.otherCost ?? editData.expenses.other ?? 0,
         });
       }
 
-      if (editData.purchasedItems && editData.purchasedItems.length > 0) {
-        const mappedItems = editData.purchasedItems.map((item) => {
-          const matchedProd = products.find(
-            (p) => (p.productId || p._id) === (item.productId || item._id)
+      const rawItems =
+        editData.purchasedItems || editData.products || editData.items || [];
+      if (rawItems.length > 0) {
+        const mappedItems = rawItems.map((item) => {
+          const prodMatch = products.find(
+            (p) =>
+              String(p.productId || p._id || p.id) ===
+                String(item.productId || item._id || item.id) ||
+              String(p.productName || p.name || "")
+                .trim()
+                .toLowerCase() ===
+                String(item.productName || item.name || "")
+                  .trim()
+                  .toLowerCase(),
           );
+
+          const resolvedGroup =
+            item.selectedGroup ||
+            item.group ||
+            item.productGroup ||
+            prodMatch?.productGroup ||
+            prodMatch?.group ||
+            "";
+
+          const resolvedSubGroup =
+            item.selectedSubGroup ||
+            item.subGroup ||
+            item.productSubGroup ||
+            prodMatch?.productSubGroup ||
+            prodMatch?.subGroup ||
+            "";
+
+          const resolvedProductId = prodMatch
+            ? prodMatch.productId || prodMatch._id || prodMatch.id || ""
+            : item.productId || item._id || item.id || "";
+
+          const resolvedProductName =
+            item.productName ||
+            item.name ||
+            prodMatch?.productName ||
+            prodMatch?.name ||
+            "";
+
           return {
-            selectedGroup:
-              item.selectedGroup ||
-              matchedProd?.productGroup ||
-              matchedProd?.group ||
-              "",
-            selectedSubGroup:
-              item.selectedSubGroup ||
-              matchedProd?.productSubGroup ||
-              matchedProd?.subGroup ||
-              "",
-            productId: item.productId || item._id || "",
-            productName:
-              item.productName ||
-              matchedProd?.productName ||
-              matchedProd?.name ||
-              "",
-            currentStock: item.currentStock ?? 0,
-            transitStock: item.transitStock ?? 0,
-            orderQty: item.orderQty ?? 1,
-            unitPrice: item.unitPrice ?? 0,
-            unitWeight: item.unitWeight ?? 1,
+            selectedGroup: resolvedGroup,
+            selectedSubGroup: resolvedSubGroup,
+            productId: resolvedProductId,
+            productName: resolvedProductName,
+            currentStock:
+              item.currentStock ??
+              prodMatch?.quantity ??
+              prodMatch?.currentStock ??
+              0,
+            transitStock:
+              item.transitStock ??
+              prodMatch?.inTransit ??
+              prodMatch?.transitStock ??
+              0,
+            orderQty: item.orderQty ?? item.quantity ?? 1,
+            unitPrice:
+              item.unitPrice ??
+              prodMatch?.purchasePrice ??
+              prodMatch?.unitPrice ??
+              0,
+            unitWeight:
+              item.unitWeight ??
+              prodMatch?.unitWeight ??
+              prodMatch?.weight ??
+              1,
           };
         });
-        setItems([...mappedItems, { ...initialRow }]);
+        mappedItems.push({ ...initialRow });
+        setItems(mappedItems);
       }
-    } else if (isOpen && !editData) {
+    } else {
       setItems([{ ...initialRow }]);
       setExpenses(initialExpenses);
       setSelectedSupplier("");
       setOrderDate(getTodayISO());
       setExpectedReceiveDate("");
-      setOrderStatus("Pending");
     }
-  }, [isOpen, editData]);
-
-  useEffect(() => {
-    fetch("/suppliersData.json")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch suppliers");
-        return res.json();
-      })
-      .then((data) => {
-        setSuppliers(data);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  }, []);
+  }, [editData, products]);
 
   const availableGroups = useMemo(() => {
     if (!Array.isArray(productsGroupSubgroup)) return [];
@@ -171,7 +228,7 @@ const EditPurchaseOrderModal = ({
     } else if (field === "productId") {
       currentRow.productId = value;
       const selectedProd = products.find(
-        (p) => (p.productId || p._id) === value
+        (p) => String(p.productId || p._id || p.id) === String(value),
       );
       if (selectedProd) {
         currentRow.productName =
@@ -212,46 +269,32 @@ const EditPurchaseOrderModal = ({
     }));
   };
 
-  const handleStatusChange = (newStatus) => {
-    setOrderStatus(newStatus);
-    toast.info(`Status updated to: ${newStatus}`, { autoClose: 2000 });
-  };
-
-  const convertToDDMMYYYY = (dateString) => {
-    if (!dateString) return "";
-    const parts = dateString.split("-");
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return dateString;
-  };
-
   const calculations = useMemo(() => {
     const activeItems = items.filter((item) => item.productId !== "");
 
     const totalCurrentStock = activeItems.reduce(
       (acc, item) => acc + (Number(item.currentStock) || 0),
-      0
+      0,
     );
     const totalTransitStock = activeItems.reduce(
       (acc, item) => acc + (Number(item.transitStock) || 0),
-      0
+      0,
     );
     const totalOrderQty = activeItems.reduce(
       (acc, item) => acc + (Number(item.orderQty) || 0),
-      0
+      0,
     );
 
     const rawSubtotal = activeItems.reduce(
       (acc, item) =>
         acc + (Number(item.orderQty) || 0) * (Number(item.unitPrice) || 0),
-      0
+      0,
     );
 
     const totalBatchWeight = activeItems.reduce(
       (acc, item) =>
         acc + (Number(item.orderQty) || 0) * (Number(item.unitWeight) || 0),
-      0
+      0,
     );
 
     const shippingCostNum = Number(expenses.shippingCost) || 0;
@@ -300,7 +343,9 @@ const EditPurchaseOrderModal = ({
 
     const transitCostNum = Number(expenses.transitCost) || 0;
     const otherCostNum = Number(expenses.otherCost) || 0;
+
     const totalExtraExpenses = transitCostNum + otherCostNum;
+
     const grandTotal = totalItemsWithShipping + totalExtraExpenses;
 
     return {
@@ -322,7 +367,7 @@ const EditPurchaseOrderModal = ({
     e.preventDefault();
 
     const validItems = calculations.calculatedItems.filter(
-      (item) => item.productId !== ""
+      (item) => item.productId !== "",
     );
 
     if (validItems.length === 0) {
@@ -335,13 +380,11 @@ const EditPurchaseOrderModal = ({
       return;
     }
 
-    const actionText = editData
-      ? "update this purchase order batch"
-      : "create a new batch order with weight allocation";
-
     Swal.fire({
       title: editData ? "Update Purchase Order?" : "Confirm Purchase Order?",
-      text: actionText,
+      text: editData
+        ? "This will update the existing batch order."
+        : "This will create a new batch order with weight allocation.",
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#0d9488",
@@ -356,15 +399,27 @@ const EditPurchaseOrderModal = ({
     }).then((result) => {
       if (result.isConfirmed) {
         onSaveStoreProduct?.({
-          ...(editData?.id ? { id: editData.id } : {}),
-          ...(editData?._id ? { _id: editData._id } : {}),
+          ...(editData || {}),
           supplierName: selectedSupplier,
-          orderDate: convertToDDMMYYYY(orderDate),
-          expectedReceiveDate: convertToDDMMYYYY(expectedReceiveDate),
-          status: orderStatus,
-          purchasedItems: validItems,
+          orderDate: orderDate,
+          expectedReceiveDate: expectedReceiveDate,
+          purchasedItems: validItems.map(
+            ({
+              lineWeight,
+              allocatedShipping,
+              allocatedVat,
+              rawLinePrice,
+              totalWithShipping,
+              unitCostAfterCalc,
+              ...rest
+            }) => rest,
+          ),
           expenses: {
-            ...expenses,
+            shippingCost: Number(expenses.shippingCost) || 0,
+            transitCost: Number(expenses.transitCost) || 0,
+            vatValue: Number(expenses.vatValue) || 0,
+            vatType: expenses.vatType,
+            otherCost: Number(expenses.otherCost) || 0,
             vatAmount: calculations.calculatedVatAmount,
             shippingCostPerKg: calculations.shippingCostPerKg,
           },
@@ -377,14 +432,16 @@ const EditPurchaseOrderModal = ({
             totalItemsWithShipping: calculations.totalItemsWithShipping,
             grandTotal: calculations.grandTotal,
           },
-          date: editData?.date || new Date().toISOString(),
+          totalAmount: calculations.grandTotal,
         });
 
         toast.success(
           editData
-            ? "Purchase order batch updated successfully!"
+            ? "Purchase order updated successfully!"
             : "Purchase order batch created successfully!",
-          { autoClose: 2000 }
+          {
+            autoClose: 2000,
+          },
         );
         onClose();
       }
@@ -411,28 +468,13 @@ const EditPurchaseOrderModal = ({
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <Store className="size-5 text-teal-600" />
                 <h3 className="font-bold text-lg">
                   {editData
-                    ? "Edit Batch Purchase Order"
+                    ? `Edit Purchase Order (${editData.orderID || editData.orderNo || editData._id || ""})`
                     : "Batch Purchase Order Entry"}
                 </h3>
-                <div className="flex items-center gap-1.5 ml-4 bg-base-100 px-3 py-1 rounded-lg border border-base-300 text-xs">
-                  <span className="font-semibold text-base-content/70">
-                    Status:
-                  </span>
-                  <select
-                    value={orderStatus}
-                    onChange={(e) => handleStatusChange(e.target.value)}
-                    className="select select-bordered select-xs font-bold text-teal-600 bg-base-200"
-                  >
-                    <option value="Pending">Pending</option>
-                    <option value="Transit">Transit</option>
-                    <option value="Received">Received</option>
-                    <option value="Cancelled">Cancelled</option>
-                  </select>
-                </div>
               </div>
               <button
                 type="button"
@@ -446,8 +488,9 @@ const EditPurchaseOrderModal = ({
             {/* Form Content */}
             <form
               onSubmit={handleSubmit}
-              className="p-4 overflow-y-auto space-y-4 grow flex flex-col"
+              className="p-4 overflow-y-auto space-y-4 grow"
             >
+              {/* Supplier & Dates Selection Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300">
                 <div>
                   <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
@@ -474,10 +517,7 @@ const EditPurchaseOrderModal = ({
 
                 <div>
                   <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
-                    <Calendar className="size-3.5 text-teal-600" /> Order Date{" "}
-                    <span className="text-[10px] text-teal-600 font-bold">
-                      ({convertToDDMMYYYY(orderDate) || "DD/MM/YYYY"})
-                    </span>
+                    <Calendar className="size-3.5 text-teal-600" /> Order Date
                   </label>
                   <input
                     type="date"
@@ -491,14 +531,7 @@ const EditPurchaseOrderModal = ({
                 <div>
                   <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
                     <Calendar className="size-3.5 text-teal-600" /> Expected
-                    Receive Date{" "}
-                    <span className="text-[10px] text-teal-600 font-bold">
-                      (
-                      {expectedReceiveDate
-                        ? convertToDDMMYYYY(expectedReceiveDate)
-                        : "DD/MM/YYYY"}
-                      )
-                    </span>
+                    Receive Date
                   </label>
                   <input
                     type="date"
@@ -541,7 +574,7 @@ const EditPurchaseOrderModal = ({
                     ? productsGroupSubgroup.find(
                         (g) =>
                           (g.group || g.groupName || g.name) ===
-                          item.selectedGroup
+                          item.selectedGroup,
                       )
                     : null;
 
@@ -581,7 +614,7 @@ const EditPurchaseOrderModal = ({
                             handleItemChange(
                               idx,
                               "selectedGroup",
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           className="select select-bordered select-xs w-full"
@@ -592,6 +625,13 @@ const EditPurchaseOrderModal = ({
                               {g}
                             </option>
                           ))}
+                          {/* Fallback option if JSON mock data isn't in availableGroups props yet */}
+                          {!availableGroups.includes(item.selectedGroup) &&
+                            item.selectedGroup && (
+                              <option value={item.selectedGroup}>
+                                {item.selectedGroup}
+                              </option>
+                            )}
                         </select>
                       </div>
 
@@ -603,7 +643,7 @@ const EditPurchaseOrderModal = ({
                             handleItemChange(
                               idx,
                               "selectedSubGroup",
-                              e.target.value
+                              e.target.value,
                             )
                           }
                           className="select select-bordered select-xs w-full disabled:opacity-50"
@@ -617,6 +657,17 @@ const EditPurchaseOrderModal = ({
                               {typeof sg === "string" ? sg : sg.name}
                             </option>
                           ))}
+                          {/* Fallback option if JSON mock data isn't in availableSubGroups props yet */}
+                          {!availableSubGroups.some(
+                            (sg) =>
+                              (typeof sg === "string" ? sg : sg.name) ===
+                              item.selectedSubGroup,
+                          ) &&
+                            item.selectedSubGroup && (
+                              <option value={item.selectedSubGroup}>
+                                {item.selectedSubGroup}
+                              </option>
+                            )}
                         </select>
                       </div>
 
@@ -630,7 +681,7 @@ const EditPurchaseOrderModal = ({
                         >
                           <option value="">Select Product...</option>
                           {filteredProducts.map((p) => {
-                            const pId = p.productId || p._id;
+                            const pId = p.productId || p._id || p.id;
                             const pName = p.productName || p.name;
                             return (
                               <option key={pId} value={pId}>
@@ -638,6 +689,17 @@ const EditPurchaseOrderModal = ({
                               </option>
                             );
                           })}
+                          {/* Fallback option if JSON mock data isn't in filteredProducts props yet */}
+                          {!filteredProducts.some(
+                            (p) =>
+                              String(p.productId || p._id || p.id) ===
+                              String(item.productId),
+                          ) &&
+                            item.productId && (
+                              <option value={item.productId}>
+                                {item.productName || item.productId}
+                              </option>
+                            )}
                         </select>
                       </div>
 
@@ -723,6 +785,7 @@ const EditPurchaseOrderModal = ({
                 })}
               </div>
 
+              {/* Summary Bar */}
               <div className="bg-base-200 p-2.5 rounded-xl border border-base-300 grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
                 <div>
                   <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
@@ -734,17 +797,17 @@ const EditPurchaseOrderModal = ({
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    Transit Stock
+                    In Transit
                   </span>
-                  <span className="font-bold">
+                  <span className="font-bold text-warning">
                     {calculations.totalTransitStock}
                   </span>
                 </div>
                 <div>
                   <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    Total Qty
+                    Order Qty
                   </span>
-                  <span className="font-bold text-teal-600">
+                  <span className="font-bold text-primary">
                     {calculations.totalOrderQty}
                   </span>
                 </div>
@@ -758,115 +821,173 @@ const EditPurchaseOrderModal = ({
                 </div>
                 <div className="col-span-2 sm:col-span-1">
                   <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    Raw Subtotal
+                    Subtotal (W/ Ship & VAT)
                   </span>
-                  <span className="font-bold">
-                    ৳ {calculations.rawSubtotal.toFixed(2)}
+                  <span className="font-bold text-teal-600">
+                    ৳{" "}
+                    {calculations.totalItemsWithShipping.toLocaleString(
+                      undefined,
+                      { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+                    )}
                   </span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300">
-                <div>
-                  <label className="label py-0.5 text-xs font-semibold text-base-content/70">
-                    Shipping Cost (৳)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    name="shippingCost"
-                    value={expenses.shippingCost}
-                    onChange={handleExpenseChange}
-                    className="input input-bordered input-xs w-full font-medium"
-                  />
+              {/* Expenses Breakdown */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                <div className="space-y-2 bg-base-200/40 p-3 rounded-xl border border-base-300">
+                  <h5 className="font-bold text-xs uppercase text-base-content/70 flex items-center gap-1.5">
+                    <Calculator className="size-4" /> Expenses Breakdown
+                  </h5>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs">
+                    <div>
+                      <label className="label py-0.5 text-[11px] font-semibold">
+                        Shipping Cost (৳)
+                      </label>
+                      <input
+                        type="number"
+                        name="shippingCost"
+                        value={expenses.shippingCost}
+                        onChange={handleExpenseChange}
+                        className="input input-bordered input-xs w-full"
+                      />
+                    </div>
+                    <div>
+                      <label className="label py-0.5 text-[11px] font-semibold">
+                        Transit Cost (৳)
+                      </label>
+                      <input
+                        type="number"
+                        name="transitCost"
+                        value={expenses.transitCost}
+                        onChange={handleExpenseChange}
+                        className="input input-bordered input-xs w-full"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="label py-0.5 text-[11px] font-semibold">
+                        VAT {expenses.vatType === "percent" ? "(%)" : "(৳)"}
+                      </label>
+                      <div className="flex gap-1">
+                        <input
+                          type="number"
+                          name="vatValue"
+                          value={expenses.vatValue}
+                          onChange={handleExpenseChange}
+                          placeholder={
+                            expenses.vatType === "percent" ? "%" : "৳"
+                          }
+                          className="input input-bordered input-xs w-full"
+                        />
+                        <select
+                          name="vatType"
+                          value={expenses.vatType}
+                          onChange={handleExpenseChange}
+                          className="select select-bordered select-xs font-bold text-primary"
+                        >
+                          <option value="percent">%</option>
+                          <option value="amount">৳</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="label py-0.5 text-[11px] font-semibold">
+                        Other Cost (৳)
+                      </label>
+                      <input
+                        type="number"
+                        name="otherCost"
+                        value={expenses.otherCost}
+                        onChange={handleExpenseChange}
+                        className="input input-bordered input-xs w-full"
+                      />
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <label className="label py-0.5 text-xs font-semibold text-base-content/70">
-                    VAT ({calculations.calculatedVatAmount.toFixed(2)} ৳)
-                  </label>
-                  <div className="flex gap-1">
-                    <input
-                      type="number"
-                      min="0"
-                      name="vatValue"
-                      value={expenses.vatValue}
-                      onChange={handleExpenseChange}
-                      className="input input-bordered input-xs w-full font-medium"
-                    />
-                    <select
-                      name="vatType"
-                      value={expenses.vatType}
-                      onChange={handleExpenseChange}
-                      className="select select-bordered select-xs w-20"
+                <div className="bg-base-200/70 p-3 rounded-xl border border-base-300 flex flex-col justify-between space-y-1">
+                  <h5 className="font-bold text-xs uppercase text-base-content/70">
+                    Grand Order Calculation
+                  </h5>
+
+                  <div className="space-y-1 text-xs">
+                    <div className="flex justify-between text-base-content/70">
+                      <span>Base Subtotal:</span>
+                      <span className="font-semibold">
+                        ৳ {calculations.rawSubtotal.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                      <span>
+                        • Shipping ({calculations.totalBatchWeight.toFixed(2)}{" "}
+                        kg @ ৳{calculations.shippingCostPerKg.toFixed(2)}/kg):
+                      </span>
+                      <span>
+                        ৳{" "}
+                        {(Number(expenses.shippingCost) || 0).toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                      <span>
+                        • VAT (
+                        {expenses.vatType === "percent"
+                          ? `${expenses.vatValue || 0}%`
+                          : "Fixed"}
+                        ):
+                      </span>
+                      <span>
+                        ৳{" "}
+                        {calculations.calculatedVatAmount.toLocaleString(
+                          undefined,
+                          {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          },
+                        )}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                      <span>• Extra Expenses (Transit + Other):</span>
+                      <span>
+                        ৳ {calculations.totalExtraExpenses.toLocaleString()}
+                      </span>
+                    </div>
+
+                    <div className="divider my-1"></div>
+
+                    <div className="flex justify-between text-sm font-bold text-teal-600">
+                      <span>Grand Total:</span>
+                      <span>
+                        ৳{" "}
+                        {calculations.grandTotal.toLocaleString(undefined, {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="card-actions justify-end pt-2">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="btn btn-sm btn-ghost"
                     >
-                      <option value="percent">%</option>
-                      <option value="fixed">৳</option>
-                    </select>
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white"
+                    >
+                      {editData ? "Update Order" : "Save Order"}
+                    </button>
                   </div>
-                </div>
-
-                <div>
-                  <label className="label py-0.5 text-xs font-semibold text-base-content/70">
-                    Transit Cost (৳)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    name="transitCost"
-                    value={expenses.transitCost}
-                    onChange={handleExpenseChange}
-                    className="input input-bordered input-xs w-full font-medium"
-                  />
-                </div>
-
-                <div>
-                  <label className="label py-0.5 text-xs font-semibold text-base-content/70">
-                    Other Cost (৳)
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    name="otherCost"
-                    value={expenses.otherCost}
-                    onChange={handleExpenseChange}
-                    className="input input-bordered input-xs w-full font-medium"
-                  />
-                </div>
-              </div>
-
-              {/* Footer / Grand Total Actions */}
-              <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-t border-base-300 mt-auto -mx-4 -mb-4">
-                <div className="flex items-center gap-4 text-xs">
-                  <div>
-                    <span className="text-base-content/60 font-medium">Items + Ship: </span>
-                    <span className="font-bold text-teal-600">
-                      ৳ {calculations.totalItemsWithShipping.toFixed(2)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-base-content/60 font-medium">Grand Total: </span>
-                    <span className="font-bold text-sm text-teal-600">
-                      ৳ {calculations.grandTotal.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={onClose}
-                    className="btn btn-sm btn-ghost"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white border-0 gap-1.5"
-                  >
-                    <CheckCircle2 className="size-4" />
-                    {editData ? "Update Order" : "Create Order"}
-                  </button>
                 </div>
               </div>
             </form>

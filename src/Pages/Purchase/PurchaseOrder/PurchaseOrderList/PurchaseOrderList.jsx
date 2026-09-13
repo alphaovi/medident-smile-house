@@ -1,44 +1,26 @@
-import  { useState, useEffect } from "react";
+// PurchaseOrderList.jsx
+import { useState } from "react";
 import { FileText } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import PurchaseOrderTable from "./PurchaseOrderTable";
 import EditPurchaseOrderModal from "./EditPurchaseOrderModal";
 
-const PurchaseOrderList = () => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+const PurchaseOrderList = ({ orders, setOrders, loading, products, productsGroupSubgroup }) => {
   const [searchTerm, setSearchTerm] = useState("");
-
-  // Edit Modal States
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
 
-  useEffect(() => {
-    fetch("/purchaseOrderList.json")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch purchase orders");
-        return res.json();
-      })
-      .then((data) => {
-        setOrders(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Error fetching purchase order list:", err);
-        toast.error("Could not load purchase orders!");
-        setLoading(false);
-      });
-  }, []);
+  const getOrderId = (ord) => ord?.orderID || ord?.orderNo || ord?._id || ord?.id;
 
-  // সরাসরি ড্রপডাউন থেকে স্ট্যাটাস পরিবর্তন এবং আপডেট একসাথে হ্যান্ডেল করা
-  const handleStatusChangeDirect = (orderID, newStatus) => {
+  const handleStatusChangeDirect = (orderKey, newStatus) => {
     setOrders((prevOrders) =>
-      prevOrders.map((ord) =>
-        ord.orderID === orderID ? { ...ord, status: newStatus } : ord
-      )
+      prevOrders.map((ord) => {
+        const currentId = getOrderId(ord);
+        return currentId === orderKey ? { ...ord, status: newStatus } : ord;
+      })
     );
-    toast.success(`Order ${orderID} status updated to "${newStatus}"!`);
+    toast.success(`Order status updated to "${newStatus}"!`);
   };
 
   const handleOpenEditModal = (order) => {
@@ -47,19 +29,51 @@ const PurchaseOrderList = () => {
   };
 
   const handleSaveOrder = (updatedData) => {
-    setOrders((prevOrders) =>
-      prevOrders.map((ord) =>
-        ord.orderID === updatedData.orderID ? { ...ord, ...updatedData } : ord
-      )
-    );
+    setOrders((prevOrders) => {
+      const updatedId = getOrderId(updatedData);
+      const exists = prevOrders.some((ord) => getOrderId(ord) === updatedId);
+
+      const resolvedTotalAmount = 
+        updatedData.totalAmount ?? 
+        updatedData.grandTotal ?? 
+        updatedData.total ?? 
+        updatedData.totals?.grandTotal ?? 0;
+
+      const resolvedStatus = updatedData.status || "Ordered";
+
+      if (exists) {
+        return prevOrders.map((ord) =>
+          getOrderId(ord) === updatedId
+            ? {
+                ...ord,
+                ...updatedData,
+                totalAmount: resolvedTotalAmount,
+                status: ord.status || resolvedStatus,
+              }
+            : ord
+        );
+      } else {
+        const newOrder = {
+          ...updatedData,
+          orderID: updatedId || `PO-${Math.floor(100000 + Math.random() * 900000)}`,
+          totalAmount: resolvedTotalAmount,
+          status: resolvedStatus,
+        };
+        return [newOrder, ...prevOrders];
+      }
+    });
+
     toast.success("Purchase order updated successfully!");
   };
 
-  const filteredOrders = orders.filter(
-    (order) =>
-      order.orderID.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.supplierName.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredOrders = orders.filter((order) => {
+    const oId = getOrderId(order) || "";
+    const sName = order.supplierName || order.supplier || "";
+    return (
+      oId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   return (
     <div className="bg-base-100 rounded-2xl border border-base-300 shadow-sm overflow-hidden p-6">
@@ -92,7 +106,9 @@ const PurchaseOrderList = () => {
           setIsModalOpen(false);
           setEditingOrder(null);
         }}
-        onSaveOrder={handleSaveOrder}
+        products={products}
+        productsGroupSubgroup={productsGroupSubgroup}
+        onSaveStoreProduct={handleSaveOrder}
         editData={editingOrder}
       />
     </div>

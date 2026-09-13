@@ -1,242 +1,522 @@
 [
   {
-    "orderID": "PO-2026-001",
+    "_id": "ORD-2026-001",
+    "orderNo": "ORD-1001",
     "supplierName": "Alpha Trading Corp",
-    "orderDate": "2026-06-01",
-    "expectedDate": "2026-06-10",
-    "status": "Received",
-    "totalAmount": 45000,
-    "products": [
-      { "productName": "Wireless Mouse", "quantity": 50, "unitPrice": 500 },
-      { "productName": "Mechanical Keyboard", "quantity": 25, "unitPrice": 800 }
-    ]
+    "orderDate": "2026-05-10",
+    "expectedReceiveDate": "2026-05-20",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-101",
+        "productName": "Ceramco Dentin A2",
+        "selectedGroup": "Dental Materials",
+        "selectedSubGroup": "Powder",
+        "currentStock": 25,
+        "transitStock": 10,
+        "orderQty": 5,
+        "unitPrice": 1200,
+        "unitWeight": 1
+      }
+    ],
+    "expenses": {
+      "shipping": 150,
+      "transit": 50,
+      "vat": 75
+    }
   },
   {
-    "orderID": "PO-2026-002",
+    "_id": "ORD-2026-002",
+    "orderNo": "ORD-1002",
     "supplierName": "Beta Fabrics Ltd",
-    "orderDate": "2026-06-03",
-    "expectedDate": "2026-06-12",
-    "status": "In Transit",
-    "totalAmount": 125000,
-    "products": [
-      { "productName": "Cotton Fabric Roll", "quantity": 100, "unitPrice": 1000 },
-      { "productName": "Synthetic Thread Box", "quantity": 50, "unitPrice": 500 }
-    ]
+    "orderDate": "2026-05-11",
+    "expectedReceiveDate": "2026-05-21",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-102",
+        "productName": "Heat Cure Pink Acrylic",
+        "selectedGroup": "Acrylics",
+        "selectedSubGroup": "Resin",
+        "currentStock": 15,
+        "transitStock": 5,
+        "orderQty": 10,
+        "unitPrice": 850,
+        "unitWeight": 2
+      }
+    ],
+    "expenses": {
+      "shipping": 120,
+      "transit": 40,
+      "vat": 50
+    }
   },
   {
-    "orderID": "PO-2026-003",
+    "_id": "ORD-2026-003",
+    "orderNo": "ORD-1003",
     "supplierName": "Gamma Electronics",
-    "orderDate": "2026-06-05",
-    "expectedDate": "2026-06-15",
-    "status": "Received",
-    "totalAmount": 88000,
-    "products": [
-      { "productName": "LED Monitor 24\"", "quantity": 20, "unitPrice": 3500 },
-      { "productName": "HDMI Cable 2m", "quantity": 90, "unitPrice": 200 }
-    ]
+    "orderDate": "2026-05-12",
+    "expectedReceiveDate": "2026-05-22",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-103",
+        "productName": "Co-Cr Alloy",
+        "selectedGroup": "Metals",
+        "selectedSubGroup": "Alloy",
+        "currentStock": 40,
+        "transitStock": 8,
+        "orderQty": 4,
+        "unitPrice": 3500,
+        "unitWeight": 1.5
+      }
+    ],
+    "expenses": {
+      "shipping": 200,
+      "transit": 60,
+      "vat": 100
+    }
   },
   {
-    "orderID": "PO-2026-004",
+    "_id": "ORD-2026-004",
+    "orderNo": "ORD-1004",
     "supplierName": "Delta Steel Mills",
-    "orderDate": "2026-06-07",
-    "expectedDate": "2026-06-20",
-    "status": "In Transit",
-    "totalAmount": 210000,
-    "products": [
-      { "productName": "Steel Rod 12mm", "quantity": 300, "unitPrice": 500 },
-      { "productName": "Iron Sheet", "quantity": 100, "unitPrice": 600 }
-    ]
+    "orderDate": "2026-05-13",
+    "expectedReceiveDate": "2026-05-23",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-104",
+        "productName": "Yamahachi Anterior Teeth A2",
+        "selectedGroup": "Teeth",
+        "selectedSubGroup": "Anterior",
+        "currentStock": 100,
+        "transitStock": 20,
+        "orderQty": 50,
+        "unitPrice": 450,
+        "unitWeight": 0.5
+      }
+    ],
+    "expenses": {
+      "shipping": 100,
+      "transit": 30,
+      "vat": 45
+    }
   },
   {
-    "orderID": "PO-2026-005",
-    "supplierName": "Epsilon Agro Products",
-    "orderDate": "2026-06-08",
-    "expectedDate": "2026-06-14",
-    "status": "Received",
-    "totalAmount": 34000,
-    "products": [
-      { "productName": "Organic Fertilizer Bag", "quantity": 80, "unitPrice": 300 },
-      { "productName": "Pesticide Spray", "quantity": 50, "unitPrice": 200 }
-    ]
+    "_id": "ORD-2026-005",
+    "orderNo": "ORD-1005",
+    "supplierName": "Omega Supplies",
+    "orderDate": "2026-05-14",
+    "expectedReceiveDate": "2026-05-24",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-105",
+        "productName": "Ceramco Opaque A2",
+        "selectedGroup": "Dental Materials",
+        "selectedSubGroup": "Opaque",
+        "currentStock": 30,
+        "transitStock": 12,
+        "orderQty": 6,
+        "unitPrice": 1300,
+        "unitWeight": 1
+      }
+    ],
+    "expenses": {
+      "shipping": 160,
+      "transit": 45,
+      "vat": 80
+    }
   },
   {
-    "orderID": "PO-2026-006",
-    "supplierName": "Zeta Packaging Industries",
-    "orderDate": "2026-06-10",
-    "expectedDate": "2026-06-18",
-    "status": "In Transit",
-    "totalAmount": 55000,
-    "products": [
-      { "productName": "Cardboard Box Standard", "quantity": 1000, "unitPrice": 40 },
-      { "productName": "Bubble Wrap Roll", "quantity": 30, "unitPrice": 500 }
-    ]
+    "_id": "ORD-2026-006",
+    "orderNo": "ORD-1006",
+    "supplierName": "Prime Impex",
+    "orderDate": "2026-05-15",
+    "expectedReceiveDate": "2026-05-25",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-106",
+        "productName": "Self Cure Acrylic",
+        "selectedGroup": "Acrylics",
+        "selectedSubGroup": "Resin",
+        "currentStock": 18,
+        "transitStock": 6,
+        "orderQty": 12,
+        "unitPrice": 900,
+        "unitWeight": 2
+      }
+    ],
+    "expenses": {
+      "shipping": 130,
+      "transit": 35,
+      "vat": 60
+    }
   },
   {
-    "orderID": "PO-2026-007",
-    "supplierName": "Eta Chemical Works",
-    "orderDate": "2026-06-12",
-    "expectedDate": "2026-06-22",
-    "status": "Received",
-    "totalAmount": 75000,
-    "products": [
-      { "productName": "Industrial Solvent", "quantity": 50, "unitPrice": 1000 },
-      { "productName": "Cleaning Liquid Gallon", "quantity": 50, "unitPrice": 500 }
-    ]
+    "_id": "ORD-2026-007",
+    "orderNo": "ORD-1007",
+    "supplierName": "Apex Traders",
+    "orderDate": "2026-05-16",
+    "expectedReceiveDate": "2026-05-26",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-107",
+        "productName": "Rapid Heat Investment",
+        "selectedGroup": "Investment",
+        "selectedSubGroup": "Powder",
+        "currentStock": 50,
+        "transitStock": 15,
+        "orderQty": 10,
+        "unitPrice": 600,
+        "unitWeight": 5
+      }
+    ],
+    "expenses": {
+      "shipping": 250,
+      "transit": 70,
+      "vat": 110
+    }
   },
   {
-    "orderID": "PO-2026-008",
-    "supplierName": "Theta Hardware Store",
-    "orderDate": "2026-06-14",
-    "expectedDate": "2026-06-24",
-    "status": "In Transit",
-    "totalAmount": 29000,
-    "products": [
-      { "productName": "Door Lock Set", "quantity": 30, "unitPrice": 600 },
-      { "productName": "Stainless Steel Hinges", "quantity": 110, "unitPrice": 100 }
-    ]
+    "_id": "ORD-2026-008",
+    "orderNo": "ORD-1008",
+    "supplierName": "Global Resources",
+    "orderDate": "2026-05-17",
+    "expectedReceiveDate": "2026-05-27",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-108",
+        "productName": "Ceramco Enamel E1",
+        "selectedGroup": "Dental Materials",
+        "selectedSubGroup": "Enamel",
+        "currentStock": 20,
+        "transitStock": 5,
+        "orderQty": 4,
+        "unitPrice": 1400,
+        "unitWeight": 1
+      }
+    ],
+    "expenses": {
+      "shipping": 140,
+      "transit": 40,
+      "vat": 70
+    }
   },
   {
-    "orderID": "PO-2026-009",
-    "supplierName": "Iota Garments Accessories",
-    "orderDate": "2026-06-15",
-    "expectedDate": "2026-06-25",
-    "status": "Received",
-    "totalAmount": 62000,
-    "products": [
-      { "productName": "Metal Snap Buttons", "quantity": 5000, "unitPrice": 10 },
-      { "productName": "Woven Labels Roll", "quantity": 12, "unitPrice": 1000 }
-    ]
+    "_id": "ORD-2026-009",
+    "orderNo": "ORD-1009",
+    "supplierName": "Metro Distribution",
+    "orderDate": "2026-05-18",
+    "expectedReceiveDate": "2026-05-28",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-109",
+        "productName": "Ceramco Dentin A3",
+        "selectedGroup": "Dental Materials",
+        "selectedSubGroup": "Powder",
+        "currentStock": 22,
+        "transitStock": 8,
+        "orderQty": 5,
+        "unitPrice": 1200,
+        "unitWeight": 1
+      }
+    ],
+    "expenses": {
+      "shipping": 150,
+      "transit": 50,
+      "vat": 75
+    }
   },
   {
-    "orderID": "PO-2026-010",
-    "supplierName": "Kappa Plastics Ltd",
-    "orderDate": "2026-06-18",
-    "expectedDate": "2026-06-28",
-    "status": "In Transit",
-    "totalAmount": 98000,
-    "products": [
-      { "productName": "Plastic Storage Crates", "quantity": 200, "unitPrice": 400 },
-      { "productName": "PVC Pipe 4-inch", "quantity": 60, "unitPrice": 300 }
-    ]
+    "_id": "ORD-2026-010",
+    "orderNo": "ORD-1010",
+    "supplierName": "Vanguard Enterprises",
+    "orderDate": "2026-05-19",
+    "expectedReceiveDate": "2026-05-29",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-110",
+        "productName": "Ceramco Opaque White",
+        "selectedGroup": "Dental Materials",
+        "selectedSubGroup": "Opaque",
+        "currentStock": 12,
+        "transitStock": 4,
+        "orderQty": 3,
+        "unitPrice": 1350,
+        "unitWeight": 1
+      }
+    ],
+    "expenses": {
+      "shipping": 110,
+      "transit": 25,
+      "vat": 55
+    }
   },
   {
-    "orderID": "PO-2026-011",
-    "supplierName": "Lambda Paper & Stationery",
-    "orderDate": "2026-06-20",
-    "expectedDate": "2026-06-27",
-    "status": "Received",
-    "totalAmount": 41000,
-    "products": [
-      { "productName": "A4 Offset Paper Ream", "quantity": 100, "unitPrice": 350 },
-      { "productName": "Ballpoint Pens Box", "quantity": 30, "unitPrice": 200 }
-    ]
+    "_id": "ORD-2026-011",
+    "orderNo": "ORD-1011",
+    "supplierName": "Summit Logistics",
+    "orderDate": "2026-05-20",
+    "expectedReceiveDate": "2026-05-30",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-111",
+        "productName": "Yamahachi Posterior Teeth",
+        "selectedGroup": "Teeth",
+        "selectedSubGroup": "Posterior",
+        "currentStock": 80,
+        "transitStock": 15,
+        "orderQty": 25,
+        "unitPrice": 450,
+        "unitWeight": 0.5
+      }
+    ],
+    "expenses": {
+      "shipping": 125,
+      "transit": 35,
+      "vat": 65
+    }
   },
   {
-    "orderID": "PO-2026-012",
-    "supplierName": "Mu Construction Materials",
-    "orderDate": "2026-06-22",
-    "expectedDate": "2026-07-02",
-    "status": "In Transit",
-    "totalAmount": 150000,
-    "products": [
-      { "productName": "Portland Cement Bag", "quantity": 250, "unitPrice": 500 },
-      { "productName": "Red Bricks (1000 pcs)", "quantity": 25, "unitPrice": 1000 }
-    ]
+    "_id": "ORD-2026-012",
+    "orderNo": "ORD-1012",
+    "supplierName": "Pioneer Solutions",
+    "orderDate": "2026-05-21",
+    "expectedReceiveDate": "2026-05-31",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-112",
+        "productName": "Heat Cure Clear Acrylic",
+        "selectedGroup": "Acrylics",
+        "selectedSubGroup": "Resin",
+        "currentStock": 25,
+        "transitStock": 10,
+        "orderQty": 8,
+        "unitPrice": 880,
+        "unitWeight": 2
+      }
+    ],
+    "expenses": {
+      "shipping": 135,
+      "transit": 45,
+      "vat": 70
+    }
   },
   {
-    "orderID": "PO-2026-013",
-    "supplierName": "Nu Food & Beverage Co.",
-    "orderDate": "2026-06-24",
-    "expectedDate": "2026-07-01",
-    "status": "Received",
-    "totalAmount": 67000,
-    "products": [
-      { "productName": "Energy Drink Carton", "quantity": 150, "unitPrice": 400 },
-      { "productName": "Mineral Water Bottle 500ml", "quantity": 350, "unitPrice": 20 }
-    ]
+    "_id": "ORD-2026-013",
+    "orderNo": "ORD-1013",
+    "supplierName": "Nexus Hub",
+    "orderDate": "2026-05-22",
+    "expectedReceiveDate": "2026-06-01",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-113",
+        "productName": "Titanium Alloy Disc",
+        "selectedGroup": "Metals",
+        "selectedSubGroup": "Disc",
+        "currentStock": 10,
+        "transitStock": 3,
+        "orderQty": 2,
+        "unitPrice": 4500,
+        "unitWeight": 1
+      }
+    ],
+    "expenses": {
+      "shipping": 220,
+      "transit": 80,
+      "vat": 130
+    }
   },
   {
-    "orderID": "PO-2026-014",
-    "supplierName": "Xi Medical Supplies",
-    "orderDate": "2026-06-25",
-    "expectedDate": "2026-07-05",
-    "status": "In Transit",
-    "totalAmount": 85000,
-    "products": [
-      { "productName": "Surgical Mask Box (50pcs)", "quantity": 200, "unitPrice": 150 },
-      { "productName": "Digital Infrared Thermometer", "quantity": 40, "unitPrice": 1375 }
-    ]
+    "_id": "ORD-2026-014",
+    "orderNo": "ORD-1014",
+    "supplierName": "Dynamic Traders",
+    "orderDate": "2026-05-23",
+    "expectedReceiveDate": "2026-06-02",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-114",
+        "productName": "Standard Investment Powder",
+        "selectedGroup": "Investment",
+        "selectedSubGroup": "Powder",
+        "currentStock": 60,
+        "transitStock": 10,
+        "orderQty": 15,
+        "unitPrice": 550,
+        "unitWeight": 4
+      }
+    ],
+    "expenses": {
+      "shipping": 190,
+      "transit": 55,
+      "vat": 90
+    }
   },
   {
-    "orderID": "PO-2026-015",
-    "supplierName": "Omicron Auto Parts",
-    "orderDate": "2026-06-27",
-    "expectedDate": "2026-07-08",
-    "status": "Received",
-    "totalAmount": 135000,
-    "products": [
-      { "productName": "Engine Oil 4L", "quantity": 50, "unitPrice": 1500 },
-      { "productName": "Car Oil Filter", "quantity": 120, "unitPrice": 500 }
-    ]
+    "_id": "ORD-2026-015",
+    "orderNo": "ORD-1015",
+    "supplierName": "Elite Mercantile",
+    "orderDate": "2026-05-24",
+    "expectedReceiveDate": "2026-06-03",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-115",
+        "productName": "Ceramco Margin Porcelain",
+        "selectedGroup": "Dental Materials",
+        "selectedSubGroup": "Margin",
+        "currentStock": 14,
+        "transitStock": 6,
+        "orderQty": 4,
+        "unitPrice": 1500,
+        "unitWeight": 1
+      }
+    ],
+    "expenses": {
+      "shipping": 145,
+      "transit": 40,
+      "vat": 75
+    }
   },
   {
-    "orderID": "PO-2026-016",
-    "supplierName": "Pi Furniture Hub",
-    "orderDate": "2026-06-28",
-    "expectedDate": "2026-07-10",
-    "status": "In Transit",
-    "totalAmount": 180000,
-    "products": [
-      { "productName": "Executive Office Chair", "quantity": 15, "unitPrice": 8000 },
-      { "productName": "Wooden Filing Cabinet", "quantity": 10, "unitPrice": 6000 }
-    ]
+    "_id": "ORD-2026-016",
+    "orderNo": "ORD-1016",
+    "supplierName": "Beacon Supply Chain",
+    "orderDate": "2026-05-25",
+    "expectedReceiveDate": "2026-06-04",
+    "status": "received",
+    "purchasedItems": [
+      {
+        "productId": "PROD-116",
+        "productName": "Acrylic Repair Material",
+        "selectedGroup": "Acrylics",
+        "selectedSubGroup": "Repair",
+        "currentStock": 35,
+        "transitStock": 12,
+        "orderQty": 10,
+        "unitPrice": 750,
+        "unitWeight": 1.5
+      }
+    ],
+    "expenses": {
+      "shipping": 115,
+      "transit": 30,
+      "vat": 50
+    }
   },
   {
-    "orderID": "PO-2026-017",
-    "supplierName": "Rho Agro Feed Mills",
-    "orderDate": "2026-06-29",
-    "expectedDate": "2026-07-06",
-    "status": "Received",
-    "totalAmount": 92000,
-    "products": [
-      { "productName": "Poultry Feed Bag 50kg", "quantity": 100, "unitPrice": 850 },
-      { "productName": "Fish Meal Bag", "quantity": 20, "unitPrice": 350 }
-    ]
+    "_id": "ORD-2026-017",
+    "orderNo": "ORD-1017",
+    "supplierName": "Horizon Exports",
+    "orderDate": "2026-05-26",
+    "expectedReceiveDate": "2026-06-05",
+    "status": "on transit",
+    "purchasedItems": [
+      {
+        "productId": "PROD-117",
+        "productName": "Gold Alloy Wire",
+        "selectedGroup": "Metals",
+        "selectedSubGroup": "Wire",
+        "currentStock": 8,
+        "transitStock": 2,
+        "orderQty": 5,
+        "unitPrice": 5200,
+        "unitWeight": 0.2
+      }
+    ],
+    "expenses": {
+      "shipping": 300,
+      "transit": 100,
+      "vat": 180
+    }
   },
   {
-    "orderID": "PO-2026-018",
-    "supplierName": "Sigma IT Hardware",
-    "orderDate": "2026-07-01",
-    "expectedDate": "2026-07-12",
-    "status": "In Transit",
-    "totalAmount": 240000,
-    "products": [
-      { "productName": "Gigabit Network Switch 24-Port", "quantity": 8, "unitPrice": 15000 },
-      { "productName": "Cat6 LAN Cable Box (305m)", "quantity": 10, "unitPrice": 12000 }
-    ]
+    "_id": "ORD-2026-018",
+    "orderNo": "ORD-1018",
+    "supplierName": "Zenith Commercial",
+    "orderDate": "2026-05-27",
+    "expectedReceiveDate": "2026-06-06",
+    "status": "on transit",
+    "purchasedItems": [
+      {
+        "productId": "PROD-118",
+        "productName": "Ceramco Modifier Brown",
+        "selectedGroup": "Dental Materials",
+        "selectedSubGroup": "Modifier",
+        "currentStock": 18,
+        "transitStock": 5,
+        "orderQty": 3,
+        "unitPrice": 1600,
+        "unitWeight": 1
+      }
+    ],
+    "expenses": {
+      "shipping": 130,
+      "transit": 35,
+      "vat": 70
+    }
   },
   {
-    "orderID": "PO-2026-019",
-    "supplierName": "Tau Solar Energy Solutions",
-    "orderDate": "2026-07-03",
-    "expectedDate": "2026-07-15",
-    "status": "Received",
-    "totalAmount": 310000,
-    "products": [
-      { "productName": "Monocrystalline Solar Panel 400W", "quantity": 20, "unitPrice": 12500 },
-      { "productName": "Solar Inverter 3KVA", "quantity": 5, "unitPrice": 12000 }
-    ]
+    "_id": "ORD-2026-019",
+    "orderNo": "ORD-1019",
+    "supplierName": "Crestline Partners",
+    "orderDate": "2026-05-28",
+    "expectedReceiveDate": "2026-06-07",
+    "status": "ordered",
+    "purchasedItems": [
+      {
+        "productId": "PROD-119",
+        "productName": "Special Tray Resin",
+        "selectedGroup": "Acrylics",
+        "selectedSubGroup": "Resin",
+        "currentStock": 45,
+        "transitStock": 15,
+        "orderQty": 10,
+        "unitPrice": 700,
+        "unitWeight": 2
+      }
+    ],
+    "expenses": {
+      "shipping": 155,
+      "transit": 45,
+      "vat": 85
+    }
   },
   {
-    "orderID": "PO-2026-020",
-    "supplierName": "Upsilon Cold Storage",
-    "orderDate": "2026-07-05",
-    "expectedDate": "2026-07-16",
-    "status": "In Transit",
-    "totalAmount": 52000,
-    "products": [
-      { "productName": "Insulated Delivery Box", "quantity": 40, "unitPrice": 1000 },
-      { "productName": "Gel Ice Pack Sheet", "quantity": 240, "unitPrice": 50 }
-    ]
+    "_id": "ORD-2026-020",
+    "orderNo": "ORD-1020",
+    "supplierName": "Atlas Ventures",
+    "orderDate": "2026-05-29",
+    "expectedReceiveDate": "2026-06-08",
+    "status": "ordered",
+    "purchasedItems": [
+      {
+        "productId": "PROD-120",
+        "productName": "Ceramco Incisal I1",
+        "selectedGroup": "Dental Materials",
+        "selectedSubGroup": "Incisal",
+        "currentStock": 28,
+        "transitStock": 9,
+        "orderQty": 6,
+        "unitPrice": 1250,
+        "unitWeight": 1
+      }
+    ],
+    "expenses": {
+      "shipping": 140,
+      "transit": 40,
+      "vat": 70
+    }
   }
 ]
