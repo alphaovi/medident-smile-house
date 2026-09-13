@@ -88,11 +88,7 @@ const SideNavbar = () => {
           icon: <FilePlus className="size-4 shrink-0" />,
           link: "/purchase/purchase-order",
         },
-        {
-          name: "View Order",
-          icon: <ClipboardList className="size-4 shrink-0" />,
-          link: "/purchase/view-order",
-        },
+       
         {
           name: "Purchase Return",
           icon: <RotateCcw className="size-4 shrink-0" />,

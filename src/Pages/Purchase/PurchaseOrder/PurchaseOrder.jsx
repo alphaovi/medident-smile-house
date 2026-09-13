@@ -1,33 +1,37 @@
-import React, { useState, useEffect } from "react";
+// PurchaseOrder.jsx
+import { useState, useEffect } from "react";
 import { PlusCircle, ShoppingBag } from "lucide-react";
 import PurchaseOrderModal from "./PurchaseOrderModal/PurchaseOrderModal";
-import PurchaseOrderList from "./PurchaseOrderList/PurchaseOrderList"; // Import the table list component
+import { toast } from "react-toastify";
+import PurchaseOrderList from "./PurchaseOrderList/PurchaseOrderList";
 
 const PurchaseOrder = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [purchaseHistory, setPurchaseHistory] = useState([]);
   
-  // State variables for dynamic JSON data
   const [products, setProducts] = useState([]);
   const [productsGroupSubgroup, setProductsGroupSubgroup] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch JSON files from public folder
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [resProducts, resGroups] = await Promise.all([
-          fetch("/products.json"),
-          fetch("/productsGroupSubgroup.json")
+        const [resOrders, resProducts, resGroups] = await Promise.all([
+          fetch("/purchaseOrderList.json").catch(() => ({ ok: false })),
+          fetch("/products.json").catch(() => ({ ok: false, json: () => [] })),
+          fetch("/productsGroupSubgroup.json").catch(() => ({ ok: false, json: () => [] }))
         ]);
 
-        const productsData = await resProducts.json();
-        const groupsData = await resGroups.json();
+        const ordersData = resOrders.ok ? await resOrders.json() : [];
+        const productsData = resProducts.ok ? await resProducts.json() : [];
+        const groupsData = resGroups.ok ? await resGroups.json() : [];
 
+        setPurchaseHistory(ordersData);
         setProducts(productsData);
         setProductsGroupSubgroup(groupsData);
       } catch (error) {
         console.error("Error loading JSON data:", error);
+        toast.error("Failed to load initial data.");
       } finally {
         setIsLoading(false);
       }
@@ -37,13 +41,27 @@ const PurchaseOrder = () => {
   }, []);
 
   const handleSaveStoreProduct = (purchaseBatchData) => {
-    console.log("Saved Purchase Batch Data:", purchaseBatchData);
-    setPurchaseHistory((prev) => [purchaseBatchData, ...prev]);
+    if (purchaseBatchData.orderID) {
+      // Editing existing order
+      setPurchaseHistory((prev) =>
+        prev.map((ord) => (ord.orderID === purchaseBatchData.orderID ? purchaseBatchData : ord))
+      );
+      toast.success("Purchase order updated successfully!");
+    } else {
+      // Creating new order with default status "On Transit"
+      const newOrder = {
+        orderID: `PO-${Date.now().toString().slice(-6)}`,
+        totalAmount: purchaseBatchData.totals?.grandTotal || 0,
+        status: "On Transit",
+        ...purchaseBatchData
+      };
+      setPurchaseHistory((prev) => [newOrder, ...prev]);
+      toast.success("Purchase order created successfully!");
+    }
   };
 
   return (
     <div className="p-6 max-w-7xl mx-auto space-y-6">
-      {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -55,7 +73,6 @@ const PurchaseOrder = () => {
           </p>
         </div>
 
-        {/* Modal Open Button */}
         <button
           onClick={() => setIsModalOpen(true)}
           disabled={isLoading}
@@ -66,10 +83,14 @@ const PurchaseOrder = () => {
         </button>
       </div>
 
-      {/* Purchase Order List Table Section */}
-      <PurchaseOrderList />
+      <PurchaseOrderList 
+        orders={purchaseHistory}
+        setOrders={setPurchaseHistory}
+        loading={isLoading}
+        products={products}
+        productsGroupSubgroup={productsGroupSubgroup}
+      />
 
-      {/* Render Store Purchase Modal */}
       <PurchaseOrderModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
