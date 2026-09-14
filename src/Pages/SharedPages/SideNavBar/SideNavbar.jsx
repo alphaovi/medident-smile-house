@@ -66,18 +66,7 @@ const SideNavbar = () => {
     {
       name: "Manage Customers",
       icon: <Users className="size-5 shrink-0" />,
-      children: [
-        {
-          name: "Add Customers",
-          icon: <UserPlus className="size-4 shrink-0" />,
-          link: "/manage-customers/add-customers",
-        },
-        {
-          name: "View Customers",
-          icon: <UserCheck className="size-4 shrink-0" />,
-          link: "/manage-customers/view-customers",
-        },
-      ],
+      link: "/manage-customers"
     },
     {
       name: "Purchase",

@@ -1,0 +1,6 @@
+[
+  { "employeeId": "EMP-001", "employeeName": "Md. Rahim Uddin", "role": "Sales Representative" },
+  { "employeeId": "EMP-002", "employeeName": "Tanvir Ahmed", "role": "Sales Representative" },
+  { "employeeId": "EMP-003", "employeeName": "Jahid Hasan", "role": "Field Officer" },
+  { "employeeId": "EMP-004", "employeeName": "Nazmul Hossain", "role": "Sales Executive" }
+]

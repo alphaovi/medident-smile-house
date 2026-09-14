@@ -9,6 +9,7 @@ import Store from "../ManageProducts/Store/Store";
 import PurchaseOrder from "../Purchase/PurchaseOrder/PurchaseOrder";
 import Settings from "../Settings/Settings/Settings";
 import ManageSuppliers from "../Settings/ManageSuppliers/ManageSuppliers";
+import ManageCustomers from "../ManageCustomers/ManageCustomers";
 
 const router = createBrowserRouter([
   {
@@ -42,6 +43,10 @@ const router = createBrowserRouter([
       {
         path: "/purchase/purchase-order",
         element: <PurchaseOrder></PurchaseOrder>,
+      },
+      {
+        path: "/manage-customers",
+        element: <ManageCustomers></ManageCustomers>,
       },
       {
         path: "/settings",

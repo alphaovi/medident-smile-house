@@ -1,0 +1,42 @@
+[
+  {
+    "customerId": "CUST-1001",
+    "customerName": "Smile Care Dental Clinic",
+    "address": "House 12, Road 5, Dhanmondi, Dhaka",
+    "state": "Dhaka",
+    "category": "Dental Clinic",
+    "phoneNo": "+8801711223344",
+    "status": "active",
+    "srName": "Md. Rahim Uddin"
+  },
+  {
+    "customerId": "CUST-1002",
+    "customerName": "Metro Dental House",
+    "address": "15/B, Agrabad Commercial Area, Chittagong",
+    "state": "Chittagong",
+    "category": "Wholesale Distributor",
+    "phoneNo": "+8801822334455",
+    "status": "active",
+    "srName": "Tanvir Ahmed"
+  },
+  {
+    "customerId": "CUST-1003",
+    "customerName": "City Pharma & Surgical",
+    "address": "Zindabazar, Sylhet",
+    "state": "Sylhet",
+    "category": "Retail Pharmacy",
+    "phoneNo": "+8801933445566",
+    "status": "inactive",
+    "srName": "Jahid Hasan"
+  },
+  {
+    "customerId": "CUST-1004",
+    "customerName": "Advanced Dental Lab",
+    "address": "Shaheb Bazar, Rajshahi",
+    "state": "Rajshahi",
+    "category": "Corporate Lab",
+    "phoneNo": "+8801544556677",
+    "status": "active",
+    "srName": "Nazmul Hossain"
+  }
+]

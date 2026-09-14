@@ -1,0 +1,50 @@
+[
+  {
+    "stateId": "ST-Dhaka",
+    "stateName": "Dhaka",
+    "country": "Bangladesh",
+    "zones": ["Gulshan", "Banani", "Dhanmondi", "Uttara", "Mirpur", "Motijheel"]
+  },
+  {
+    "stateId": "ST-Chittagong",
+    "stateName": "Chittagong",
+    "country": "Bangladesh",
+    "zones": ["GEC Circle", "Agrabad", "Nasirabad", "Khulshi", "Chawkbazar"]
+  },
+  {
+    "stateId": "ST-Rajshahi",
+    "stateName": "Rajshahi",
+    "country": "Bangladesh",
+    "zones": ["Shaheb Bazar", "New Market", "Talaimari", "Lakshmipur"]
+  },
+  {
+    "stateId": "ST-Khulna",
+    "stateName": "Khulna",
+    "country": "Bangladesh",
+    "zones": ["Sonadanga", "Shibbari", "Boyra", "Daulatpur"]
+  },
+  {
+    "stateId": "ST-Sylhet",
+    "stateName": "Sylhet",
+    "country": "Bangladesh",
+    "zones": ["Zindabazar", "Ambarkhana", "Upashahar", "Dargah Gate"]
+  },
+  {
+    "stateId": "ST-Barisal",
+    "stateName": "Barisal",
+    "country": "Bangladesh",
+    "zones": ["Sadar Road", "Notullabad", "Rupatali", "Launch Ghat Area"]
+  },
+  {
+    "stateId": "ST-Rangpur",
+    "stateName": "Rangpur",
+    "country": "Bangladesh",
+    "zones": ["Jahaj Company Moor", "Station Road", "Payra Chattar", "GL Roy Road"]
+  },
+  {
+    "stateId": "ST-Mymensingh",
+    "stateName": "Mymensingh",
+    "country": "Bangladesh",
+    "zones": ["Ganginar Par", "Town Hall", "Charpara", "Katchari Road"]
+  }
+]

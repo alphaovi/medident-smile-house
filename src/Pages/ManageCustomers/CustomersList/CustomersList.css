@@ -1,0 +1,101 @@
+.customer-list-section {
+  background: #ffffff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.customer-list-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 16px;
+  color: #1e293b;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.customer-table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.customer-table th, 
+.customer-table td {
+  padding: 12px 15px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.customer-table th {
+  background-color: #f1f5f9;
+  color: #475569;
+  font-weight: 600;
+}
+
+.badge-category {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  text-transform: capitalize;
+  font-weight: 500;
+}
+
+.status-badge.active {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.inactive {
+  background-color: #fee2e2;
+  color: #b91c1c;
+}
+
+.no-data {
+  text-align: center;
+  color: #94a3b8;
+  padding: 20px;
+}
+
+/* স্ট্যাটাস বাটন বা ব্যাজের কমন স্টাইল */
+.status-badge-btn {
+  font-size: 13px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s ease-in-out;
+}
+
+/* যখন স্ট্যাটাস Active থাকবে (সবুজ কালার) */
+.status-badge-btn.active {
+  background-color: #d1fae5; /* হালকা সবুজ ব্যাকগ্রাউন্ড */
+  color: #065f46;          /* গাড় সবুজ টেক্সট */
+}
+
+.status-badge-btn.active:hover {
+  background-color: #a7f3d0;
+}
+
+/* যখন স্ট্যাটাস Inactive থাকবে (লাল কালার) */
+.status-badge-btn.inactive {
+  background-color: #fee2e2; /* হালকা লাল ব্যাকগ্রাউন্ড */
+  color: #991b1b;          /* গাড় লাল টেক্সট */
+}
+
+.status-badge-btn.inactive:hover {
+  background-color: #fecaca;
+}

@@ -1,0 +1,37 @@
+[
+  {
+    "categoryId": "CAT-001",
+    "categoryName": "Best Customer",
+    "description": "High-volume buyers with regular payments and highest loyalty",
+    "badgeColor": "green",
+    "status": "active"
+  },
+  {
+    "categoryId": "CAT-002",
+    "categoryName": "Good Customer",
+    "description": "Reliable buyers with consistent purchases and timely payments",
+    "badgeColor": "blue",
+    "status": "active"
+  },
+  {
+    "categoryId": "CAT-003",
+    "categoryName": "Regular Customer",
+    "description": "Standard buyers who purchase occasionally with standard credit terms",
+    "badgeColor": "gray",
+    "status": "active"
+  },
+  {
+    "categoryId": "CAT-004",
+    "categoryName": "New Customer",
+    "description": "Recently onboarded customers under evaluation period",
+    "badgeColor": "purple",
+    "status": "active"
+  },
+  {
+    "categoryId": "CAT-005",
+    "categoryName": "Risky / Bad Customer",
+    "description": "Customers with delayed payments, payment defaults, or frequent disputes",
+    "badgeColor": "red",
+    "status": "active"
+  }
+]
