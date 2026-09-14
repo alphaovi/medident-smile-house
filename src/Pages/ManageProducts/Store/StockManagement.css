@@ -1,0 +1,156 @@
+.stock-management {
+  padding: 20px;
+}
+
+.stock-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.stock-header h2 {
+  margin: 0;
+  font-size: 22px;
+}
+
+.stock-header p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  color: #666;
+}
+
+.print-report-btn {
+  background-color: #2563eb;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.print-report-btn:hover {
+  background-color: #1d4ed8;
+}
+
+.print-version {
+  display: none;
+}
+
+@media print {
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .print-version,
+  .print-version * {
+    visibility: visible;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .print-version {
+    display: block !important;
+    width: 100%;
+  }
+  .print-page {
+    position: relative;
+    width: 100%;
+    min-height: 180mm;
+    box-sizing: border-box;
+    padding-bottom: 12mm;
+    page-break-after: always;
+    break-after: page;
+  }
+  .print-page:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  .print-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8mm;
+    border-bottom: 2px solid #222;
+    padding-bottom: 4mm;
+  }
+  .print-header h1 {
+    margin: 0;
+    font-size: 20px;
+  }
+  .print-header p {
+    margin: 3px 0 0;
+    font-size: 11px;
+  }
+  .print-stock-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: 9px;
+  }
+  .print-stock-table th,
+  .print-stock-table td {
+    border: 1px solid #333;
+    padding: 5px 3px;
+    text-align: center;
+    vertical-align: middle;
+    word-break: break-word;
+  }
+  .print-stock-table th {
+    font-weight: 700;
+  }
+  .print-stock-table td:first-child {
+    text-align: left;
+  }
+  .print-stock-table td:first-child strong {
+    display: block;
+  }
+  .print-stock-table td:first-child small {
+    display: block;
+    font-size: 7px;
+    margin-top: 2px;
+  }
+  .print-grand-total {
+    display: flex;
+    justify-content: flex-end;
+    gap: 25mm;
+    margin-top: 7mm;
+    padding-top: 4mm;
+    border-top: 2px solid #222;
+  }
+  .print-grand-total > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2mm;
+    text-align: right;
+  }
+  .print-grand-total span {
+    font-size: 10px;
+  }
+  .print-grand-total strong {
+    font-size: 13px;
+  }
+  .manual-page-number {
+    position: absolute;
+    bottom: 2mm;
+    right: 0;
+    font-size: 9px;
+  }
+  .print-stock-table thead {
+    display: table-header-group;
+  }
+  .print-stock-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+}

@@ -1,0 +1,92 @@
+[
+  {
+    "productId": "PRD-1001",
+    "totalStock": 40,
+    "purchaseReturn": 3,
+    "sellReturn": 2,
+    "lostDamage": 1,
+    "totalSell": 15,
+    "averageBuyingPrice": 1950
+  },
+  {
+    "productId": "PRD-1002",
+    "totalStock": 30,
+    "purchaseReturn": 2,
+    "sellReturn": 1,
+    "lostDamage": 0,
+    "totalSell": 12,
+    "averageBuyingPrice": 1950
+  },
+  {
+    "productId": "PRD-1003",
+    "totalStock": 20,
+    "purchaseReturn": 1,
+    "sellReturn": 0,
+    "lostDamage": 2,
+    "totalSell": 8,
+    "averageBuyingPrice": 2100
+  },
+  {
+    "productId": "PRD-1004",
+    "totalStock": 10,
+    "purchaseReturn": 2,
+    "sellReturn": 0,
+    "lostDamage": 0,
+    "totalSell": 5,
+    "averageBuyingPrice": 2200
+  },
+  {
+    "productId": "PRD-1005",
+    "totalStock": 25,
+    "purchaseReturn": 2,
+    "sellReturn": 1,
+    "lostDamage": 1,
+    "totalSell": 10,
+    "averageBuyingPrice": 2050
+  },
+  {
+    "productId": "PRD-1006",
+    "totalStock": 18,
+    "purchaseReturn": 2,
+    "sellReturn": 1,
+    "lostDamage": 0,
+    "totalSell": 7,
+    "averageBuyingPrice": 2700
+  },
+  {
+    "productId": "PRD-1007",
+    "totalStock": 30,
+    "purchaseReturn": 4,
+    "sellReturn": 2,
+    "lostDamage": 1,
+    "totalSell": 12,
+    "averageBuyingPrice": 2300
+  },
+  {
+    "productId": "PRD-1008",
+    "totalStock": 12,
+    "purchaseReturn": 1,
+    "sellReturn": 0,
+    "lostDamage": 0,
+    "totalSell": 5,
+    "averageBuyingPrice": 7200
+  },
+  {
+    "productId": "PRD-1009",
+    "totalStock": 45,
+    "purchaseReturn": 3,
+    "sellReturn": 2,
+    "lostDamage": 2,
+    "totalSell": 18,
+    "averageBuyingPrice": 1400
+  },
+  {
+    "productId": "PRD-1010",
+    "totalStock": 70,
+    "purchaseReturn": 8,
+    "sellReturn": 3,
+    "lostDamage": 0,
+    "totalSell": 25,
+    "averageBuyingPrice": 700
+  }
+]
