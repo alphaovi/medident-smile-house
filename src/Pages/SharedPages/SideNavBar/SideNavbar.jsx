@@ -22,6 +22,7 @@ import {
   X,
   Trash2,
 } from "lucide-react";
+import medidentLogo from "../../../assets/logo/medidentLogo.png";
 import { Outlet, NavLink } from "react-router";
 
 const SideNavbar = () => {
@@ -50,7 +51,7 @@ const SideNavbar = () => {
           icon: <PackagePlus className="size-4 shrink-0" />,
           link: "/manage-product/add-product",
         },
-        
+
         {
           name: "Store",
           icon: <Boxes className="size-4 shrink-0" />,
@@ -66,7 +67,7 @@ const SideNavbar = () => {
     {
       name: "Manage Customers",
       icon: <Users className="size-5 shrink-0" />,
-      link: "/manage-customers"
+      link: "/manage-customers",
     },
     {
       name: "Purchase",
@@ -77,7 +78,7 @@ const SideNavbar = () => {
           icon: <FilePlus className="size-4 shrink-0" />,
           link: "/purchase/purchase-order",
         },
-       
+
         {
           name: "Purchase Return",
           icon: <RotateCcw className="size-4 shrink-0" />,
@@ -90,15 +91,25 @@ const SideNavbar = () => {
       icon: <BadgeDollarSign className="size-5 shrink-0" />,
       children: [
         {
-          name: "Sell Order",
+          name: "Create Sell",
           icon: <Receipt className="size-4 shrink-0" />,
-          link: "/sell/sell-order",
+          link: "/sale/create-sell",
         },
         {
-          name: "Order List",
+          name: "Sell List",
           icon: <ListOrdered className="size-4 shrink-0" />,
-          link: "/sell/order-list",
+          link: "/sell/sell-list",
         },
+        {
+          name: "Sell Return",
+          icon: <ListOrdered className="size-4 shrink-0" />,
+          link: "/sell/sell-return",
+        },
+        {
+          name: "Free Sample",
+          
+        },
+        
       ],
     },
     {
@@ -239,7 +250,7 @@ const SideNavbar = () => {
       >
         <div className="flex flex-col grow overflow-hidden">
           <div className="flex items-center justify-between p-4 border-b border-base-300 shrink-0">
-            <span className="font-bold text-lg">Smile House</span>
+            <span className="font-bold text-lg">Medident</span>
             <button
               onClick={() => setIsMobileOpen(false)}
               className="p-1 rounded-md hover:bg-base-300 transition-colors"
@@ -273,7 +284,13 @@ const SideNavbar = () => {
             <Menu className="size-6" />
           </button>
 
-          <div className="font-bold text-lg">Smile House</div>
+          <div className="font-bold text-lg">
+            <img
+              src={medidentLogo}
+              alt="Medident Logo"
+              className="h-10 w-auto object-contain"
+            />
+          </div>
         </nav>
 
         <div className="m-5">

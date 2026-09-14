@@ -10,6 +10,8 @@ import PurchaseOrder from "../Purchase/PurchaseOrder/PurchaseOrder";
 import Settings from "../Settings/Settings/Settings";
 import ManageSuppliers from "../Settings/ManageSuppliers/ManageSuppliers";
 import ManageCustomers from "../ManageCustomers/ManageCustomers";
+import Sales from "../Sales/Sales/Sales";
+import CreateSell from "../Sales/CreateSale/CreateSale"
 
 const router = createBrowserRouter([
   {
@@ -47,6 +49,14 @@ const router = createBrowserRouter([
       {
         path: "/manage-customers",
         element: <ManageCustomers></ManageCustomers>,
+      },
+      {
+        path: "/sale",
+        element: <Sales></Sales>,
+      },
+      {
+        path: "/sale/create-sell",
+        element: <CreateSell></CreateSell>,
       },
       {
         path: "/settings",

@@ -78,20 +78,7 @@ const Dashboard = () => {
       animate="visible"
     >
       {/* ---------------- Header ---------------- */}
-      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Welcome Back, Admin 👋</h1>
-          <p className="text-sm text-base-content/70">Here is what is happening with your store today.</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button className="btn btn-outline btn-sm">
-            <Download className="size-4" /> Export
-          </button>
-          <button className="btn btn-primary btn-sm">
-            <Plus className="size-4" /> Add Product
-          </button>
-        </div>
-      </motion.div>
+      
 
       {/* ---------------- Stats Grid ---------------- */}
       <motion.div variants={itemVariants} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
