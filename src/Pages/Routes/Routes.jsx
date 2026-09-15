@@ -11,7 +11,10 @@ import Settings from "../Settings/Settings/Settings";
 import ManageSuppliers from "../Settings/ManageSuppliers/ManageSuppliers";
 import ManageCustomers from "../ManageCustomers/ManageCustomers";
 import Sales from "../Sales/Sales/Sales";
-import CreateSell from "../Sales/CreateSale/CreateSale"
+import CreateSell from "../Sales/CreateSale/CreateSale";
+import SaleRequest from "../Sales/SaleRequest/SaleRequest/SaleRequest";
+import ApproveSellList from "../Sales/ApproveSellList/ApproveSellList";
+
 
 const router = createBrowserRouter([
   {
@@ -19,11 +22,11 @@ const router = createBrowserRouter([
     element: <Main />,
     children: [
       {
-        index: true, 
+        index: true,
         element: <Dashboard />,
       },
       {
-        path: "dashboard", 
+        path: "dashboard",
         element: <Dashboard />,
       },
       {
@@ -57,6 +60,14 @@ const router = createBrowserRouter([
       {
         path: "/sale/create-sell",
         element: <CreateSell></CreateSell>,
+      },
+      {
+        path: "/sell/sell-request",
+        element: <SaleRequest></SaleRequest>,
+      },
+      {
+        path: "/sell/sell-list",
+        element: <ApproveSellList></ApproveSellList>,
       },
       {
         path: "/settings",

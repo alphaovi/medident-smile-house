@@ -6,15 +6,14 @@ import {
   Boxes,
   PackageX,
   Users,
-  UserPlus,
-  UserCheck,
   ShoppingCart,
   FilePlus,
-  ClipboardList,
   RotateCcw,
   BadgeDollarSign,
   Receipt,
-  ListOrdered,
+  FileText,
+  ClipboardCheck,
+  Undo2,
   Landmark,
   BarChart3,
   Settings,
@@ -51,14 +50,13 @@ const SideNavbar = () => {
           icon: <PackagePlus className="size-4 shrink-0" />,
           link: "/manage-product/add-product",
         },
-
         {
           name: "Store",
           icon: <Boxes className="size-4 shrink-0" />,
           link: "/manage-product/store",
         },
         {
-          name: "Lost Items",
+          name: "Free Sample or Damage",
           icon: <PackageX className="size-4 shrink-0" />,
           link: "/manage-product/lost-items",
         },
@@ -78,7 +76,6 @@ const SideNavbar = () => {
           icon: <FilePlus className="size-4 shrink-0" />,
           link: "/purchase/purchase-order",
         },
-
         {
           name: "Purchase Return",
           icon: <RotateCcw className="size-4 shrink-0" />,
@@ -95,21 +92,22 @@ const SideNavbar = () => {
           icon: <Receipt className="size-4 shrink-0" />,
           link: "/sale/create-sell",
         },
+
+        {
+          name: "Sell Request",
+          icon: <ClipboardCheck className="size-4 shrink-0" />,
+          link: "/sell/sell-request",
+        },
         {
           name: "Sell List",
-          icon: <ListOrdered className="size-4 shrink-0" />,
+          icon: <FileText className="size-4 shrink-0" />,
           link: "/sell/sell-list",
         },
         {
           name: "Sell Return",
-          icon: <ListOrdered className="size-4 shrink-0" />,
+          icon: <Undo2 className="size-4 shrink-0" />,
           link: "/sell/sell-return",
         },
-        {
-          name: "Free Sample",
-          
-        },
-        
       ],
     },
     {
@@ -135,7 +133,6 @@ const SideNavbar = () => {
     link: "/bin",
   };
 
-  // Dynamic Multi-level Recursive Menu Renderer
   const renderNavList = (items, isMobile = false) => {
     return items.map((item, index) => (
       <li key={index} className="w-full">
@@ -143,8 +140,8 @@ const SideNavbar = () => {
           <details
             className={
               !isMobile
-                ? "pointer-events-none group-hover:pointer-events-auto"
-                : ""
+                ? "pointer-events-none group-hover:pointer-events-auto w-full"
+                : "w-full"
             }
           >
             <summary className="flex items-center justify-between min-h-10 px-3 py-2 hover:bg-base-300 rounded-lg cursor-pointer transition-colors duration-150 list-none [&::-webkit-details-marker]:hidden">
@@ -153,8 +150,8 @@ const SideNavbar = () => {
                 <span
                   className={`${
                     !isMobile
-                      ? "opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap"
-                      : "whitespace-nowrap"
+                      ? "opacity-0 group-hover:opacity-100 transition-opacity duration-200 truncate"
+                      : "truncate"
                   } font-medium text-sm`}
                 >
                   {item.name}
@@ -175,14 +172,14 @@ const SideNavbar = () => {
           <NavLink
             to={item.link || "#"}
             onClick={() => isMobile && setIsMobileOpen(false)}
-            className="flex items-center gap-3 min-h-10 px-3 py-2 text-sm text-base-content/80 hover:text-primary rounded-lg whitespace-nowrap hover:bg-base-100 transition-colors duration-150"
+            className="flex items-center gap-3 min-h-10 px-3 py-2 text-sm text-base-content/80 hover:text-primary rounded-lg truncate hover:bg-base-100 transition-colors duration-150"
           >
             <span className="shrink-0">{item.icon}</span>
             <span
               className={
                 !isMobile
-                  ? "opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap"
-                  : "whitespace-nowrap"
+                  ? "opacity-0 group-hover:opacity-100 transition-opacity duration-200 truncate"
+                  : "truncate"
               }
             >
               {item.name}
@@ -198,14 +195,14 @@ const SideNavbar = () => {
       <NavLink
         to={item.link || "#"}
         onClick={() => isMobile && setIsMobileOpen(false)}
-        className="flex items-center gap-3 min-h-10 px-3 py-2 text-sm text-base-content/80 hover:text-primary rounded-lg whitespace-nowrap hover:bg-base-100 transition-colors duration-150"
+        className="flex items-center gap-3 min-h-10 px-3 py-2 text-sm text-base-content/80 hover:text-primary rounded-lg truncate hover:bg-base-100 transition-colors duration-150"
       >
         <span className="shrink-0">{item.icon}</span>
         <span
           className={
             !isMobile
-              ? "opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap"
-              : "whitespace-nowrap"
+              ? "opacity-0 group-hover:opacity-100 transition-opacity duration-200 truncate"
+              : "truncate"
           }
         >
           {item.name}
@@ -222,13 +219,13 @@ const SideNavbar = () => {
         onMouseLeave={handleMouseLeave}
         className="hidden md:flex group z-20 flex-col bg-base-200 w-16 hover:w-64 transition-all duration-300 ease-in-out shadow-lg overflow-hidden justify-between h-full shrink-0"
       >
-        <ul className="menu w-full p-2 space-y-1 grow pt-6 primaryColor overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="menu w-full p-2 space-y-1 grow pt-6 overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden bg-[#3a5ede]">
           {renderNavList(navItems, false)}
         </ul>
 
         {/* Bottom Fixed Bin Item */}
-        <div className="w-full shrink-0 bg-base-200 border-t border-base-300">
-          <ul className="menu w-full p-2 primaryColor">
+        <div className="w-full shrink-0 bg-[#4464D8] border-t border-base-300 ">
+          <ul className="menu w-full p-2 bg[#4464D8]">
             {renderBinItem(binItem, false)}
           </ul>
         </div>
@@ -259,22 +256,20 @@ const SideNavbar = () => {
             </button>
           </div>
 
-          <ul className="menu w-full p-4 space-y-1 grow overflow-y-auto primaryColor [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+          <ul className="menu w-full p-4 space-y-1 grow overflow-y-auto [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
             {renderNavList(navItems, true)}
           </ul>
         </div>
 
         {/* Bottom Fixed Bin Item (Mobile) */}
         <div className="w-full shrink-0 bg-base-200 border-t border-base-300">
-          <ul className="menu w-full p-4 primaryColor">
-            {renderBinItem(binItem, true)}
-          </ul>
+          <ul className="menu w-full p-4">{renderBinItem(binItem, true)}</ul>
         </div>
       </aside>
 
       {/* ---------------- Main Content Area ---------------- */}
       <div className="flex flex-1 flex-col overflow-y-auto min-w-0">
-        <nav className="navbar h-16 w-full bg-base-300 border-b border-base-200 px-4 secondaryColor flex items-center gap-3 shrink-0">
+        <nav className="navbar h-16 w-full bg-[#4464d8] border-b border-base-200 px-4 flex items-center gap-3 shrink-0 ">
           {/* Mobile Menu Toggle Button */}
           <button
             onClick={() => setIsMobileOpen(true)}

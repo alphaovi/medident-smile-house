@@ -64,7 +64,7 @@ const SaleHeader = ({
         <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
           <CalendarIcon className="size-3.5 text-teal-600" /> Order Date
         </label>
-        <div 
+        <div
           onClick={() => {
             if (dateInputRef.current) {
               if (typeof dateInputRef.current.showPicker === "function") {

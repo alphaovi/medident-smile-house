@@ -15,7 +15,7 @@ const SaleItemRow = ({
   // Find sub-groups based on selected group from productsGroupSubgroup.json
   const matchedGroupObj = Array.isArray(productsGroupSubgroup)
     ? productsGroupSubgroup.find(
-        (g) => (g.group || g.groupName || g.name) === item.selectedGroup
+        (g) => (g.group || g.groupName || g.name) === item.selectedGroup,
       )
     : null;
 
@@ -48,12 +48,16 @@ const SaleItemRow = ({
       <div className="w-full sm:w-28">
         <select
           value={item.selectedGroup}
-          onChange={(e) => handleItemChange(idx, "selectedGroup", e.target.value)}
+          onChange={(e) =>
+            handleItemChange(idx, "selectedGroup", e.target.value)
+          }
           className="select select-bordered select-xs w-full"
         >
           <option value="">Group...</option>
           {availableGroups.map((g, i) => (
-            <option key={i} value={g}>{g}</option>
+            <option key={i} value={g}>
+              {g}
+            </option>
           ))}
         </select>
       </div>
@@ -63,7 +67,9 @@ const SaleItemRow = ({
         <select
           value={item.selectedSubGroup}
           disabled={!item.selectedGroup}
-          onChange={(e) => handleItemChange(idx, "selectedSubGroup", e.target.value)}
+          onChange={(e) =>
+            handleItemChange(idx, "selectedSubGroup", e.target.value)
+          }
           className="select select-bordered select-xs w-full disabled:opacity-50"
         >
           <option value="">Sub-Group...</option>
@@ -130,13 +136,17 @@ const SaleItemRow = ({
           type="number"
           min="0"
           value={item.discountValue}
-          onChange={(e) => handleItemChange(idx, "discountValue", e.target.value)}
+          onChange={(e) =>
+            handleItemChange(idx, "discountValue", e.target.value)
+          }
           placeholder={item.discountType === "percent" ? "%" : "৳"}
           className="input input-bordered input-xs w-full text-center"
         />
         <select
           value={item.discountType}
-          onChange={(e) => handleItemChange(idx, "discountType", e.target.value)}
+          onChange={(e) =>
+            handleItemChange(idx, "discountType", e.target.value)
+          }
           className="select select-bordered select-xs font-bold text-teal-600 px-1"
         >
           <option value="percent">%</option>
@@ -154,7 +164,10 @@ const SaleItemRow = ({
       {/* After Discount */}
       <div className="w-24 text-right">
         <span className="font-bold text-xs text-teal-600 block px-1">
-          ৳ {calcItem?.afterDiscountPrice ? calcItem.afterDiscountPrice.toFixed(2) : "0.00"}
+          ৳{" "}
+          {calcItem?.afterDiscountPrice
+            ? calcItem.afterDiscountPrice.toFixed(2)
+            : "0.00"}
         </span>
       </div>
 

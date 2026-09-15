@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { ShoppingCart, Box, Calendar as CalendarIcon } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -9,7 +9,7 @@ import SaleItemRow from "./SaleItemRow";
 import SaleSummaryBar from "./SaleSummaryBar";
 import SaleCalculation from "./SaleCalculation";
 
-const CreateSale = () => {
+const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   const [states, setStates] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -51,6 +51,7 @@ const CreateSale = () => {
 
   const [paidAmount, setPaidAmount] = useState(0);
 
+  // ডাটা ফেচ করা এবং এডিট মোড হলে ডাটা প্রি-পপুলেট করা
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -71,6 +72,38 @@ const CreateSale = () => {
         setCustomers(custData);
         setProducts(prodData);
         setProductsGroupSubgroup(groupData);
+
+        // যদি editData থাকে, তবে ফর্মের স্টেটগুলো সেই ডাটা দিয়ে ফিলআপ করে দেবো
+        if (editData) {
+          setSelectedState(editData.state || "");
+          setSelectedCustomer(editData.customerName || "");
+          
+          // তারিখ কনভার্শন (যদি DD/MM/YYYY থেকে YYYY-MM-DD ফরম্যাটে নিতে হয়)
+          if (editData.orderDate) {
+            const parts = editData.orderDate.split("/");
+            if (parts.length === 3) {
+              setOrderDate(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            } else {
+              setOrderDate(editData.orderDate);
+            }
+          }
+
+          if (editData.soldItems && editData.soldItems.length > 0) {
+            // শেষে একটি খালি রো যোগ করা যাতে নতুন আইটেম যোগ করা যায়
+            setItems([...editData.soldItems, { ...initialRow }]);
+          }
+
+          if (editData.globalDiscount) {
+            setGlobalDiscount({
+              type: editData.globalDiscount.type || "percent",
+              value: editData.globalDiscount.value || 0,
+            });
+          }
+
+          if (editData.totals) {
+            setPaidAmount(editData.totals.paidAmount || 0);
+          }
+        }
       } catch (err) {
         console.error("Error loading data:", err);
         toast.error("Failed to load dependency data for sales.");
@@ -79,7 +112,7 @@ const CreateSale = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [editData]);
 
   const availableGroups = useMemo(() => {
     if (!Array.isArray(productsGroupSubgroup)) return [];
@@ -233,14 +266,18 @@ const CreateSale = () => {
       return;
     }
 
+    const actionTitle = editData ? "Update Sale Order?" : "Confirm Sale Order?";
+    const actionText = editData ? "This will update the existing sales transaction." : "This will create a new sales transaction.";
+    const confirmBtnText = editData ? "Update Sale" : "Confirm Sale";
+
     Swal.fire({
-      title: "Confirm Sale Order?",
-      text: "This will create a new sales transaction.",
+      title: actionTitle,
+      text: actionText,
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#0d9488",
       cancelButtonColor: "#64748b",
-      confirmButtonText: "Confirm Sale",
+      confirmButtonText: confirmBtnText,
       cancelButtonText: "Cancel",
       customClass: {
         popup: "rounded-2xl",
@@ -250,6 +287,7 @@ const CreateSale = () => {
     }).then((result) => {
       if (result.isConfirmed) {
         const saleData = {
+          ...(editData && editData._id ? { _id: editData._id } : {}),
           state: selectedState,
           customerName: selectedCustomer,
           orderDate: convertToDDMMYYYY(orderDate),
@@ -268,15 +306,21 @@ const CreateSale = () => {
           date: new Date().toISOString(),
         };
 
-        console.log("Submitted Sale Data:", saleData);
-        toast.success("Sell order created successfully!", { autoClose: 2000 });
+        if (editData) {
+          console.log("Updated Sale Data:", saleData);
+          toast.success("Sell order updated successfully!", { autoClose: 2000 });
+          onUpdateSuccess(saleData);
+        } else {
+          console.log("Submitted Sale Data:", saleData);
+          toast.success("Sell order created successfully!", { autoClose: 2000 });
 
-        setItems([{ ...initialRow }]);
-        setSelectedState("");
-        setSelectedCustomer("");
-        setOrderDate(getTodayISO());
-        setGlobalDiscount({ type: "percent", value: 0 });
-        setPaidAmount(0);
+          setItems([{ ...initialRow }]);
+          setSelectedState("");
+          setSelectedCustomer("");
+          setOrderDate(getTodayISO());
+          setGlobalDiscount({ type: "percent", value: 0 });
+          setPaidAmount(0);
+        }
       }
     });
   };
@@ -289,7 +333,9 @@ const CreateSale = () => {
       
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-base-300">
         <ShoppingCart className="size-6 text-teal-600" />
-        <h1 className="text-xl font-bold">Create Sale Order</h1>
+        <h1 className="text-xl font-bold">
+          {editData ? "Edit Sale Order" : "Create Sale Order"}
+        </h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -359,7 +405,7 @@ const CreateSale = () => {
             type="submit"
             className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white px-8"
           >
-            Create Sale Order
+            {editData ? "Update Sale Order" : "Create Sale Order"}
           </button>
         </div>
       </form>
