@@ -13,8 +13,7 @@ import ManageCustomers from "../ManageCustomers/ManageCustomers";
 import Sales from "../Sales/Sales/Sales";
 import CreateSell from "../Sales/CreateSale/CreateSale";
 import SaleRequest from "../Sales/SaleRequest/SaleRequest/SaleRequest";
-import ApproveSellList from "../Sales/ApproveSellList/ApproveSellList";
-
+import SellLists from "../Sales/SellList/SellLists";
 
 const router = createBrowserRouter([
   {
@@ -67,7 +66,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/sell/sell-list",
-        element: <ApproveSellList></ApproveSellList>,
+        element: <SellLists></SellLists>,
       },
       {
         path: "/settings",

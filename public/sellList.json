@@ -87,7 +87,7 @@
     "customerName": "Modern Dental Hospital",
     "customerOffice": "Zindabazar",
     "customerState": "Sylhet",
-    "status": "Pending",
+    "status": "Approved",
     "isMovedToTrash": false,
     "products": [
       {
@@ -118,7 +118,7 @@
     "dueAmount": 35300,
     "timeline": {
       "pendingDate": "2026-09-03T11:00:00Z",
-      "approvedDate": null,
+      "approvedDate": "2026-09-03T11:00:00Z",
       "deliveredDate": null
     }
   },
@@ -251,7 +251,7 @@
     "customerName": "Meghna Dental Clinic",
     "customerOffice": "Sadar Road",
     "customerState": "Barisal",
-    "status": "Pending",
+    "status": "Delivered",
     "isMovedToTrash": false,
     "products": [
       {
@@ -282,8 +282,8 @@
     "dueAmount": 21300,
     "timeline": {
       "pendingDate": "2026-09-07T10:00:00Z",
-      "approvedDate": null,
-      "deliveredDate": null
+      "approvedDate": "2026-09-07T10:00:00Z",
+      "deliveredDate": "2026-09-20T12:00:00Z"
     }
   },
   {
@@ -497,7 +497,7 @@
     "customerName": "Khulna Dental Care",
     "customerOffice": "KDA Avenue",
     "customerState": "Khulna",
-    "status": "Pending",
+    "status": "Approved",
     "isMovedToTrash": false,
     "products": [
       {
@@ -528,7 +528,7 @@
     "dueAmount": 34500,
     "timeline": {
       "pendingDate": "2026-09-13T11:00:00Z",
-      "approvedDate": null,
+      "approvedDate": "2026-09-13T11:00:00Z",
       "deliveredDate": null
     }
   },
@@ -661,7 +661,7 @@
     "customerName": "Rangpur Modern Dental",
     "customerOffice": "Station Road",
     "customerState": "Rangpur",
-    "status": "Pending",
+    "status": "Delivered",
     "isMovedToTrash": false,
     "products": [
       {
@@ -692,8 +692,8 @@
     "dueAmount": 38400,
     "timeline": {
       "pendingDate": "2026-09-17T11:00:00Z",
-      "approvedDate": null,
-      "deliveredDate": null
+      "approvedDate": "2026-09-17T11:00:00Z",
+      "deliveredDate": "2026-09-20T12:00:00Z"
     }
   },
   {
@@ -750,7 +750,7 @@
         "productId": "PRD-1012",
         "productGroup": "Endodontics",
         "productSubGroup": "Files",
-        "productName": "Rotary NiTi Files",
+        "productName": "PRD-1012",
         "unitPrice": 2400,
         "orderQuantity": 10,
         "price": 24000,

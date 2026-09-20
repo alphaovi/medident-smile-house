@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Trash2, Store, Calculator, Box, Calendar, Building2 } from "lucide-react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
+import Select from "react-select"; // Searchable dropdown-er jonno react-select import kora holo
 
 const StoreProductModal = ({
   isOpen,
@@ -12,9 +13,8 @@ const StoreProductModal = ({
   onSaveStoreProduct,
 }) => {
   const [suppliers, setSuppliers] = useState([]);
-  const [selectedSupplier, setSelectedSupplier] = useState("");
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
   
-  // Helper to get today's date in YYYY-MM-DD for the HTML date input
   const getTodayISO = () => {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -26,7 +26,6 @@ const StoreProductModal = ({
   const [orderDate, setOrderDate] = useState(getTodayISO());
   const [expectedReceiveDate, setExpectedReceiveDate] = useState("");
 
-  // Fetch suppliers data from public/suppliersData.json
   useEffect(() => {
     fetch("/suppliersData.json")
       .then((res) => {
@@ -43,9 +42,9 @@ const StoreProductModal = ({
   }, []);
 
   const initialRow = {
-    selectedGroup: "",
-    selectedSubGroup: "",
-    productId: "",
+    selectedGroup: null,
+    selectedSubGroup: null,
+    productId: null,
     productName: "",
     currentStock: 0,
     transitStock: 0,
@@ -68,9 +67,19 @@ const StoreProductModal = ({
   const availableGroups = useMemo(() => {
     if (!Array.isArray(productsGroupSubgroup)) return [];
     return productsGroupSubgroup
-      .map((item) => item.group || item.groupName || item.name)
+      .map((item) => {
+        const name = item.group || item.groupName || item.name;
+        return name ? { value: name, label: name } : null;
+      })
       .filter(Boolean);
   }, [productsGroupSubgroup]);
+
+  const supplierOptions = useMemo(() => {
+    return suppliers.map((sup) => ({
+      value: sup.supplierName,
+      label: sup.supplierName,
+    }));
+  }, [suppliers]);
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...items];
@@ -78,15 +87,15 @@ const StoreProductModal = ({
 
     if (field === "selectedGroup") {
       currentRow.selectedGroup = value;
-      currentRow.selectedSubGroup = "";
-      currentRow.productId = "";
+      currentRow.selectedSubGroup = null;
+      currentRow.productId = null;
       currentRow.productName = "";
       currentRow.currentStock = 0;
       currentRow.transitStock = 0;
       currentRow.unitPrice = 0;
     } else if (field === "selectedSubGroup") {
       currentRow.selectedSubGroup = value;
-      currentRow.productId = "";
+      currentRow.productId = null;
       currentRow.productName = "";
       currentRow.currentStock = 0;
       currentRow.transitStock = 0;
@@ -94,7 +103,7 @@ const StoreProductModal = ({
     } else if (field === "productId") {
       currentRow.productId = value;
       const selectedProd = products.find(
-        (p) => p.productId === value || p._id === value,
+        (p) => (p.productId || p._id) === value?.value,
       );
       if (selectedProd) {
         currentRow.productName =
@@ -114,7 +123,7 @@ const StoreProductModal = ({
 
     updatedItems[index] = currentRow;
 
-    if (field === "productId" && value !== "" && index === items.length - 1) {
+    if (field === "productId" && value !== null && index === items.length - 1) {
       updatedItems.push({ ...initialRow });
     }
 
@@ -135,7 +144,6 @@ const StoreProductModal = ({
     }));
   };
 
-  // Function to convert YYYY-MM-DD into DD/MM/YYYY for final save/display
   const convertToDDMMYYYY = (dateString) => {
     if (!dateString) return "";
     const parts = dateString.split("-");
@@ -146,7 +154,7 @@ const StoreProductModal = ({
   };
 
   const calculations = useMemo(() => {
-    const activeItems = items.filter((item) => item.productId !== "");
+    const activeItems = items.filter((item) => item.productId !== null);
 
     const totalCurrentStock = activeItems.reduce(
       (acc, item) => acc + (Number(item.currentStock) || 0),
@@ -204,6 +212,9 @@ const StoreProductModal = ({
 
       return {
         ...item,
+        productId: item.productId?.value || item.productId,
+        selectedGroup: item.selectedGroup?.value || item.selectedGroup,
+        selectedSubGroup: item.selectedSubGroup?.value || item.selectedSubGroup,
         lineWeight,
         allocatedShipping,
         allocatedVat,
@@ -214,14 +225,12 @@ const StoreProductModal = ({
     });
 
     const totalItemsWithShipping = calculatedItems
-      .filter((item) => item.productId !== "")
+      .filter((item) => item.productId !== null)
       .reduce((acc, item) => acc + (item.totalWithShipping || 0), 0);
 
     const transitCostNum = Number(expenses.transitCost) || 0;
     const otherCostNum = Number(expenses.otherCost) || 0;
-
     const totalExtraExpenses = transitCostNum + otherCostNum;
-
     const grandTotal = totalItemsWithShipping + totalExtraExpenses;
 
     return {
@@ -243,7 +252,7 @@ const StoreProductModal = ({
     e.preventDefault();
 
     const validItems = calculations.calculatedItems.filter(
-      (item) => item.productId !== "",
+      (item) => item.productId !== null,
     );
 
     if (validItems.length === 0) {
@@ -265,15 +274,10 @@ const StoreProductModal = ({
       cancelButtonColor: "#64748b",
       confirmButtonText: "Confirm Batch",
       cancelButtonText: "Cancel",
-      customClass: {
-        popup: "rounded-2xl",
-        confirmButton: "btn btn-sm text-white px-4 border-0",
-        cancelButton: "btn btn-sm btn-ghost px-4",
-      },
     }).then((result) => {
       if (result.isConfirmed) {
         onSaveStoreProduct?.({
-          supplierName: selectedSupplier,
+          supplierName: selectedSupplier.value,
           orderDate: convertToDDMMYYYY(orderDate),
           expectedReceiveDate: convertToDDMMYYYY(expectedReceiveDate),
           purchasedItems: validItems,
@@ -299,17 +303,41 @@ const StoreProductModal = ({
         });
         setItems([{ ...initialRow }]);
         setExpenses(initialExpenses);
-        setSelectedSupplier("");
+        setSelectedSupplier(null);
         setExpectedReceiveDate("");
         onClose();
       }
     });
   };
 
+  // Custom styles for react-select to match DaisyUI / Tailwind inputs and bigger fonts
+  const customSelectStyles = {
+    control: (provided, state) => ({
+      ...provided,
+      minHeight: "32px",
+      fontSize: "14px",
+      borderRadius: "0.5rem",
+      borderColor: state.isFocused ? "#0d9488" : "#d1d5db",
+      boxShadow: state.isFocused ? "0 0 0 1px #0d9488" : "none",
+      "&:hover": { borderColor: "#0d9488" },
+    }),
+    menu: (provided) => ({
+      ...provided,
+      fontSize: "14px",
+      zIndex: 9999,
+    }),
+    option: (provided, state) => ({
+      ...provided,
+      fontSize: "14px",
+      backgroundColor: state.isSelected ? "#0d9488" : state.isFocused ? "#f3f4f6" : "white",
+      color: state.isSelected ? "white" : "#374151",
+    }),
+  };
+
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-[10px] sm:px-[20px]">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -322,13 +350,13 @@ const StoreProductModal = ({
             initial={{ scale: 0.96, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0, y: 15 }}
-            className="relative w-full max-w-[95vw] xl:max-w-7xl max-h-[92vh] bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden"
+            className="relative w-full h-[calc(100vh-20px)] max-w-[calc(100vw-40px)] bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden text-sm sm:text-base"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300">
               <div className="flex items-center gap-2">
-                <Store className="size-5 text-teal-600" />
-                <h3 className="font-bold text-lg">
+                <Store className="size-6 text-teal-600" />
+                <h3 className="font-bold text-xl">
                   Batch Purchase Order Entry
                 </h3>
               </div>
@@ -337,91 +365,69 @@ const StoreProductModal = ({
                 onClick={onClose}
                 className="btn btn-sm btn-circle btn-ghost"
               >
-                <X className="size-5" />
+                <X className="size-6" />
               </button>
             </div>
 
             {/* Form Content */}
             <form
               onSubmit={handleSubmit}
-              className="p-4 overflow-y-auto space-y-4 grow"
+              className="p-6 overflow-y-auto space-y-6 grow"
             >
               {/* Supplier & Dates Selection Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300">
-                {/* Supplier Name Dropdown */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-base-200/50 p-4 rounded-xl border border-base-300">
                 <div>
-                  <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
-                    <Building2 className="size-3.5 text-teal-600" /> Supplier Name
+                  <label className="label py-1 text-sm font-bold flex items-center gap-1.5 text-base-content/80">
+                    <Building2 className="size-4 text-teal-600" /> Supplier Name
                   </label>
-                  <select
+                  <Select
                     value={selectedSupplier}
-                    onChange={(e) => setSelectedSupplier(e.target.value)}
-                    className="select select-bordered select-xs w-full font-medium"
+                    onChange={setSelectedSupplier}
+                    options={supplierOptions}
+                    placeholder="Search or Select Supplier..."
+                    styles={customSelectStyles}
+                    isSearchable
                     required
-                  >
-                    <option value="">Select Supplier...</option>
-                    {suppliers.map((sup) => (
-                      <option key={sup.supplierID || sup._id} value={sup.supplierName}>
-                        {sup.supplierName}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </div>
 
-                {/* Order Date */}
                 <div>
-                  <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
-                    <Calendar className="size-3.5 text-teal-600" /> Order Date <span className="text-[10px] text-teal-600 font-bold">({convertToDDMMYYYY(orderDate) || "DD/MM/YYYY"})</span>
+                  <label className="label py-1 text-sm font-bold flex items-center gap-1.5 text-base-content/80">
+                    <Calendar className="size-4 text-teal-600" /> Order Date <span className="text-xs text-teal-600 font-bold">({convertToDDMMYYYY(orderDate) || "DD/MM/YYYY"})</span>
                   </label>
                   <input
                     type="date"
                     value={orderDate}
                     onChange={(e) => setOrderDate(e.target.value)}
-                    className="input input-bordered input-xs w-full font-medium"
+                    className="input input-bordered input-sm w-full font-medium text-sm"
                     required
                   />
                 </div>
 
-                {/* Expected Receive Date */}
                 <div>
-                  <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
-                    <Calendar className="size-3.5 text-teal-600" /> Expected Receive Date <span className="text-[10px] text-teal-600 font-bold">({expectedReceiveDate ? convertToDDMMYYYY(expectedReceiveDate) : "DD/MM/YYYY"})</span>
+                  <label className="label py-1 text-sm font-bold flex items-center gap-1.5 text-base-content/80">
+                    <Calendar className="size-4 text-teal-600" /> Expected Receive Date <span className="text-xs text-teal-600 font-bold">({expectedReceiveDate ? convertToDDMMYYYY(expectedReceiveDate) : "DD/MM/YYYY"})</span>
                   </label>
                   <input
                     type="date"
                     value={expectedReceiveDate}
                     onChange={(e) => setExpectedReceiveDate(e.target.value)}
-                    className="input input-bordered input-xs w-full font-medium"
+                    className="input input-bordered input-sm w-full font-medium text-sm"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-base-content/70 flex items-center gap-1.5">
-                    <Box className="size-4" /> Item Details
+                  <h4 className="font-bold text-sm uppercase tracking-wider text-base-content/80 flex items-center gap-1.5">
+                    <Box className="size-5" /> Item Details
                   </h4>
-                  <span className="text-xs text-base-content/60 font-medium">
+                  <span className="text-sm text-base-content/70 font-medium">
                     Shipping Rate:{" "}
                     <b className="text-teal-600">
                       ৳ {calculations.shippingCostPerKg.toFixed(2)} / kg
                     </b>
                   </span>
-                </div>
-
-                {/* Table Header */}
-                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-base-300/40 rounded-lg text-[11px] font-semibold text-base-content/70 text-center">
-                  <div className="w-32 text-left">Group</div>
-                  <div className="w-32 text-left">Sub-Group</div>
-                  <div className="flex-1 text-left">Product</div>
-                  <div className="w-16">Cur. Stock</div>
-                  <div className="w-16">In Transit</div>
-                  <div className="w-16">Order Qty</div>
-                  <div className="w-20">Price (৳)</div>
-                  <div className="w-16">Wt (kg)</div>
-                  <div className="w-24 text-right">Unit Cost</div>
-                  <div className="w-24 text-right">Total + Ship</div>
-                  <div className="w-8"></div>
                 </div>
 
                 {/* Rows */}
@@ -430,29 +436,33 @@ const StoreProductModal = ({
                     ? productsGroupSubgroup.find(
                         (g) =>
                           (g.group || g.groupName || g.name) ===
-                          item.selectedGroup,
+                          item.selectedGroup?.value,
                       )
                     : null;
 
                   const availableSubGroups = matchedGroupObj
-                    ? matchedGroupObj.subGroup ||
-                      matchedGroupObj.subGroups ||
-                      []
+                    ? (matchedGroupObj.subGroup || matchedGroupObj.subGroups || []).map(sg => ({
+                        value: typeof sg === "string" ? sg : sg.name,
+                        label: typeof sg === "string" ? sg : sg.name,
+                      }))
                     : [];
 
                   const filteredProducts = products.filter((p) => {
                     const matchGroup =
                       !item.selectedGroup ||
-                      p.productGroup === item.selectedGroup ||
-                      p.group === item.selectedGroup;
+                      p.productGroup === item.selectedGroup?.value ||
+                      p.group === item.selectedGroup?.value;
 
                     const matchSubGroup =
                       !item.selectedSubGroup ||
-                      p.productSubGroup === item.selectedSubGroup ||
-                      p.subGroup === item.selectedSubGroup;
+                      p.productSubGroup === item.selectedSubGroup?.value ||
+                      p.subGroup === item.selectedSubGroup?.value;
 
                     return matchGroup && matchSubGroup;
-                  });
+                  }).map(p => ({
+                    value: p.productId || p._id,
+                    label: p.productName || p.name,
+                  }));
 
                   const calcItem = calculations.calculatedItems[idx];
 
@@ -461,94 +471,63 @@ const StoreProductModal = ({
                       key={idx}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="flex flex-wrap lg:flex-nowrap items-center gap-2 bg-base-200/50 p-2 rounded-xl border border-base-300 text-xs"
+                      className="flex flex-wrap lg:flex-nowrap items-center gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300 text-sm"
                     >
                       {/* Group */}
-                      <div className="w-full sm:w-32">
-                        <select
+                      <div className="w-full sm:w-48">
+                        <Select
                           value={item.selectedGroup}
-                          onChange={(e) =>
-                            handleItemChange(
-                              idx,
-                              "selectedGroup",
-                              e.target.value,
-                            )
-                          }
-                          className="select select-bordered select-xs w-full"
-                        >
-                          <option value="">Group...</option>
-                          {availableGroups.map((g, i) => (
-                            <option key={i} value={g}>
-                              {g}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => handleItemChange(idx, "selectedGroup", val)}
+                          options={availableGroups}
+                          placeholder="Group..."
+                          styles={customSelectStyles}
+                          isClearable
+                          isSearchable
+                        />
                       </div>
 
                       {/* Sub-Group */}
-                      <div className="w-full sm:w-32">
-                        <select
+                      <div className="w-full sm:w-48">
+                        <Select
                           value={item.selectedSubGroup}
-                          disabled={!item.selectedGroup}
-                          onChange={(e) =>
-                            handleItemChange(
-                              idx,
-                              "selectedSubGroup",
-                              e.target.value,
-                            )
-                          }
-                          className="select select-bordered select-xs w-full disabled:opacity-50"
-                        >
-                          <option value="">Sub-Group...</option>
-                          {availableSubGroups.map((sg, i) => (
-                            <option
-                              key={i}
-                              value={typeof sg === "string" ? sg : sg.name}
-                            >
-                              {typeof sg === "string" ? sg : sg.name}
-                            </option>
-                          ))}
-                        </select>
+                          onChange={(val) => handleItemChange(idx, "selectedSubGroup", val)}
+                          options={availableSubGroups}
+                          placeholder="Sub-Group..."
+                          isDisabled={!item.selectedGroup}
+                          styles={customSelectStyles}
+                          isClearable
+                          isSearchable
+                        />
                       </div>
 
                       {/* Product */}
-                      <div className="flex-1 min-w-[150px]">
-                        <select
+                      <div className="flex-1 min-w-[200px]">
+                        <Select
                           value={item.productId}
-                          onChange={(e) =>
-                            handleItemChange(idx, "productId", e.target.value)
-                          }
-                          className="select select-bordered select-xs w-full font-medium"
-                        >
-                          <option value="">Select Product...</option>
-                          {filteredProducts.map((p) => {
-                            const pId = p.productId || p._id;
-                            const pName = p.productName || p.name;
-                            return (
-                              <option key={pId} value={pId}>
-                                {pName}
-                              </option>
-                            );
-                          })}
-                        </select>
+                          onChange={(val) => handleItemChange(idx, "productId", val)}
+                          options={filteredProducts}
+                          placeholder="Select Product..."
+                          styles={customSelectStyles}
+                          isSearchable
+                        />
                       </div>
 
                       {/* Current Stock */}
-                      <div className="w-16 text-center">
-                        <span className="badge badge-ghost badge-sm w-full font-medium text-[11px] py-1">
+                      <div className="w-20 text-center">
+                        <span className="badge badge-ghost badge-lg w-full font-bold text-xs py-2">
                           {item.currentStock}
                         </span>
                       </div>
 
                       {/* In Transit */}
-                      <div className="w-16 text-center">
-                        <span className="badge badge-warning/20 text-warning-content badge-sm w-full font-medium text-[11px] py-1">
+                      <div className="w-20 text-center">
+                        <span className="badge badge-warning/20 text-warning-content badge-lg w-full font-bold text-xs py-2">
                           {item.transitStock}
                         </span>
                       </div>
 
                       {/* Order Qty */}
-                      <div className="w-16">
+                      <div className="w-20">
                         <input
                           type="number"
                           min="0"
@@ -556,12 +535,12 @@ const StoreProductModal = ({
                           onChange={(e) =>
                             handleItemChange(idx, "orderQty", e.target.value)
                           }
-                          className="input input-bordered input-xs w-full text-center font-bold"
+                          className="input input-bordered input-sm w-full text-center font-bold text-base"
                         />
                       </div>
 
                       {/* Price */}
-                      <div className="w-20">
+                      <div className="w-24">
                         <input
                           type="number"
                           min="0"
@@ -569,12 +548,12 @@ const StoreProductModal = ({
                           onChange={(e) =>
                             handleItemChange(idx, "unitPrice", e.target.value)
                           }
-                          className="input input-bordered input-xs w-full text-right"
+                          className="input input-bordered input-sm w-full text-right text-base"
                         />
                       </div>
 
                       {/* Weight */}
-                      <div className="w-16">
+                      <div className="w-20">
                         <input
                           type="number"
                           step="0.01"
@@ -583,13 +562,13 @@ const StoreProductModal = ({
                           onChange={(e) =>
                             handleItemChange(idx, "unitWeight", e.target.value)
                           }
-                          className="input input-bordered input-xs w-full text-center"
+                          className="input input-bordered input-sm w-full text-center text-base"
                         />
                       </div>
 
                       {/* Unit Cost */}
-                      <div className="w-24 text-right">
-                        <span className="font-bold text-xs text-info block px-1">
+                      <div className="w-28 text-right">
+                        <span className="font-bold text-sm text-info block px-1">
                           ৳
                           {calcItem?.unitCostAfterCalc
                             ? calcItem.unitCostAfterCalc.toFixed(2)
@@ -598,8 +577,8 @@ const StoreProductModal = ({
                       </div>
 
                       {/* Total + Ship */}
-                      <div className="w-24 text-right">
-                        <span className="font-bold text-xs text-teal-600 block px-1">
+                      <div className="w-28 text-right">
+                        <span className="font-bold text-sm text-teal-600 block px-1">
                           ৳
                           {calcItem?.totalWithShipping
                             ? calcItem.totalWithShipping.toFixed(2)
@@ -608,14 +587,14 @@ const StoreProductModal = ({
                       </div>
 
                       {/* Delete */}
-                      <div className="w-8 flex justify-center">
+                      <div className="w-10 flex justify-center">
                         <button
                           type="button"
                           onClick={() => handleRemoveItemRow(idx)}
                           disabled={items.length === 1}
-                          className="btn btn-square btn-ghost btn-xs text-error hover:bg-error/10 disabled:opacity-20"
+                          className="btn btn-square btn-ghost btn-sm text-error hover:bg-error/10 disabled:opacity-20"
                         >
-                          <Trash2 className="size-4" />
+                          <Trash2 className="size-5" />
                         </button>
                       </div>
                     </motion.div>
@@ -624,44 +603,44 @@ const StoreProductModal = ({
               </div>
 
               {/* Summary Bar */}
-              <div className="bg-base-200 p-2.5 rounded-xl border border-base-300 grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+              <div className="bg-base-200 p-4 rounded-xl border border-base-300 grid grid-cols-2 sm:grid-cols-5 gap-4 text-center text-sm">
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
+                  <span className="text-xs uppercase font-bold text-base-content/70 block">
                     Cur. Stock
                   </span>
-                  <span className="font-bold">
+                  <span className="font-bold text-base">
                     {calculations.totalCurrentStock}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
+                  <span className="text-xs uppercase font-bold text-base-content/70 block">
                     In Transit
                   </span>
-                  <span className="font-bold text-warning">
+                  <span className="font-bold text-warning text-base">
                     {calculations.totalTransitStock}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
+                  <span className="text-xs uppercase font-bold text-base-content/70 block">
                     Order Qty
                   </span>
-                  <span className="font-bold text-primary">
+                  <span className="font-bold text-primary text-base">
                     {calculations.totalOrderQty}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
+                  <span className="text-xs uppercase font-bold text-base-content/70 block">
                     Total Weight
                   </span>
-                  <span className="font-bold">
+                  <span className="font-bold text-base">
                     {calculations.totalBatchWeight.toFixed(2)} kg
                   </span>
                 </div>
                 <div className="col-span-2 sm:col-span-1">
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
+                  <span className="text-xs uppercase font-bold text-base-content/70 block">
                     Subtotal (W/ Ship & VAT)
                   </span>
-                  <span className="font-bold text-teal-600">
+                  <span className="font-bold text-teal-600 text-base">
                     ৳{" "}
                     {calculations.totalItemsWithShipping.toLocaleString(
                       undefined,
@@ -672,15 +651,15 @@ const StoreProductModal = ({
               </div>
 
               {/* Expenses Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                <div className="space-y-2 bg-base-200/40 p-3 rounded-xl border border-base-300">
-                  <h5 className="font-bold text-xs uppercase text-base-content/70 flex items-center gap-1.5">
-                    <Calculator className="size-4" /> Expenses Breakdown
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                <div className="space-y-3 bg-base-200/40 p-4 rounded-xl border border-base-300">
+                  <h5 className="font-bold text-sm uppercase text-base-content/80 flex items-center gap-1.5">
+                    <Calculator className="size-5" /> Expenses Breakdown
                   </h5>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
+                      <label className="label py-1 text-xs font-bold">
                         Shipping Cost (৳)
                       </label>
                       <input
@@ -688,11 +667,11 @@ const StoreProductModal = ({
                         name="shippingCost"
                         value={expenses.shippingCost}
                         onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
+                        className="input input-bordered input-sm w-full text-base"
                       />
                     </div>
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
+                      <label className="label py-1 text-xs font-bold">
                         Transit Cost (৳)
                       </label>
                       <input
@@ -700,15 +679,15 @@ const StoreProductModal = ({
                         name="transitCost"
                         value={expenses.transitCost}
                         onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
+                        className="input input-bordered input-sm w-full text-base"
                       />
                     </div>
 
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
+                      <label className="label py-1 text-xs font-bold">
                         VAT {expenses.vatType === "percent" ? "(%)" : "(৳)"}
                       </label>
-                      <div className="flex gap-1">
+                      <div className="flex gap-2">
                         <input
                           type="number"
                           name="vatValue"
@@ -717,13 +696,13 @@ const StoreProductModal = ({
                           placeholder={
                             expenses.vatType === "percent" ? "%" : "৳"
                           }
-                          className="input input-bordered input-xs w-full"
+                          className="input input-bordered input-sm w-full text-base"
                         />
                         <select
                           name="vatType"
                           value={expenses.vatType}
                           onChange={handleExpenseChange}
-                          className="select select-bordered select-xs font-bold text-primary"
+                          className="select select-bordered select-sm font-bold text-primary text-base"
                         >
                           <option value="percent">%</option>
                           <option value="amount">৳</option>
@@ -732,7 +711,7 @@ const StoreProductModal = ({
                     </div>
 
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
+                      <label className="label py-1 text-xs font-bold">
                         Other Cost (৳)
                       </label>
                       <input
@@ -740,26 +719,26 @@ const StoreProductModal = ({
                         name="otherCost"
                         value={expenses.otherCost}
                         onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
+                        className="input input-bordered input-sm w-full text-base"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-base-200/70 p-3 rounded-xl border border-base-300 flex flex-col justify-between space-y-1">
-                  <h5 className="font-bold text-xs uppercase text-base-content/70">
+                <div className="bg-base-200/70 p-4 rounded-xl border border-base-300 flex flex-col justify-between space-y-2">
+                  <h5 className="font-bold text-sm uppercase text-base-content/80">
                     Grand Order Calculation
                   </h5>
 
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between text-base-content/70">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-base-content/80 font-medium">
                       <span>Base Subtotal:</span>
-                      <span className="font-semibold">
+                      <span className="font-bold text-base">
                         ৳ {calculations.rawSubtotal.toLocaleString()}
                       </span>
                     </div>
 
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                    <div className="flex justify-between text-base-content/70 text-xs pl-2 border-l-2 border-teal-500/40">
                       <span>
                         • Shipping ({calculations.totalBatchWeight.toFixed(2)}{" "}
                         kg @ ৳{calculations.shippingCostPerKg.toFixed(2)}/kg):
@@ -769,7 +748,7 @@ const StoreProductModal = ({
                         {(Number(expenses.shippingCost) || 0).toLocaleString()}
                       </span>
                     </div>
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                    <div className="flex justify-between text-base-content/70 text-xs pl-2 border-l-2 border-teal-500/40">
                       <span>
                         • VAT (
                         {expenses.vatType === "percent"
@@ -781,13 +760,13 @@ const StoreProductModal = ({
                         ৳ {calculations.calculatedVatAmount.toLocaleString()}
                       </span>
                     </div>
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                    <div className="flex justify-between text-base-content/70 text-xs pl-2 border-l-2 border-teal-500/40">
                       <span>• Transit Cost:</span>
                       <span>
                         ৳ {(Number(expenses.transitCost) || 0).toLocaleString()}
                       </span>
                     </div>
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                    <div className="flex justify-between text-base-content/70 text-xs pl-2 border-l-2 border-teal-500/40">
                       <span>• Other Expenses:</span>
                       <span>
                         ৳ {(Number(expenses.otherCost) || 0).toLocaleString()}
@@ -795,7 +774,7 @@ const StoreProductModal = ({
                     </div>
 
                     <div className="divider my-1"></div>
-                    <div className="flex justify-between text-sm font-bold text-teal-600">
+                    <div className="flex justify-between font-bold text-lg text-teal-600">
                       <span>Grand Total:</span>
                       <span>
                         ৳{" "}
@@ -809,20 +788,20 @@ const StoreProductModal = ({
                 </div>
               </div>
 
-              {/* Submit Button */}
-              <div className="pt-2 flex justify-end gap-2">
+              {/* Submit Buttons */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-base-300">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="btn btn-sm btn-ghost"
+                  className="btn btn-ghost px-6 text-base"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white px-6"
+                  className="btn bg-teal-600 hover:bg-teal-700 text-white px-8 text-base border-0"
                 >
-                  Create Batch Order
+                  Confirm Purchase Order
                 </button>
               </div>
             </form>
