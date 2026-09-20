@@ -107,7 +107,6 @@ const EditPurchaseOrderModal = ({
           transitCost:
             editData.expenses.transitCost ?? editData.expenses.transit ?? 0,
           vatValue: editData.expenses.vatValue ?? editData.expenses.vat ?? 0,
-          // Default to amount instead of percent if raw JSON only provides "vat" > 0
           vatType:
             editData.expenses.vatType ||
             (editData.expenses.vat ? "amount" : "percent"),
@@ -451,7 +450,7 @@ const EditPurchaseOrderModal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-[10px_20px]">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -464,13 +463,13 @@ const EditPurchaseOrderModal = ({
             initial={{ scale: 0.96, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0, y: 15 }}
-            className="relative w-full max-w-[95vw] xl:max-w-7xl max-h-[92vh] bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden"
+            className="relative w-full h-full max-w-none max-h-none bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden text-sm"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300">
+            <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300 shrink-0">
               <div className="flex items-center gap-2">
-                <Store className="size-5 text-teal-600" />
-                <h3 className="font-bold text-lg">
+                <Store className="size-6 text-teal-600" />
+                <h3 className="font-bold text-xl">
                   {editData
                     ? `Edit Purchase Order (${editData.orderID || editData.orderNo || editData._id || ""})`
                     : "Batch Purchase Order Entry"}
@@ -481,26 +480,26 @@ const EditPurchaseOrderModal = ({
                 onClick={onClose}
                 className="btn btn-sm btn-circle btn-ghost"
               >
-                <X className="size-5" />
+                <X className="size-6" />
               </button>
             </div>
 
             {/* Form Content */}
             <form
               onSubmit={handleSubmit}
-              className="p-4 overflow-y-auto space-y-4 grow"
+              className="p-5 overflow-y-auto space-y-5 grow"
             >
               {/* Supplier & Dates Selection Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-base-200/50 p-4 rounded-xl border border-base-300">
                 <div>
-                  <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
-                    <Building2 className="size-3.5 text-teal-600" /> Supplier
+                  <label className="label py-1 text-sm font-semibold flex items-center gap-2 text-base-content/80">
+                    <Building2 className="size-4 text-teal-600" /> Supplier
                     Name
                   </label>
                   <select
                     value={selectedSupplier}
                     onChange={(e) => setSelectedSupplier(e.target.value)}
-                    className="select select-bordered select-xs w-full font-medium"
+                    className="select select-bordered select-sm w-full font-medium text-sm"
                     required
                   >
                     <option value="">Select Supplier...</option>
@@ -516,38 +515,38 @@ const EditPurchaseOrderModal = ({
                 </div>
 
                 <div>
-                  <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
-                    <Calendar className="size-3.5 text-teal-600" /> Order Date
+                  <label className="label py-1 text-sm font-semibold flex items-center gap-2 text-base-content/80">
+                    <Calendar className="size-4 text-teal-600" /> Order Date
                   </label>
                   <input
                     type="date"
                     value={orderDate}
                     onChange={(e) => setOrderDate(e.target.value)}
-                    className="input input-bordered input-xs w-full font-medium"
+                    className="input input-bordered input-sm w-full font-medium text-sm"
                     required
                   />
                 </div>
 
                 <div>
-                  <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
-                    <Calendar className="size-3.5 text-teal-600" /> Expected
+                  <label className="label py-1 text-sm font-semibold flex items-center gap-2 text-base-content/80">
+                    <Calendar className="size-4 text-teal-600" /> Expected
                     Receive Date
                   </label>
                   <input
                     type="date"
                     value={expectedReceiveDate}
                     onChange={(e) => setExpectedReceiveDate(e.target.value)}
-                    className="input input-bordered input-xs w-full font-medium"
+                    className="input input-bordered input-sm w-full font-medium text-sm"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-base-content/70 flex items-center gap-1.5">
-                    <Box className="size-4" /> Item Details
+                  <h4 className="font-bold text-sm uppercase tracking-wider text-base-content/80 flex items-center gap-2">
+                    <Box className="size-5" /> Item Details
                   </h4>
-                  <span className="text-xs text-base-content/60 font-medium">
+                  <span className="text-sm text-base-content/70 font-medium">
                     Shipping Rate:{" "}
                     <b className="text-teal-600">
                       ৳ {calculations.shippingCostPerKg.toFixed(2)} / kg
@@ -555,18 +554,18 @@ const EditPurchaseOrderModal = ({
                   </span>
                 </div>
 
-                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-base-300/40 rounded-lg text-[11px] font-semibold text-base-content/70 text-center">
-                  <div className="w-32 text-left">Group</div>
-                  <div className="w-32 text-left">Sub-Group</div>
+                <div className="hidden lg:flex items-center gap-3 px-4 py-2 bg-base-300/40 rounded-lg text-xs font-bold text-base-content/80 text-center">
+                  <div className="w-40 text-left">Group</div>
+                  <div className="w-40 text-left">Sub-Group</div>
                   <div className="flex-1 text-left">Product</div>
-                  <div className="w-16">Cur. Stock</div>
-                  <div className="w-16">In Transit</div>
-                  <div className="w-16">Order Qty</div>
-                  <div className="w-20">Price (৳)</div>
-                  <div className="w-16">Wt (kg)</div>
-                  <div className="w-24 text-right">Unit Cost</div>
-                  <div className="w-24 text-right">Total + Ship</div>
-                  <div className="w-8"></div>
+                  <div className="w-20">Cur. Stock</div>
+                  <div className="w-20">In Transit</div>
+                  <div className="w-20">Order Qty</div>
+                  <div className="w-24">Price (৳)</div>
+                  <div className="w-20">Wt (kg)</div>
+                  <div className="w-28 text-right">Unit Cost</div>
+                  <div className="w-28 text-right">Total + Ship</div>
+                  <div className="w-10"></div>
                 </div>
 
                 {items.map((item, idx) => {
@@ -605,9 +604,9 @@ const EditPurchaseOrderModal = ({
                       key={idx}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="flex flex-wrap lg:flex-nowrap items-center gap-2 bg-base-200/50 p-2 rounded-xl border border-base-300 text-xs"
+                      className="flex flex-wrap lg:flex-nowrap items-center gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300 text-sm"
                     >
-                      <div className="w-full sm:w-32">
+                      <div className="w-full sm:w-40">
                         <select
                           value={item.selectedGroup}
                           onChange={(e) =>
@@ -617,7 +616,7 @@ const EditPurchaseOrderModal = ({
                               e.target.value,
                             )
                           }
-                          className="select select-bordered select-xs w-full"
+                          className="select select-bordered select-sm w-full text-sm"
                         >
                           <option value="">Group...</option>
                           {availableGroups.map((g, i) => (
@@ -625,7 +624,6 @@ const EditPurchaseOrderModal = ({
                               {g}
                             </option>
                           ))}
-                          {/* Fallback option if JSON mock data isn't in availableGroups props yet */}
                           {!availableGroups.includes(item.selectedGroup) &&
                             item.selectedGroup && (
                               <option value={item.selectedGroup}>
@@ -635,7 +633,7 @@ const EditPurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      <div className="w-full sm:w-32">
+                      <div className="w-full sm:w-40">
                         <select
                           value={item.selectedSubGroup}
                           disabled={!item.selectedGroup}
@@ -646,7 +644,7 @@ const EditPurchaseOrderModal = ({
                               e.target.value,
                             )
                           }
-                          className="select select-bordered select-xs w-full disabled:opacity-50"
+                          className="select select-bordered select-sm w-full disabled:opacity-50 text-sm"
                         >
                           <option value="">Sub-Group...</option>
                           {availableSubGroups.map((sg, i) => (
@@ -657,7 +655,6 @@ const EditPurchaseOrderModal = ({
                               {typeof sg === "string" ? sg : sg.name}
                             </option>
                           ))}
-                          {/* Fallback option if JSON mock data isn't in availableSubGroups props yet */}
                           {!availableSubGroups.some(
                             (sg) =>
                               (typeof sg === "string" ? sg : sg.name) ===
@@ -671,13 +668,13 @@ const EditPurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      <div className="flex-1 min-w-[150px]">
+                      <div className="flex-1 min-w-[120px]">
                         <select
                           value={item.productId}
                           onChange={(e) =>
                             handleItemChange(idx, "productId", e.target.value)
                           }
-                          className="select select-bordered select-xs w-full font-medium"
+                          className="select select-bordered select-sm w-full font-medium text-sm"
                         >
                           <option value="">Select Product...</option>
                           {filteredProducts.map((p) => {
@@ -689,7 +686,6 @@ const EditPurchaseOrderModal = ({
                               </option>
                             );
                           })}
-                          {/* Fallback option if JSON mock data isn't in filteredProducts props yet */}
                           {!filteredProducts.some(
                             (p) =>
                               String(p.productId || p._id || p.id) ===
@@ -703,19 +699,19 @@ const EditPurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      <div className="w-16 text-center">
-                        <span className="badge badge-ghost badge-sm w-full font-medium text-[11px] py-1">
+                      <div className="w-20 text-center">
+                        <span className="badge badge-ghost badge-md w-full font-medium text-xs py-2">
                           {item.currentStock}
                         </span>
                       </div>
 
-                      <div className="w-16 text-center">
-                        <span className="badge badge-warning/20 text-warning-content badge-sm w-full font-medium text-[11px] py-1">
+                      <div className="w-20 text-center">
+                        <span className="badge badge-warning/20 text-warning-content badge-md w-full font-medium text-xs py-2">
                           {item.transitStock}
                         </span>
                       </div>
 
-                      <div className="w-16">
+                      <div className="w-20">
                         <input
                           type="number"
                           min="0"
@@ -723,11 +719,11 @@ const EditPurchaseOrderModal = ({
                           onChange={(e) =>
                             handleItemChange(idx, "orderQty", e.target.value)
                           }
-                          className="input input-bordered input-xs w-full text-center font-bold"
+                          className="input input-bordered input-sm w-full text-center font-bold text-sm"
                         />
                       </div>
 
-                      <div className="w-20">
+                      <div className="w-24">
                         <input
                           type="number"
                           min="0"
@@ -735,11 +731,11 @@ const EditPurchaseOrderModal = ({
                           onChange={(e) =>
                             handleItemChange(idx, "unitPrice", e.target.value)
                           }
-                          className="input input-bordered input-xs w-full text-right"
+                          className="input input-bordered input-sm w-full text-right text-sm"
                         />
                       </div>
 
-                      <div className="w-16">
+                      <div className="w-20">
                         <input
                           type="number"
                           step="0.01"
@@ -748,12 +744,12 @@ const EditPurchaseOrderModal = ({
                           onChange={(e) =>
                             handleItemChange(idx, "unitWeight", e.target.value)
                           }
-                          className="input input-bordered input-xs w-full text-center"
+                          className="input input-bordered input-sm w-full text-center text-sm"
                         />
                       </div>
 
-                      <div className="w-24 text-right">
-                        <span className="font-bold text-xs text-info block px-1">
+                      <div className="w-28 text-right">
+                        <span className="font-bold text-sm text-info block px-1">
                           ৳
                           {calcItem?.unitCostAfterCalc
                             ? calcItem.unitCostAfterCalc.toFixed(2)
@@ -761,8 +757,8 @@ const EditPurchaseOrderModal = ({
                         </span>
                       </div>
 
-                      <div className="w-24 text-right">
-                        <span className="font-bold text-xs text-teal-600 block px-1">
+                      <div className="w-28 text-right">
+                        <span className="font-bold text-sm text-teal-600 block px-1">
                           ৳
                           {calcItem?.totalWithShipping
                             ? calcItem.totalWithShipping.toFixed(2)
@@ -770,14 +766,14 @@ const EditPurchaseOrderModal = ({
                         </span>
                       </div>
 
-                      <div className="w-8 flex justify-center">
+                      <div className="w-10 flex justify-center">
                         <button
                           type="button"
                           onClick={() => handleRemoveItemRow(idx)}
                           disabled={items.length === 1}
-                          className="btn btn-square btn-ghost btn-xs text-error hover:bg-error/10 disabled:opacity-20"
+                          className="btn btn-square btn-ghost btn-sm text-error hover:bg-error/10 disabled:opacity-20"
                         >
-                          <Trash2 className="size-4" />
+                          <Trash2 className="size-5" />
                         </button>
                       </div>
                     </motion.div>
@@ -786,44 +782,44 @@ const EditPurchaseOrderModal = ({
               </div>
 
               {/* Summary Bar */}
-              <div className="bg-base-200 p-2.5 rounded-xl border border-base-300 grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
+              <div className="bg-base-200 p-3.5 rounded-xl border border-base-300 grid grid-cols-2 sm:grid-cols-5 gap-3 text-center text-sm">
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
+                  <span className="text-xs uppercase font-semibold text-base-content/70 block">
                     Cur. Stock
                   </span>
-                  <span className="font-bold">
+                  <span className="font-bold text-base">
                     {calculations.totalCurrentStock}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
+                  <span className="text-xs uppercase font-semibold text-base-content/70 block">
                     In Transit
                   </span>
-                  <span className="font-bold text-warning">
+                  <span className="font-bold text-base text-warning">
                     {calculations.totalTransitStock}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
+                  <span className="text-xs uppercase font-semibold text-base-content/70 block">
                     Order Qty
                   </span>
-                  <span className="font-bold text-primary">
+                  <span className="font-bold text-base text-primary">
                     {calculations.totalOrderQty}
                   </span>
                 </div>
                 <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
+                  <span className="text-xs uppercase font-semibold text-base-content/70 block">
                     Total Weight
                   </span>
-                  <span className="font-bold">
+                  <span className="font-bold text-base">
                     {calculations.totalBatchWeight.toFixed(2)} kg
                   </span>
                 </div>
                 <div className="col-span-2 sm:col-span-1">
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
+                  <span className="text-xs uppercase font-semibold text-base-content/70 block">
                     Subtotal (W/ Ship & VAT)
                   </span>
-                  <span className="font-bold text-teal-600">
+                  <span className="font-bold text-base text-teal-600">
                     ৳{" "}
                     {calculations.totalItemsWithShipping.toLocaleString(
                       undefined,
@@ -834,15 +830,15 @@ const EditPurchaseOrderModal = ({
               </div>
 
               {/* Expenses Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                <div className="space-y-2 bg-base-200/40 p-3 rounded-xl border border-base-300">
-                  <h5 className="font-bold text-xs uppercase text-base-content/70 flex items-center gap-1.5">
-                    <Calculator className="size-4" /> Expenses Breakdown
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div className="space-y-3 bg-base-200/40 p-4 rounded-xl border border-base-300">
+                  <h5 className="font-bold text-sm uppercase text-base-content/80 flex items-center gap-2">
+                    <Calculator className="size-5" /> Expenses Breakdown
                   </h5>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
+                      <label className="label py-1 text-xs font-semibold">
                         Shipping Cost (৳)
                       </label>
                       <input
@@ -850,11 +846,11 @@ const EditPurchaseOrderModal = ({
                         name="shippingCost"
                         value={expenses.shippingCost}
                         onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
+                        className="input input-bordered input-sm w-full text-sm"
                       />
                     </div>
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
+                      <label className="label py-1 text-xs font-semibold">
                         Transit Cost (৳)
                       </label>
                       <input
@@ -862,12 +858,12 @@ const EditPurchaseOrderModal = ({
                         name="transitCost"
                         value={expenses.transitCost}
                         onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
+                        className="input input-bordered input-sm w-full text-sm"
                       />
                     </div>
 
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
+                      <label className="label py-1 text-xs font-semibold">
                         VAT {expenses.vatType === "percent" ? "(%)" : "(৳)"}
                       </label>
                       <div className="flex gap-1">
@@ -879,13 +875,13 @@ const EditPurchaseOrderModal = ({
                           placeholder={
                             expenses.vatType === "percent" ? "%" : "৳"
                           }
-                          className="input input-bordered input-xs w-full"
+                          className="input input-bordered input-sm w-full text-sm"
                         />
                         <select
                           name="vatType"
                           value={expenses.vatType}
                           onChange={handleExpenseChange}
-                          className="select select-bordered select-xs font-bold text-primary"
+                          className="select select-bordered select-sm font-bold text-primary text-sm"
                         >
                           <option value="percent">%</option>
                           <option value="amount">৳</option>
@@ -894,7 +890,7 @@ const EditPurchaseOrderModal = ({
                     </div>
 
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
+                      <label className="label py-1 text-xs font-semibold">
                         Other Cost (৳)
                       </label>
                       <input
@@ -902,26 +898,26 @@ const EditPurchaseOrderModal = ({
                         name="otherCost"
                         value={expenses.otherCost}
                         onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
+                        className="input input-bordered input-sm w-full text-sm"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-base-200/70 p-3 rounded-xl border border-base-300 flex flex-col justify-between space-y-1">
-                  <h5 className="font-bold text-xs uppercase text-base-content/70">
+                <div className="bg-base-200/70 p-4 rounded-xl border border-base-300 flex flex-col justify-between space-y-2">
+                  <h5 className="font-bold text-sm uppercase text-base-content/80">
                     Grand Order Calculation
                   </h5>
 
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between text-base-content/70">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-base-content/80">
                       <span>Base Subtotal:</span>
                       <span className="font-semibold">
                         ৳ {calculations.rawSubtotal.toLocaleString()}
                       </span>
                     </div>
 
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                    <div className="flex justify-between text-base-content/70 text-xs pl-2 border-l-2 border-teal-500/40">
                       <span>
                         • Shipping ({calculations.totalBatchWeight.toFixed(2)}{" "}
                         kg @ ৳{calculations.shippingCostPerKg.toFixed(2)}/kg):
@@ -932,7 +928,7 @@ const EditPurchaseOrderModal = ({
                       </span>
                     </div>
 
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                    <div className="flex justify-between text-base-content/70 text-xs pl-2 border-l-2 border-teal-500/40">
                       <span>
                         • VAT (
                         {expenses.vatType === "percent"
@@ -952,7 +948,7 @@ const EditPurchaseOrderModal = ({
                       </span>
                     </div>
 
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
+                    <div className="flex justify-between text-base-content/70 text-xs pl-2 border-l-2 border-teal-500/40">
                       <span>• Extra Expenses (Transit + Other):</span>
                       <span>
                         ৳ {calculations.totalExtraExpenses.toLocaleString()}
@@ -961,7 +957,7 @@ const EditPurchaseOrderModal = ({
 
                     <div className="divider my-1"></div>
 
-                    <div className="flex justify-between text-sm font-bold text-teal-600">
+                    <div className="flex justify-between text-base font-bold text-teal-600">
                       <span>Grand Total:</span>
                       <span>
                         ৳{" "}
@@ -973,17 +969,17 @@ const EditPurchaseOrderModal = ({
                     </div>
                   </div>
 
-                  <div className="card-actions justify-end pt-2">
+                  <div className="card-actions justify-end pt-3">
                     <button
                       type="button"
                       onClick={onClose}
-                      className="btn btn-sm btn-ghost"
+                      className="btn btn-sm btn-ghost text-sm"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white"
+                      className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white text-sm px-5"
                     >
                       {editData ? "Update Order" : "Save Order"}
                     </button>

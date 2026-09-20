@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { ShoppingCart, Box, Calendar as CalendarIcon } from "lucide-react";
+import  { useState, useEffect, useMemo, useRef } from "react";
+import { ShoppingCart, Box } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Swal from "sweetalert2";
@@ -16,8 +16,8 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   const [productsGroupSubgroup, setProductsGroupSubgroup] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [selectedState, setSelectedState] = useState("");
-  const [selectedCustomer, setSelectedCustomer] = useState("");
+  const [selectedState, setSelectedState] = useState(null);
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   const getTodayISO = () => {
     const today = new Date();
@@ -31,9 +31,9 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   const dateInputRef = useRef(null);
 
   const initialRow = {
-    selectedGroup: "",
-    selectedSubGroup: "",
-    productId: "",
+    selectedGroup: null,
+    selectedSubGroup: null,
+    productId: null,
     productName: "",
     currentStock: 0,
     orderQty: 1,
@@ -51,7 +51,6 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
   const [paidAmount, setPaidAmount] = useState(0);
 
-  // ডাটা ফেচ করা এবং এডিট মোড হলে ডাটা প্রি-পপুলেট করা
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -64,21 +63,23 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
         ]);
 
         const stateData = await stateRes.json();
-        const custData = await custRes.ok ? await custRes.json() : [];
+        const custData = custRes.ok ? await custRes.json() : [];
         const prodData = await prodRes.json();
         const groupData = await groupRes.json();
 
-        setStates(stateData);
-        setCustomers(custData);
-        setProducts(prodData);
-        setProductsGroupSubgroup(groupData);
+        setStates(Array.isArray(stateData) ? stateData : []);
+        setCustomers(Array.isArray(custData) ? custData : []);
+        setProducts(Array.isArray(prodData) ? prodData : []);
+        setProductsGroupSubgroup(Array.isArray(groupData) ? groupData : []);
 
-        // যদি editData থাকে, তবে ফর্মের স্টেটগুলো সেই ডাটা দিয়ে ফিলআপ করে দেবো
         if (editData) {
-          setSelectedState(editData.state || "");
-          setSelectedCustomer(editData.customerName || "");
+          if (editData.state) {
+            setSelectedState({ value: editData.state, label: editData.state });
+          }
+          if (editData.customerName) {
+            setSelectedCustomer({ value: editData.customerName, label: editData.customerName });
+          }
           
-          // তারিখ কনভার্শন (যদি DD/MM/YYYY থেকে YYYY-MM-DD ফরম্যাটে নিতে হয়)
           if (editData.orderDate) {
             const parts = editData.orderDate.split("/");
             if (parts.length === 3) {
@@ -89,8 +90,13 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
           }
 
           if (editData.soldItems && editData.soldItems.length > 0) {
-            // শেষে একটি খালি রো যোগ করা যাতে নতুন আইটেম যোগ করা যায়
-            setItems([...editData.soldItems, { ...initialRow }]);
+            const mappedEditItems = editData.soldItems.map(item => ({
+              ...item,
+              selectedGroup: item.selectedGroup ? { value: item.selectedGroup, label: item.selectedGroup } : null,
+              selectedSubGroup: item.selectedSubGroup ? { value: item.selectedSubGroup, label: item.selectedSubGroup } : null,
+              productId: item.productId ? { value: item.productId, label: item.productName || item.productId } : null,
+            }));
+            setItems([...mappedEditItems, { ...initialRow }]);
           }
 
           if (editData.globalDiscount) {
@@ -117,16 +123,32 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   const availableGroups = useMemo(() => {
     if (!Array.isArray(productsGroupSubgroup)) return [];
     return productsGroupSubgroup
-      .map((item) => item.group || item.groupName || item.name)
+      .map((item) => {
+        const name = item.group || item.groupName || item.name;
+        return name ? { value: name, label: name } : null;
+      })
       .filter(Boolean);
   }, [productsGroupSubgroup]);
 
+  // "All" ba khali thakle shob customer dekhabe, nirdisto state thakle filter hobe
   const filteredCustomers = useMemo(() => {
-    if (!selectedState) return [];
+    const currentState = selectedState?.value || selectedState;
+    if (!currentState || currentState === "All") {
+      return customers;
+    }
     return customers.filter(
-      (c) => c.state === selectedState || c.customerState === selectedState
+      (c) => c.state === currentState || c.customerState === currentState
     );
   }, [customers, selectedState]);
+
+  const customerOptions = useMemo(() => {
+    return Array.isArray(filteredCustomers)
+      ? filteredCustomers.map((c) => ({
+          value: c?.customerName || c?.name,
+          label: c?.customerName || c?.name,
+        }))
+      : [];
+  }, [filteredCustomers]);
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...items];
@@ -134,23 +156,24 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
     if (field === "selectedGroup") {
       currentRow.selectedGroup = value;
-      currentRow.selectedSubGroup = "";
-      currentRow.productId = "";
+      currentRow.selectedSubGroup = null;
+      currentRow.productId = null;
       currentRow.productName = "";
       currentRow.currentStock = 0;
       currentRow.unitPrice = 0;
       currentRow.discountValue = 0;
     } else if (field === "selectedSubGroup") {
       currentRow.selectedSubGroup = value;
-      currentRow.productId = "";
+      currentRow.productId = null;
       currentRow.productName = "";
       currentRow.currentStock = 0;
       currentRow.unitPrice = 0;
       currentRow.discountValue = 0;
     } else if (field === "productId") {
       currentRow.productId = value;
+      const targetId = value?.value || value;
       const selectedProd = products.find(
-        (p) => p.productId === value || p._id === value
+        (p) => p.productId === targetId || p._id === targetId
       );
       if (selectedProd) {
         currentRow.productName =
@@ -168,7 +191,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
     updatedItems[index] = currentRow;
 
-    if (field === "productId" && value !== "" && index === items.length - 1) {
+    if (field === "productId" && value !== null && index === items.length - 1) {
       updatedItems.push({ ...initialRow });
     }
 
@@ -191,7 +214,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   };
 
   const calculations = useMemo(() => {
-    const activeItems = items.filter((item) => item.productId !== "");
+    const activeItems = items.filter((item) => item.productId !== null && item.productId !== "");
 
     const totalOrderQty = activeItems.reduce(
       (acc, item) => acc + (Number(item.orderQty) || 0),
@@ -217,6 +240,9 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
       return {
         ...item,
+        productId: item.productId?.value || item.productId,
+        selectedGroup: item.selectedGroup?.value || item.selectedGroup,
+        selectedSubGroup: item.selectedSubGroup?.value || item.selectedSubGroup,
         totalPrice,
         discountAmount,
         afterDiscountPrice,
@@ -224,7 +250,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     });
 
     const rawSubtotal = calculatedItems
-      .filter((item) => item.productId !== "")
+      .filter((item) => item.productId !== null && item.productId !== "")
       .reduce((acc, item) => acc + (item.afterDiscountPrice || 0), 0);
 
     const gVal = Number(globalDiscount.value) || 0;
@@ -253,7 +279,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     e.preventDefault();
 
     const validItems = calculations.calculatedItems.filter(
-      (item) => item.productId !== ""
+      (item) => item.productId !== null && item.productId !== ""
     );
 
     if (validItems.length === 0) {
@@ -261,8 +287,10 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
       return;
     }
 
-    if (!selectedState || !selectedCustomer) {
-      toast.error("Please select State and Customer!", { autoClose: 2500 });
+    const customerVal = selectedCustomer?.value || selectedCustomer;
+
+    if (!customerVal) {
+      toast.error("Please select Customer!", { autoClose: 2500 });
       return;
     }
 
@@ -286,10 +314,11 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
       },
     }).then((result) => {
       if (result.isConfirmed) {
+        const stateVal = selectedState ? (selectedState?.value || selectedState) : "";
         const saleData = {
           ...(editData && editData._id ? { _id: editData._id } : {}),
-          state: selectedState,
-          customerName: selectedCustomer,
+          state: stateVal === "All" ? "" : stateVal,
+          customerName: customerVal,
           orderDate: convertToDDMMYYYY(orderDate),
           soldItems: validItems,
           globalDiscount: {
@@ -307,16 +336,13 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
         };
 
         if (editData) {
-          console.log("Updated Sale Data:", saleData);
           toast.success("Sell order updated successfully!", { autoClose: 2000 });
           onUpdateSuccess(saleData);
         } else {
-          console.log("Submitted Sale Data:", saleData);
           toast.success("Sell order created successfully!", { autoClose: 2000 });
-
           setItems([{ ...initialRow }]);
-          setSelectedState("");
-          setSelectedCustomer("");
+          setSelectedState(null);
+          setSelectedCustomer(null);
           setOrderDate(getTodayISO());
           setGlobalDiscount({ type: "percent", value: 0 });
           setPaidAmount(0);
@@ -328,7 +354,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   if (loading) return <div className="p-6">Loading sale form data...</div>;
 
   return (
-    <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+    <div className="w-full min-h-[calc(100vh-20px)] mt-[10px] px-[20px] pb-10 bg-base-100 box-border">
       <ToastContainer position="top-right" autoClose={3000} />
       
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-base-300">
@@ -341,14 +367,13 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
       <form onSubmit={handleSubmit} className="space-y-4">
         <SaleHeader
           states={states}
-          customers={customers}
+          customerOptions={customerOptions}
           selectedState={selectedState}
           setSelectedState={setSelectedState}
           selectedCustomer={selectedCustomer}
           setSelectedCustomer={setSelectedCustomer}
           orderDate={orderDate}
           setOrderDate={setOrderDate}
-          filteredCustomers={filteredCustomers}
           convertToDDMMYYYY={convertToDDMMYYYY}
           dateInputRef={dateInputRef}
         />
@@ -358,9 +383,10 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
             <Box className="size-4" /> Product Selection & Pricing
           </h4>
 
-          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-base-300/40 rounded-lg text-[11px] font-semibold text-base-content/70 text-center">
-            <div className="w-28 text-left">Group</div>
-            <div className="w-28 text-left">Sub-Group</div>
+          {/* Equal Flex Sizing Header - Aligned to Right */}
+          <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-base-300/40 rounded-lg text-[11px] font-semibold text-base-content/70 text-center justify-end">
+            <div className="flex-1 text-left">Group</div>
+            <div className="flex-1 text-left">Sub-Group</div>
             <div className="flex-1 text-left">Product</div>
             <div className="w-16">Stock</div>
             <div className="w-16">Quantity</div>
