@@ -1,13 +1,17 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, PackagePlus, Sparkles } from "lucide-react";
-import { toast } from "react-toastify";
 
-const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
-  const [selectedGroup, setSelectedGroup] = useState("");
-  const [subGroups, setSubGroups] = useState([]);
+const AddProductFormModal = ({
+  isOpen,
+  onClose,
+  onAddProduct,
+  groups,
+  subGroupsList = [],
+}) => {
+  const [selectedGroupId, setSelectedGroupId] = useState("");
+  const [filteredSubGroups, setFilteredSubGroups] = useState([]);
 
-  // Controlled Form State matching the updated Schema
   const [formData, setFormData] = useState({
     productId: "",
     productName: "",
@@ -16,13 +20,12 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
     selectedUnit: "pcs",
     purchasePrice: "",
     unitPrice: "",
-    weight: "", // quantity replaced with weight
+    weight: "",
   });
 
-  // Generate automatic formatted Product ID when modal opens
   useEffect(() => {
     if (isOpen) {
-      const generatedId = `PRD-${Math.floor(1000 + Math.random() * 9000)}`;
+      const generatedId = `PROD-${Math.floor(1000 + Math.random() * 9000)}`;
       setFormData({
         productId: generatedId,
         productName: "",
@@ -33,22 +36,40 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
         unitPrice: "",
         weight: "",
       });
-      setSelectedGroup("");
-      setSubGroups([]);
+      setSelectedGroupId("");
+      setFilteredSubGroups([]);
     }
   }, [isOpen]);
 
+  // Group change hole group er _id diye subgroup filter kora
   const handleGroupChange = (e) => {
-    const groupName = e.target.value;
-    setSelectedGroup(groupName);
+    const groupId = e.target.value; // Ekhane group er _id asche
+    setSelectedGroupId(groupId);
 
-    const groupObj = groups.find((g) => g.group === groupName);
-    setSubGroups(groupObj ? groupObj.subGroup : []);
+    if (groupId) {
+      // Subgroup er 'group' field er sathe select kora group er _id match korano hocche
+      const matchedSubs = subGroupsList.filter((sub) => {
+        const subGroupRef =
+          typeof sub.group === "string" ? sub.group : sub.group?._id;
+        return subGroupRef === groupId;
+      });
+      setFilteredSubGroups(matchedSubs);
+    } else {
+      setFilteredSubGroups([]);
+    }
 
     setFormData((prev) => ({
       ...prev,
-      productGroup: groupName,
-      productSubGroup: "",
+      productGroup: groupId, // Group er _id save hobe
+      productSubGroup: "", // Group change hole sub-group reset hobe
+    }));
+  };
+
+  const handleSubGroupChange = (e) => {
+    const subId = e.target.value; // Subgroup er _id
+    setFormData((prev) => ({
+      ...prev,
+      productSubGroup: subId,
     }));
   };
 
@@ -60,15 +81,6 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
   const handleSubmit = (e) => {
     e.preventDefault();
     onAddProduct(formData);
-
-    toast.success("New product added successfully!", {
-      position: "top-right",
-      autoClose: 2000,
-      hideProgressBar: false,
-      closeOnClick: true,
-      pauseOnHover: false,
-    });
-
     onClose();
   };
 
@@ -76,7 +88,6 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Overlay backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -85,15 +96,12 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
             className="fixed inset-0 bg-black/60 backdrop-blur-sm"
           />
 
-          {/* Modal Container */}
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            transition={{ type: "spring", duration: 0.3 }}
             className="relative w-full max-w-2xl bg-base-100 rounded-2xl shadow-2xl overflow-hidden border border-base-300 z-10"
           >
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300">
               <div className="flex items-center gap-2">
                 <PackagePlus className="size-5 text-primary" />
@@ -108,10 +116,8 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
               </button>
             </div>
 
-            {/* Modal Body Form */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {/* Auto Product ID */}
                 <div>
                   <label className="label text-xs font-semibold">
                     Product ID (Auto)
@@ -128,7 +134,6 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
                   </div>
                 </div>
 
-                {/* Product Name */}
                 <div>
                   <label className="label text-xs font-semibold">
                     Product Name <span className="text-error">*</span>
@@ -144,7 +149,7 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
                   />
                 </div>
 
-                {/* Dynamic Product Group Dropdown */}
+                {/* Product Group Dropdown */}
                 <div>
                   <label className="label text-xs font-semibold">
                     Product Group <span className="text-error">*</span>
@@ -157,15 +162,15 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
                     className="select select-bordered w-full text-sm"
                   >
                     <option value="">Select Group</option>
-                    {groups.map((item, idx) => (
-                      <option key={idx} value={item.group}>
-                        {item.group}
+                    {groups.map((item) => (
+                      <option key={item._id} value={item._id}>
+                        {item.groupName}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Dynamic Product Sub-Group Dropdown */}
+                {/* Product Sub Group Dropdown */}
                 <div>
                   <label className="label text-xs font-semibold">
                     Product Sub Group <span className="text-error">*</span>
@@ -174,20 +179,19 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
                     name="productSubGroup"
                     required
                     value={formData.productSubGroup}
-                    onChange={handleChange}
-                    disabled={!selectedGroup}
+                    onChange={handleSubGroupChange}
+                    disabled={!selectedGroupId}
                     className="select select-bordered w-full text-sm"
                   >
                     <option value="">Select Sub Group</option>
-                    {subGroups.map((sub, idx) => (
-                      <option key={idx} value={sub}>
-                        {sub}
+                    {filteredSubGroups.map((sub) => (
+                      <option key={sub._id} value={sub._id}>
+                        {sub.subGroupName}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Unit Selection */}
                 <div>
                   <label className="label text-xs font-semibold">Unit</label>
                   <select
@@ -204,22 +208,19 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
                   </select>
                 </div>
 
-                {/* Weight Input Field */}
                 <div>
-                  <label className="label text-xs font-semibold">
-                    Weight (e.g., 500g, 1.5kg)
-                  </label>
+                  <label className="label text-xs font-semibold">Weight</label>
                   <input
-                    type="text"
+                    type="number"
+                    step="0.01"
                     name="weight"
-                    placeholder="Enter product weight"
+                    placeholder="0"
                     value={formData.weight}
                     onChange={handleChange}
                     className="input input-bordered w-full text-sm"
                   />
                 </div>
 
-                {/* Purchase Price */}
                 <div>
                   <label className="label text-xs font-semibold">
                     Purchase Price (৳)
@@ -234,7 +235,6 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
                   />
                 </div>
 
-                {/* Selling Unit Price */}
                 <div>
                   <label className="label text-xs font-semibold">
                     Selling Price (৳)
@@ -250,7 +250,6 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
                 </div>
               </div>
 
-              {/* Submit Buttons */}
               <div className="flex justify-end gap-3 pt-4 border-t border-base-300 mt-6">
                 <button
                   type="button"
@@ -270,5 +269,4 @@ const AddProductFormModal = ({ isOpen, onClose, onAddProduct, groups }) => {
     </AnimatePresence>
   );
 };
-
 export default AddProductFormModal;

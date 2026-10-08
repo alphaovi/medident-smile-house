@@ -5,22 +5,41 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import PurchaseOrderTable from "./PurchaseOrderTable";
 import EditPurchaseOrderModal from "./EditPurchaseOrderModal";
+import { purchaseOrderService } from "../../../../services/purchaseOrderService/purchaseOrderService";
 
 const PurchaseOrderList = ({ orders, setOrders, loading, products, productsGroupSubgroup }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingOrder, setEditingOrder] = useState(null);
 
-  const getOrderId = (ord) => ord?.orderID || ord?.orderNo || ord?._id || ord?.id;
+  // কাস্টম আইডি বা purchaseId খুঁজে বের করার ফাংশন
+  const getOrderId = (ord) => ord?.purchaseId || ord?.orderID || ord?.orderNo || ord?.id || ord?._id;
 
-  const handleStatusChangeDirect = (orderKey, newStatus) => {
-    setOrders((prevOrders) =>
-      prevOrders.map((ord) => {
-        const currentId = getOrderId(ord);
-        return currentId === orderKey ? { ...ord, status: newStatus } : ord;
-      })
-    );
-    toast.success(`Order status updated to "${newStatus}"!`);
+  const handleStatusChangeDirect = async (orderKey, newStatus) => {
+    try {
+      const targetOrder = orders.find((ord) => getOrderId(ord) === orderKey || ord._id === orderKey);
+      if (!targetOrder) return;
+
+      const updatedPayload = {
+        ...targetOrder,
+        status: newStatus,
+      };
+
+      // ব্যাকএন্ড যেহেতু purchaseId দিয়ে খুঁজে, তাই এখানে _id এর বদলে getOrderId ব্যবহার করা হলো
+      const orderId = getOrderId(targetOrder) || orderKey;
+      await purchaseOrderService.updateOrder(orderId, updatedPayload);
+
+      setOrders((prevOrders) =>
+        prevOrders.map((ord) => {
+          const currentId = getOrderId(ord);
+          return (currentId === orderKey || ord._id === orderKey) ? { ...ord, status: newStatus } : ord;
+        })
+      );
+      toast.success(`Order status updated to "${newStatus}"!`);
+    } catch (error) {
+      console.error("Failed to update status:", error);
+      toast.error("Failed to update order status on server.");
+    }
   };
 
   const handleOpenEditModal = (order) => {
@@ -28,11 +47,11 @@ const PurchaseOrderList = ({ orders, setOrders, loading, products, productsGroup
     setIsModalOpen(true);
   };
 
-  const handleSaveOrder = (updatedData) => {
-    setOrders((prevOrders) => {
-      const updatedId = getOrderId(updatedData);
-      const exists = prevOrders.some((ord) => getOrderId(ord) === updatedId);
-
+  const handleSaveOrder = async (updatedData) => {
+    try {
+      // এখানেও _id এর পরিবর্তে কাস্টম purchaseId কে প্রাধান্য দেওয়া হলো
+      const orderId = getOrderId(updatedData) || updatedData._id;
+      
       const resolvedTotalAmount = 
         updatedData.totalAmount ?? 
         updatedData.grandTotal ?? 
@@ -41,39 +60,47 @@ const PurchaseOrderList = ({ orders, setOrders, loading, products, productsGroup
 
       const resolvedStatus = updatedData.status || "Ordered";
 
-      if (exists) {
-        return prevOrders.map((ord) =>
-          getOrderId(ord) === updatedId
-            ? {
-                ...ord,
-                ...updatedData,
-                totalAmount: resolvedTotalAmount,
-                status: ord.status || resolvedStatus,
-              }
-            : ord
-        );
-      } else {
-        const newOrder = {
-          ...updatedData,
-          orderID: updatedId || `PO-${Math.floor(100000 + Math.random() * 900000)}`,
-          totalAmount: resolvedTotalAmount,
-          status: resolvedStatus,
-        };
-        return [newOrder, ...prevOrders];
-      }
-    });
+      if (orderId && orders.some(ord => getOrderId(ord) === orderId || ord._id === orderId)) {
+        // Update existing order via API
+        const updatedResponse = await purchaseOrderService.updateOrder(orderId, updatedData);
+        const savedOrder = updatedResponse || updatedData;
 
-    toast.success("Purchase order updated successfully!");
+        setOrders((prevOrders) =>
+          prevOrders.map((ord) =>
+            (ord._id === orderId || getOrderId(ord) === orderId)
+              ? { ...ord, ...savedOrder, totalAmount: resolvedTotalAmount, status: resolvedStatus }
+              : ord
+          )
+        );
+        toast.success("Purchase order updated successfully!");
+      } else {
+        // Create new order via API
+        const newOrderPayload = {
+          purchaseId: `PO-${Date.now().toString().slice(-6)}`,
+          grandTotal: resolvedTotalAmount,
+          baseSubtotal: updatedData.totals?.rawSubtotal || 0,
+          status: resolvedStatus,
+          ...updatedData
+        };
+        
+        const createdOrder = await purchaseOrderService.createOrder(newOrderPayload);
+        setOrders((prevOrders) => [createdOrder || newOrderPayload, ...prevOrders]);
+        toast.success("Purchase order created successfully!");
+      }
+    } catch (error) {
+      console.error("Failed to save order:", error);
+      toast.error("Failed to save purchase order to database.");
+    }
   };
 
-  const filteredOrders = orders.filter((order) => {
+  const filteredOrders = Array.isArray(orders) ? orders.filter((order) => {
     const oId = getOrderId(order) || "";
-    const sName = order.supplierName || order.supplier || "";
+    const sName = order.supplierName?.name || order.supplierName || order.supplier || "";
     return (
       oId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sName.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  });
+  }) : [];
 
   return (
     <div className="bg-base-100 rounded-2xl border border-base-300 shadow-sm overflow-hidden p-6">

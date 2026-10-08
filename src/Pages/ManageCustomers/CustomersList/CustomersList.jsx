@@ -1,6 +1,6 @@
 import "./CustomersList.css";
 
-const CustomersList = ({ customers, onToggleStatus, onEditClick }) => {
+const CustomersList = ({ customers, employees = [], onToggleStatus, onEditClick }) => {
   return (
     <div className="customer-list-section">
       <h3>Customer List</h3>
@@ -20,19 +20,37 @@ const CustomersList = ({ customers, onToggleStatus, onEditClick }) => {
           <tbody>
             {customers.length > 0 ? (
               customers.map((cust) => {
+                const customerId = cust.id || cust.customerId;
+                const customerName = cust.name || cust.customerName;
+                const state = cust.division || cust.state;
+                const phoneNo = cust.phone || cust.phoneNo;
+                
+                // SR Name ber korar logic:
+                let srName = "N/A";
+                if (cust.sr) {
+                  if (typeof cust.sr === 'object') {
+                    srName = cust.sr.name || cust.sr.employeeName || "N/A";
+                  } else {
+                    const foundEmp = employees.find(emp => emp._id === cust.sr || emp.id === cust.sr);
+                    if (foundEmp) {
+                      srName = foundEmp.name || foundEmp.employeeName;
+                    }
+                  }
+                }
+                
                 const currentStatus = cust.status
                   ? cust.status.toLowerCase()
                   : "active";
                 return (
-                  <tr key={cust.customerId}>
+                  <tr key={customerId}>
                     <td>
-                      <strong>{cust.customerId}</strong>
+                      <strong>{customerId}</strong>
                     </td>
-                    <td>{cust.customerName}</td>
-                    <td>{cust.state}</td>
+                    <td>{customerName}</td>
+                    <td>{state}</td>
                     <td>{cust.address}</td>
-                    <td>{cust.phoneNo}</td>
-                    <td>{cust.srName}</td>
+                    <td>{phoneNo}</td>
+                    <td>{srName}</td>
                     <td>
                       <div
                         style={{
@@ -57,7 +75,6 @@ const CustomersList = ({ customers, onToggleStatus, onEditClick }) => {
                             justifyContent: "center",
                           }}
                         >
-                          {/* Pencil SVG Icon */}
                           <svg
                             xmlns="http://www.w3.org/2000/svg"
                             width="16"
@@ -79,7 +96,7 @@ const CustomersList = ({ customers, onToggleStatus, onEditClick }) => {
                           type="button"
                           className={`status-badge-btn ${currentStatus}`}
                           onClick={() =>
-                            onToggleStatus(cust.customerId, currentStatus)
+                            onToggleStatus(customerId, currentStatus)
                           }
                           style={{
                             cursor: "pointer",

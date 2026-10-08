@@ -1,30 +1,36 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import "./AddCustomerModal.css";
 
 const AddCustomerModal = ({ nextId, states, employees, customerToEdit, onClose, onSave }) => {
   const [formData, setFormData] = useState({
-    customerId: nextId,
-    customerName: "",
-    state: states[0]?.stateName || "", 
+    id: nextId || "",
+    name: "",
+    division: states[0]?.stateName || "", 
     address: "",
-    phoneNo: "",
-    srName: employees[0]?.employeeName || "",
+    phone: "",
+    sr: employees[0]?._id || "", 
   });
 
-  // যদি এডিট মোড হয়, তবে ইনপুট ফিল্ডগুলোতে আগের ডাটা লোড করে দেওয়া
   useEffect(() => {
-    if (customerToEdit) {
+    if (customerToEdit && states.length > 0) {
+      const targetDivision = customerToEdit.division || customerToEdit.state || "";
+      
+      // Case-insensitive vabe states theke matching division khuje ber kora
+      const matchedState = states.find(
+        (st) => st.stateName?.toLowerCase() === targetDivision.toLowerCase()
+      );
+
       setFormData({
-        customerId: customerToEdit.customerId,
-        customerName: customerToEdit.customerName,
-        state: customerToEdit.state,
-        address: customerToEdit.address,
-        phoneNo: customerToEdit.phoneNo,
-        srName: customerToEdit.srName,
+        id: customerToEdit.id || "",
+        name: customerToEdit.name || "",
+        division: matchedState ? matchedState.stateName : targetDivision, 
+        address: customerToEdit.address || "",
+        phone: customerToEdit.phone || "",
+        sr: customerToEdit.sr?._id || customerToEdit.sr || "",
       });
     }
-  }, [customerToEdit]);
+  }, [customerToEdit, states]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -33,20 +39,21 @@ const AddCustomerModal = ({ nextId, states, employees, customerToEdit, onClose, 
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.customerName || !formData.phoneNo || !formData.address || !formData.state) {
+    if (!formData.name || !formData.phone || !formData.address || !formData.division || !formData.sr) {
       toast.error("Please fill in all required fields.");
       return;
     }
 
     const finalCustomerData = {
-      ...customerToEdit, // এডিট করার সময় পুরোনো ডাটা ও আইডি ঠিক রাখার জন্য
-      customerId: formData.customerId,
-      customerName: formData.customerName,
-      state: formData.state,
-      address: formData.address,
-      phoneNo: formData.phoneNo,
-      srName: formData.srName,
-      status: customerToEdit ? customerToEdit.status : "active", // নতুন হলে active, এডিট হলে পুরোনো status থাকবে
+      customer: {
+        id: formData.id,
+        name: formData.name,
+        division: formData.division,
+        address: formData.address,
+        phone: formData.phone,
+        sr: formData.sr,
+        status: customerToEdit ? customerToEdit.status : "Active",
+      }
     };
 
     onSave(finalCustomerData);
@@ -62,7 +69,7 @@ const AddCustomerModal = ({ nextId, states, employees, customerToEdit, onClose, 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
             <label>Customer ID</label>
-            <input type="text" name="customerId" value={formData.customerId} disabled />
+            <input type="text" name="id" value={formData.id} disabled />
           </div>
 
           <div className="form-row">
@@ -70,8 +77,8 @@ const AddCustomerModal = ({ nextId, states, employees, customerToEdit, onClose, 
               <label>Customer Name</label>
               <input
                 type="text"
-                name="customerName"
-                value={formData.customerName}
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
                 placeholder="Enter customer name"
                 required
@@ -80,10 +87,10 @@ const AddCustomerModal = ({ nextId, states, employees, customerToEdit, onClose, 
 
             <div className="form-group">
               <label>State / Division</label>
-              <select name="state" value={formData.state} onChange={handleChange} required>
-                <option value="">-- Select State --</option>
+              <select name="division" value={formData.division} onChange={handleChange} required>
+                <option value="">-- Select Division --</option>
                 {states.map((st) => (
-                  <option key={st.stateId} value={st.stateName}>
+                  <option key={st._id || st.stateName} value={st.stateName}>
                     {st.stateName}
                   </option>
                 ))}
@@ -108,20 +115,21 @@ const AddCustomerModal = ({ nextId, states, employees, customerToEdit, onClose, 
               <label>Phone No</label>
               <input
                 type="text"
-                name="phoneNo"
-                value={formData.phoneNo}
+                name="phone"
+                value={formData.phone}
                 onChange={handleChange}
-                placeholder="+8801XXXXXXXXX"
+                placeholder="01711000016"
                 required
               />
             </div>
 
             <div className="form-group">
               <label>SR Name (Sales Rep)</label>
-              <select name="srName" value={formData.srName} onChange={handleChange}>
+              <select name="sr" value={formData.sr} onChange={handleChange} required>
+                <option value="">-- Select SR --</option>
                 {employees.map((emp) => (
-                  <option key={emp.employeeId} value={emp.employeeName}>
-                    {emp.employeeName} ({emp.role})
+                  <option key={emp._id} value={emp._id}>
+                    {emp.name} ({emp.designation})
                   </option>
                 ))}
               </select>

@@ -25,7 +25,7 @@ const ProductTable = ({
     const currentActive = product.isActive !== undefined ? Boolean(product.isActive) : true;
     const newActiveState = !currentActive;
 
-    // লোকাল স্টেট আপডেট করা যাতে UI সাথে সাথে পরিবর্তন হয়
+    // লোকাল স্টেট আপডেট করা যাতে UI সাথে সাথে পরিবর্তন হয়
     setProductList((prevList) =>
       prevList.map((item, i) => {
         const itemId = item.productId || item.code || item.id;
@@ -50,18 +50,19 @@ const ProductTable = ({
   };
 
   // Filter products by search keyword
-  const filteredProducts = productList.filter(
-    (p) =>
-      (p.productName || p.name || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (p.productId || p.code || p.id || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase()) ||
-      (p.productGroup || p.group || "")
-        .toLowerCase()
-        .includes(searchTerm.toLowerCase())
-  );
+  const filteredProducts = productList.filter((p) => {
+    const productName = p.productName || p.name || "";
+    const productId = p.productId || p.code || p.id || "";
+    
+    // Group name handle (object ba string jekono kichu hote pare)
+    const groupName = typeof p.group === "object" ? p.group?.groupName : (p.productGroup || p.group || "");
+
+    return (
+      productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      productId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      groupName.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  });
 
   return (
     <div className="overflow-x-auto">
@@ -86,6 +87,17 @@ const ProductTable = ({
             const pId = product.productId || product.code || product.id;
             const isActive = product.isActive !== undefined ? Boolean(product.isActive) : true;
 
+            // Safe extraction for group and subgroup objects from database
+            const displayGroupName = 
+              typeof product.group === "object" && product.group !== null
+                ? product.group.groupName
+                : (product.productGroup || product.group || "N/A");
+
+            const displaySubGroupName = 
+              typeof product.subGroup === "object" && product.subGroup !== null
+                ? product.subGroup.subGroupName
+                : (product.productSubGroup || product.subGroup || "");
+
             return (
               <motion.tr
                 key={pId || index}
@@ -109,10 +121,10 @@ const ProductTable = ({
                 </td>
                 <td className="px-4 py-3 text-xs">
                   <span className="font-semibold block">
-                    {product.productGroup || product.group}
+                    {displayGroupName}
                   </span>
                   <span className="text-base-content/60">
-                    {product.productSubGroup || product.subGroup}
+                    {displaySubGroupName}
                   </span>
                 </td>
                 <td className="px-4 py-3">
@@ -127,7 +139,7 @@ const ProductTable = ({
                 </td>
                 <td className="px-4 py-3 font-semibold text-success">
                   {Number(
-                    product.unitPrice || product.tpPrice || product.price || 0
+                    product.unitPrice || product.sellingPrice || product.tpPrice || product.price || 0
                   ).toLocaleString()}
                 </td>
 

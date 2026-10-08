@@ -1,0 +1,49 @@
+// src/services/customerService.js
+
+// .env file theke VITE_API_URL niye kaj korbe, na thakle default local url dhorbe[cite: 2]
+const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5002/api/v1";
+
+export const customerService = {
+  getAllCustomers: async (division = "") => {
+    const url = division 
+      ? `${API_BASE_URL}/customers?division=${encodeURIComponent(division)}` 
+      : `${API_BASE_URL}/customers`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to fetch customers");
+    return data.data;
+  },
+
+  createCustomer: async (customerPayload) => {
+    // customerPayload ekhane soraSori { customer: { ... } } hisabe asbe
+    const response = await fetch(`${API_BASE_URL}/customers/create-customer`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(customerPayload),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to create customer");
+    return data.data;
+  },
+
+  updateCustomer: async (id, updatedData) => {
+    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer: updatedData }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to update customer");
+    return data.data;
+  },
+
+  deleteCustomer: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+      method: "DELETE",
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.message || "Failed to delete customer");
+    return data.data;
+  },
+};

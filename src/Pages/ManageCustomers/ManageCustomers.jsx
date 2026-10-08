@@ -3,7 +3,12 @@ import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import AddCustomerModal from "./AddCustomer/AddCustomerModal";
 import CustomerList from "./CustomersList/CustomersList";
+
 import "./ManageCustomers.css";
+
+import { customerService } from "../../services/useCustomerService/useCustomerService";
+import { employeeSettingService } from "../../services/useEmployeeServices";
+import { stateService } from "../../services/useStateService/useStateService";
 
 const ManageCustomers = () => {
   const [customers, setCustomers] = useState([]);
@@ -11,7 +16,7 @@ const ManageCustomers = () => {
   const [employees, setEmployees] = useState([]);
   
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editingCustomer, setEditingCustomer] = useState(null); // এডিট করার জন্য সিলেক্টেড কাস্টমার স্টেট
+  const [editingCustomer, setEditingCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -19,25 +24,18 @@ const ManageCustomers = () => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [custRes, stateRes, empRes] = await Promise.all([
-          fetch("/customers.json"),
-          fetch("/customerCountryState.json"),
-          fetch("/employees.json"),
+        // Backend theke ekjoge customer, state ebong employee data fetch kora hocche
+        const [custData, stateData, empData] = await Promise.all([
+          customerService.getAllCustomers(),
+          stateService.getAllStates(),
+          employeeSettingService.getAllEmployees(),
         ]);
 
-        if (!custRes.ok || !stateRes.ok || !empRes.ok) {
-          throw new Error("Failed to load customer management data.");
-        }
-
-        const custData = await custRes.json();
-        const stateData = await stateRes.json();
-        const empData = await empRes.json();
-
-        setCustomers(custData);
-        setStates(stateData);
-        setEmployees(empData);
+        setCustomers(custData || []);
+        setStates(stateData || []);
+        setEmployees(empData || []);
       } catch (err) {
-        setError(err.message || "Something went wrong.");
+        setError(err.message || "Something went wrong while loading data.");
       } finally {
         setLoading(false);
       }
@@ -49,48 +47,51 @@ const ManageCustomers = () => {
   const generateCustomerId = () => {
     if (customers.length === 0) return "CUST-1001";
     const lastCust = customers[customers.length - 1];
-    const lastIdNum = parseInt(lastCust.customerId.replace("CUST-", "")) || 1000;
+    const lastIdNum = parseInt((lastCust.id || lastCust.customerId).replace("CUST-", "")) || 1000;
     return `CUST-${lastIdNum + 1}`;
   };
 
-  // ওপেন মোড (নতুন কাস্টমার যোগ করার জন্য)
   const handleOpenAddModal = () => {
     setEditingCustomer(null);
     setIsModalOpen(true);
   };
 
-  // এডিট আইকনে ক্লিক করলে মোড ওপেন এবং ডাটা সেট করার হ্যান্ডলার
   const handleOpenEditModal = (customer) => {
     setEditingCustomer(customer);
     setIsModalOpen(true);
   };
 
-  // কাস্টমার সেভ বা আপডেট করার হ্যান্ডলার
-  const handleSaveCustomer = (customerData) => {
-    if (editingCustomer) {
-      // আপডেট লজিক
-      setCustomers((prev) =>
-        prev.map((cust) => (cust.customerId === customerData.customerId ? customerData : cust))
-      );
-      toast.success(`Customer "${customerData.customerName}" updated successfully!`);
-    } else {
-      // নতুন কাস্টমার যোগ করার লজিক
-      setCustomers((prev) => [...prev, customerData]);
-      toast.success(`Customer "${customerData.customerName}" created successfully!`);
+  const handleSaveCustomer = async (customerDataPayload) => {
+    try {
+      if (editingCustomer) {
+        const customerId = editingCustomer.id || editingCustomer.customerId;
+        const updatedCustomer = await customerService.updateCustomer(customerId, customerDataPayload.customer);
+        
+        setCustomers((prev) =>
+          prev.map((cust) => ((cust.id === customerId || cust.customerId === customerId) ? updatedCustomer : cust))
+        );
+        toast.success("Customer updated successfully!");
+      } else {
+        const newCustomer = await customerService.createCustomer(customerDataPayload);
+        setCustomers((prev) => [...prev, newCustomer]);
+        toast.success("Customer created successfully!");
+      }
+      setIsModalOpen(false);
+      setEditingCustomer(null);
+    } catch (err) {
+      toast.error(err.message || "Failed to save customer.");
     }
-    setIsModalOpen(false);
-    setEditingCustomer(null);
   };
 
-  // স্ট্যাটাস টোগল এবং সার্ভার আপডেট হ্যান্ডলার
   const handleToggleStatus = async (customerId, currentStatus) => {
     const newStatus = currentStatus === "active" ? "inactive" : "active";
 
     try {
-      // TODO: রিয়েল ব্যাকএন্ড API কল এখানে করতে পারেন
+      await customerService.updateCustomer(customerId, { status: newStatus });
+
       setCustomers((prevCustomers) =>
         prevCustomers.map((cust) =>
-          cust.customerId === customerId ? { ...cust, status: newStatus } : cust
+          (cust.id === customerId || cust.customerId === customerId) ? { ...cust, status: newStatus } : cust
         )
       );
 
@@ -100,7 +101,7 @@ const ManageCustomers = () => {
     }
   };
 
-  if (loading) return <div className="loading-text">Loading Customers...</div>;
+  if (loading) return <div className="loading-text">Loading Customers & Settings...</div>;
   if (error) return <div className="error-text">{error}</div>;
 
   return (
@@ -119,6 +120,7 @@ const ManageCustomers = () => {
 
       <CustomerList 
         customers={customers} 
+        employees={employees}   
         onToggleStatus={handleToggleStatus} 
         onEditClick={handleOpenEditModal} 
       />
@@ -126,8 +128,8 @@ const ManageCustomers = () => {
       {isModalOpen && (
         <AddCustomerModal
           nextId={generateCustomerId()}
-          states={states}
-          employees={employees}
+          states={states}        
+          employees={employees}  
           customerToEdit={editingCustomer}
           onClose={() => {
             setIsModalOpen(false);

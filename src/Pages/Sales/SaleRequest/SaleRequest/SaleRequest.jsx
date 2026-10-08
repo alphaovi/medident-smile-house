@@ -4,6 +4,7 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Swal from "sweetalert2";
 import CreateSale from "../../CreateSale/CreateSale";
+import { useSaleOrderServices } from "../../../../services/saleOrderService/useSaleOrderServices"; // Updated import
 
 const SaleRequest = () => {
   const [orders, setOrders] = useState([]);
@@ -15,99 +16,109 @@ const SaleRequest = () => {
   const [selectedOrderToEdit, setSelectedOrderToEdit] = useState(null);
   const [selectedOrderToView, setSelectedOrderToView] = useState(null);
 
+  // Fetch orders from backend API on mount
   useEffect(() => {
-    fetch("/pendingOrders.json")
-      .then((res) => res.json())
-      .then((data) => {
-        const initializedData = data.map((order) => ({
-          ...order,
-          status: order.status || "Pending",
-          isMovedToTrash: false,
-        }));
-        setOrders(initializedData);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to load pending orders:", err);
-        setLoading(false);
-      });
+    fetchOrders();
   }, []);
 
-  const handleStatusChange = (orderNo, newStatus) => {
-    setOrders((prevOrders) =>
-      prevOrders.map((order) => {
-        if (order.orderNo === orderNo && order.status !== newStatus) {
-          const toastId = `status-${order.orderNo}`;
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const res = await useSaleOrderServices.getAllSaleOrders();
+      const orderList = Array.isArray(res) ? res : (res?.data || res?.result || []);
+      
+      const initializedData = orderList.map((order) => ({
+        ...order,
+        status: order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : "Pending",
+        isMovedToTrash: false,
+      }));
+      setOrders(initializedData);
+    } catch (err) {
+      console.error("Failed to load sale orders:", err);
+      toast.error("Failed to load sale orders from server.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-          if (!toast.isActive(toastId)) {
-            if (newStatus === "Approved") {
-              toast.success(
-                `Order ${order.orderNo} approved successfully!`,
-                { toastId }
-              );
-            } else if (newStatus === "Delivered") {
-              toast.success(
-                `Order ${order.orderNo} marked as delivered!`,
-                { toastId }
-              );
-            } else {
-              toast.info(`Order ${order.orderNo} status updated to ${newStatus}.`, {
-                toastId,
-              });
+  const handleStatusChange = async (orderId, newStatus) => {
+    try {
+      // Call backend API to update status via PATCH using useSaleOrderServices
+      await useSaleOrderServices.updateOrderStatus(orderId, newStatus);
+
+      setOrders((prevOrders) =>
+        prevOrders.map((order) => {
+          if (order._id === orderId && order.status !== newStatus) {
+            const toastId = `status-${orderId}`;
+
+            if (!toast.isActive(toastId)) {
+              if (newStatus === "Approved") {
+                toast.success(`Order status updated to approved successfully!`, { toastId });
+              } else if (newStatus === "Delivered") {
+                toast.success(`Order marked as delivered!`, { toastId });
+              } else {
+                toast.info(`Order status updated to ${newStatus}.`, { toastId });
+              }
             }
+            return { ...order, status: newStatus };
           }
-          return { ...order, status: newStatus };
-        }
-        return order;
-      })
-    );
+          return order;
+        })
+      );
+    } catch (error) {
+      toast.error("Failed to update status on server.");
+    }
   };
 
   // Delete Confirmation
   const handleDeleteOrder = (order) => {
     Swal.fire({
       title: "Are you sure?",
-      text: `Do you want to move order ${order.orderNo} to trash?`,
+      text: `Do you want to move this order to trash?`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#3085d6",
       confirmButtonText: "Yes, delete it!",
-    }).then((result) => {
+    }).then(async (result) => {
       if (result.isConfirmed) {
-        setOrders((prevOrders) =>
-          prevOrders.map((ord) =>
-            ord.orderNo === order.orderNo ? { ...ord, isMovedToTrash: true } : ord
-          )
-        );
-        toast.warn(`Order ${order.orderNo} moved to trash.`, { autoClose: 2000 });
+        try {
+          await useSaleOrderServices.deleteSaleOrder(order._id);
+          setOrders((prevOrders) =>
+            prevOrders.map((ord) =>
+              ord._id === order._id ? { ...ord, isMovedToTrash: true } : ord
+            )
+          );
+          toast.warn(`Order moved to trash.`, { autoClose: 2000 });
+        } catch (error) {
+          toast.error("Failed to delete order from server.");
+        }
       }
     });
   };
 
-  // View Modal Data Mapping
+  // View Modal Data Mapping (Mapping backend schema fields to frontend expectations)
   const handleOpenViewModal = (currentOrder) => {
     const formattedViewData = {
-      orderNo: currentOrder.orderNo,
-      orderDate: currentOrder.orderDate,
-      customerState: currentOrder.customerState || "",
-      customerName: currentOrder.customerName || "",
-      customerOffice: currentOrder.customerOffice || "",
-      subtotal: currentOrder.subtotal || 0,
+      orderNo: currentOrder._id,
+      orderDate: currentOrder.orderDate ? new Date(currentOrder.orderDate).toLocaleDateString() : "N/A",
+      customerState: currentOrder.stateOrRegion || "",
+      customerName: currentOrder.customer?.name || "N/A",
+      customerOffice: currentOrder.customer?.address || "",
+      subtotal: currentOrder.grandTotal || 0,
       paidAmount: currentOrder.paidAmount || 0,
       dueAmount: currentOrder.dueAmount || 0,
       generalDiscountType: currentOrder.generalDiscountType || "%",
       generalDiscountValue: currentOrder.generalDiscountValue || 0,
       soldItems: currentOrder.products.map((item) => ({
-        productId: item.productId || "",
-        selectedGroup: item.selectedGroup || item.productGroup || "",
-        selectedSubGroup: item.selectedSubGroup || item.productSubGroup || "",
-        productName: item.productName || "",
-        unitPrice: item.unitPrice || 0,
-        orderQty: item.orderQuantity || item.orderQty || 0,
+        productId: item.product?._id || "",
+        selectedGroup: item.group?.groupName || "",
+        selectedSubGroup: item.subGroup?.subGroupName || "",
+        productName: item.product?.name || "Unknown Product",
+        unitPrice: item.price || 0,
+        orderQty: item.quantity || 0,
         discount: item.discount || 0,
-        discountType: item.discountType || "%",
-        total: item.total || 0,
+        total: item.totalPrice || 0,
       })),
     };
     setSelectedOrderToView(formattedViewData);
@@ -117,26 +128,25 @@ const SaleRequest = () => {
   // Edit Modal Data Mapping
   const handleOpenEditModal = (currentOrder) => {
     const consolidatedEditData = {
-      orderNo: currentOrder.orderNo,
+      orderNo: currentOrder._id,
       orderDate: currentOrder.orderDate,
-      customerState: currentOrder.customerState || "",
-      customerName: currentOrder.customerName || "",
-      customerOffice: currentOrder.customerOffice || "",
-      subtotal: currentOrder.subtotal || 0,
+      customerState: currentOrder.stateOrRegion || "",
+      customerName: currentOrder.customer?.name || "",
+      customerOffice: currentOrder.customer?.address || "",
+      subtotal: currentOrder.grandTotal || 0,
       paidAmount: currentOrder.paidAmount || 0,
       dueAmount: currentOrder.dueAmount || 0,
       generalDiscountType: currentOrder.generalDiscountType || "%",
       generalDiscountValue: currentOrder.generalDiscountValue || 0,
       soldItems: currentOrder.products.map((item) => ({
-        productId: item.productId || "",
-        selectedGroup: item.selectedGroup || item.productGroup || "",
-        selectedSubGroup: item.selectedSubGroup || item.productSubGroup || "",
-        productName: item.productName || "",
-        unitPrice: item.unitPrice || 0,
-        orderQty: item.orderQuantity || item.orderQty || 0,
+        productId: item.product?._id || "",
+        selectedGroup: item.group?._id || "",
+        selectedSubGroup: item.subGroup?._id || "",
+        productName: item.product?.name || "",
+        unitPrice: item.price || 0,
+        orderQty: item.quantity || 0,
         discount: item.discount || 0,
-        discountType: item.discountType || "%",
-        total: item.total || 0,
+        total: item.totalPrice || 0,
       })),
     };
 
@@ -147,7 +157,7 @@ const SaleRequest = () => {
   const handleUpdateSuccess = (updatedSaleData) => {
     setOrders((prevOrders) =>
       prevOrders.map((ord) =>
-        ord.orderNo === updatedSaleData.orderNo
+        ord._id === updatedSaleData._id
           ? { ...ord, ...updatedSaleData }
           : ord
       )
@@ -155,13 +165,14 @@ const SaleRequest = () => {
     setIsEditModalOpen(false);
     setSelectedOrderToEdit(null);
     toast.success("Order updated successfully!");
+    fetchOrders(); // Refresh list
   };
 
-  // Active orders filter: Show items that are not in trash and not Delivered (Pending and Approved will show)
+  // Active orders filter: Show items that are not in trash and not Delivered
   const activeOrders = orders.filter(
     (order) =>
       !order.isMovedToTrash &&
-      order.status !== "Delivered"
+      order.status?.toLowerCase() !== "delivered"
   );
 
   if (loading) {
@@ -182,7 +193,7 @@ const SaleRequest = () => {
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Sell Requests</h1>
           <p className="text-sm text-gray-500">
-            Manage and review incoming customer sell orders.
+            Manage and review incoming customer sell orders from database.
           </p>
         </div>
       </div>
@@ -192,7 +203,7 @@ const SaleRequest = () => {
           <thead>
             <tr className="bg-gray-50 text-gray-700 border-b border-gray-200 text-xs uppercase tracking-wider">
               <th className="p-3">Order Date</th>
-              <th className="p-3">Order No</th>
+              <th className="p-3">Order ID</th>
               <th className="p-3">Client Info</th>
               <th className="p-3 text-right">Total Amount</th>
               <th className="p-3 text-right">Paid Amount</th>
@@ -210,21 +221,23 @@ const SaleRequest = () => {
               </tr>
             ) : (
               activeOrders.map((order) => (
-                <tr key={order.orderNo} className="hover:bg-gray-50 transition-colors">
-                  <td className="p-3 text-gray-600">{order.orderDate}</td>
+                <tr key={order._id} className="hover:bg-gray-50 transition-colors">
+                  <td className="p-3 text-gray-600">
+                    {order.orderDate ? new Date(order.orderDate).toLocaleDateString() : "N/A"}
+                  </td>
                   <td className="p-3 font-semibold text-blue-600">
-                    {order.orderNo}
+                    {order._id.slice(-6).toUpperCase()}
                   </td>
                   <td className="p-3">
                     <div className="font-medium text-gray-900">
-                      {order.customerName}
+                      {order.customer?.name || "N/A"}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {order.customerOffice}, {order.customerState}
+                      {order.customer?.address}, {order.stateOrRegion}
                     </div>
                   </td>
                   <td className="p-3 text-right font-medium text-gray-800">
-                    ৳{order.subtotal}
+                    ৳{order.grandTotal}
                   </td>
                   <td className="p-3 text-right font-medium text-emerald-600">
                     ৳{order.paidAmount}
@@ -236,7 +249,7 @@ const SaleRequest = () => {
                     <select
                       value={order.status}
                       onChange={(e) =>
-                        handleStatusChange(order.orderNo, e.target.value)
+                        handleStatusChange(order._id, e.target.value)
                       }
                       className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-300 cursor-pointer"
                     >
@@ -247,7 +260,6 @@ const SaleRequest = () => {
                   </td>
                   <td className="p-3 text-center">
                     <div className="flex items-center justify-center gap-1.5">
-                      {/* View Button */}
                       <button
                         onClick={() => handleOpenViewModal(order)}
                         title="View Order"
@@ -255,7 +267,6 @@ const SaleRequest = () => {
                       >
                         <Eye className="size-4" />
                       </button>
-                      {/* Edit Button */}
                       <button
                         onClick={() => handleOpenEditModal(order)}
                         title="Edit Order"
@@ -263,7 +274,6 @@ const SaleRequest = () => {
                       >
                         <Edit className="size-4" />
                       </button>
-                      {/* Delete Button */}
                       <button
                         onClick={() => handleDeleteOrder(order)}
                         title="Move to Trash"
@@ -322,7 +332,6 @@ const SaleRequest = () => {
                       <th className="p-3 text-center">Quantity</th>
                       <th className="p-3 text-right">Unit Price (৳)</th>
                       <th className="p-3 text-right">Total Price</th>
-                      <th className="p-3 text-right">After Discount</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
@@ -333,7 +342,6 @@ const SaleRequest = () => {
                         <td className="p-3 font-medium text-gray-900">{item.productName}</td>
                         <td className="p-3 text-center">{item.orderQty}</td>
                         <td className="p-3 text-right">৳{item.unitPrice}</td>
-                        <td className="p-3 text-right">৳{item.total}</td>
                         <td className="p-3 text-right font-semibold text-emerald-600">৳{item.total}</td>
                       </tr>
                     ))}
@@ -344,10 +352,6 @@ const SaleRequest = () => {
 
             <div className="flex justify-end">
               <div className="w-full md:w-96 bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-2 text-sm">
-                <div className="flex justify-between text-gray-600">
-                  <span>Items Subtotal:</span>
-                  <span className="font-semibold">৳{selectedOrderToView.subtotal}</span>
-                </div>
                 <div className="border-t pt-2 flex justify-between text-base font-bold text-gray-900">
                   <span>Grand Total:</span>
                   <span className="text-blue-600">৳{selectedOrderToView.subtotal}</span>
@@ -389,7 +393,5 @@ const SaleRequest = () => {
     </div>
   );
 };
-
-
 
 export default SaleRequest;

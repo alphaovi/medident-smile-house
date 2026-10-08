@@ -4,6 +4,7 @@ import { PlusCircle, ShoppingBag } from "lucide-react";
 import PurchaseOrderModal from "./PurchaseOrderModal/PurchaseOrderModal";
 import { toast } from "react-toastify";
 import PurchaseOrderList from "./PurchaseOrderList/PurchaseOrderList";
+import { purchaseOrderService } from "../../../services/purchaseOrderService/purchaseOrderService";
 
 const PurchaseOrder = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -16,22 +17,39 @@ const PurchaseOrder = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [resOrders, resProducts, resGroups] = await Promise.all([
-          fetch("/purchaseOrderList.json").catch(() => ({ ok: false })),
+        const [ordersData, resProducts, resGroups] = await Promise.all([
+          purchaseOrderService.getAllOrders().catch(() => []),
           fetch("/products.json").catch(() => ({ ok: false, json: () => [] })),
           fetch("/productsGroupSubgroup.json").catch(() => ({ ok: false, json: () => [] }))
         ]);
 
-        const ordersData = resOrders.ok ? await resOrders.json() : [];
         const productsData = resProducts.ok ? await resProducts.json() : [];
         const groupsData = resGroups.ok ? await resGroups.json() : [];
 
-        setPurchaseHistory(ordersData);
+        // Extract array from API response wrapper ({ success: true, data: [...] })
+        let rawOrders = ordersData;
+        if (ordersData && !Array.isArray(ordersData)) {
+          rawOrders = ordersData.data || ordersData.result || [];
+        }
+
+        // Normalize backend fields to match frontend UI expectations
+        const normalizedOrders = (Array.isArray(rawOrders) ? rawOrders : []).map((ord) => ({
+          ...ord,
+          orderID: ord.purchaseId || ord.orderID || ord._id,
+          orderDate: ord.purchaseDate ? ord.purchaseDate.split("T")[0] : (ord.orderDate || "N/A"),
+          expectedReceiveDate: ord.expectedDeliveryDate ? ord.expectedDeliveryDate.split("T")[0] : (ord.expectedReceiveDate || ord.expectedDate || "N/A"),
+          totalAmount: ord.grandTotal ?? ord.totalAmount ?? ord.total ?? 0,
+          supplierName: ord.supplierName?.supplierName || ord.supplierName?.name || ord.supplierName || "Default Supplier",
+          purchasedItems: ord.items || ord.purchasedItems || []
+        }));
+
+        setPurchaseHistory(normalizedOrders);
         setProducts(productsData);
         setProductsGroupSubgroup(groupsData);
       } catch (error) {
-        console.error("Error loading JSON data:", error);
+        console.error("Error loading initial data:", error);
         toast.error("Failed to load initial data.");
+        setPurchaseHistory([]);
       } finally {
         setIsLoading(false);
       }
@@ -40,23 +58,52 @@ const PurchaseOrder = () => {
     fetchData();
   }, []);
 
-  const handleSaveStoreProduct = (purchaseBatchData) => {
-    if (purchaseBatchData.orderID) {
-      // Editing existing order
-      setPurchaseHistory((prev) =>
-        prev.map((ord) => (ord.orderID === purchaseBatchData.orderID ? purchaseBatchData : ord))
-      );
-      toast.success("Purchase order updated successfully!");
-    } else {
-      // Creating new order with default status "On Transit"
-      const newOrder = {
-        orderID: `PO-${Date.now().toString().slice(-6)}`,
-        totalAmount: purchaseBatchData.totals?.grandTotal || 0,
-        status: "On Transit",
-        ...purchaseBatchData
-      };
-      setPurchaseHistory((prev) => [newOrder, ...prev]);
-      toast.success("Purchase order created successfully!");
+  const handleSaveStoreProduct = async (purchaseBatchData) => {
+    try {
+      if (purchaseBatchData.orderID || purchaseBatchData._id) {
+        const id = purchaseBatchData._id || purchaseBatchData.orderID;
+        const updated = await purchaseOrderService.updateOrder(id, purchaseBatchData);
+        
+        const normalizedUpdated = {
+          ...(updated || purchaseBatchData),
+          orderID: (updated || purchaseBatchData).purchaseId || (updated || purchaseBatchData).orderID || id,
+          orderDate: (updated || purchaseBatchData).purchaseDate ? (updated || purchaseBatchData).purchaseDate.split("T")[0] : new Date().toISOString().split("T")[0],
+          totalAmount: (updated || purchaseBatchData).grandTotal ?? (updated || purchaseBatchData).totalAmount ?? 0,
+          supplierName: (updated || purchaseBatchData).supplierName?.supplierName || (updated || purchaseBatchData).supplierName?.name || (updated || purchaseBatchData).supplierName || "Default Supplier",
+        };
+
+        setPurchaseHistory((prev) =>
+          prev.map((ord) => ((ord._id === id || ord.orderID === id) ? { ...ord, ...normalizedUpdated } : ord))
+        );
+        toast.success("Purchase order updated successfully!");
+      } else {
+        const newOrderPayload = {
+          purchaseId: `PO-${Date.now().toString().slice(-6)}`,
+          grandTotal: purchaseBatchData.grandTotal || purchaseBatchData.totals?.grandTotal || 0,
+          baseSubtotal: purchaseBatchData.baseSubtotal || purchaseBatchData.totals?.rawSubtotal || 0,
+          status: "Ordered",
+          ...purchaseBatchData
+        };
+        
+        const savedOrder = await purchaseOrderService.createOrder(newOrderPayload);
+        const actualSaved = savedOrder?.data || savedOrder || newOrderPayload;
+
+        const formattedNewOrder = {
+          ...actualSaved,
+          orderID: actualSaved.purchaseId || "PO-NEW",
+          orderDate: actualSaved.purchaseDate ? actualSaved.purchaseDate.split("T")[0] : new Date().toISOString().split("T")[0],
+          expectedReceiveDate: actualSaved.expectedDeliveryDate ? actualSaved.expectedDeliveryDate.split("T")[0] : "N/A",
+          totalAmount: actualSaved.grandTotal ?? 0,
+          supplierName: actualSaved.supplierName?.supplierName || actualSaved.supplierName?.name || actualSaved.supplierName || "Default Supplier",
+          purchasedItems: actualSaved.items || []
+        };
+
+        setPurchaseHistory((prev) => [formattedNewOrder, ...prev]);
+        toast.success("Purchase order created successfully!");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save purchase order to database.");
     }
   };
 

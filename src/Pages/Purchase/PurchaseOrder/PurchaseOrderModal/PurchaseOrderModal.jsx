@@ -1,20 +1,30 @@
+// PurchaseOrderModal.jsx
 import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Trash2, Store, Calculator, Box, Calendar, Building2 } from "lucide-react";
+import {
+  X,
+  Trash2,
+  Store,
+  Calculator,
+  Box,
+  Calendar,
+  Building2,
+} from "lucide-react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
+import { supplierService } from "../../../../services/supplierService/supplierService";
 
-const StoreProductModal = ({
+const PurchaseOrderModal = ({
   isOpen,
   onClose,
-  products = [],
-  productsGroupSubgroup = [],
   onSaveStoreProduct,
 }) => {
   const [suppliers, setSuppliers] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [productGroups, setProductGroups] = useState([]);
+  const [subGroups, setSubGroups] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState("");
-  
-  // Helper to get today's date in YYYY-MM-DD for the HTML date input
+
   const getTodayISO = () => {
     const today = new Date();
     const yyyy = today.getFullYear();
@@ -26,21 +36,51 @@ const StoreProductModal = ({
   const [orderDate, setOrderDate] = useState(getTodayISO());
   const [expectedReceiveDate, setExpectedReceiveDate] = useState("");
 
-  // Fetch suppliers data from public/suppliersData.json
+  // Fetch dynamic data from backend / endpoints safely
   useEffect(() => {
-    fetch("/suppliersData.json")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch suppliers");
-        return res.json();
-      })
-      .then((data) => {
-        setSuppliers(data);
-      })
-      .catch((err) => {
-        console.error(err);
-        toast.error("Could not load suppliers data for dropdown!");
-      });
-  }, []);
+    if (!isOpen) return;
+
+    const fetchModalData = async () => {
+      const baseUrl = import.meta.env.VITE_API_URL || "https://alphaovi-medident-backend.vercel.app/api/v1";
+      
+      try {
+        const [supRes, prodRes, groupRes, subGroupRes] = await Promise.all([
+          supplierService.getAllSuppliers().catch(() => []),
+          fetch(`${baseUrl}/products`).catch(() => ({ ok: false })),
+          fetch(`${baseUrl}/product-groups`).catch(() => ({ ok: false })),
+          fetch(`${baseUrl}/product-subgroups`).catch(() => ({ ok: false })) // Hyphen fixed here[cite: 2]
+        ]);
+
+        // 1. Supplier Data Handle
+        let supData = supRes;
+        if (supRes && typeof supRes.json === "function") {
+          supData = await supRes.json();
+        }
+        const extractedSuppliers = Array.isArray(supData) ? supData : (supData?.data || supData?.result || []);
+        setSuppliers(extractedSuppliers);
+
+        // 2. Product Data Handle
+        const prodData = prodRes.ok ? await prodRes.json() : [];
+        setProducts(Array.isArray(prodData) ? prodData : (prodData?.data || prodData?.result || []));
+
+        // 3. Product Group Data Handle
+        const groupData = groupRes.ok ? await groupRes.json() : [];
+        setProductGroups(Array.isArray(groupData) ? groupData : (groupData?.data || groupData?.result || []));
+        
+        // 4. Sub-Group Data Handle
+        const subGroupData = subGroupRes.ok ? await subGroupRes.json() : [];
+        const extractedSubGroups = Array.isArray(subGroupData) 
+          ? subGroupData 
+          : (subGroupData?.data || subGroupData?.result || []);
+        setSubGroups(extractedSubGroups);
+
+      } catch (err) {
+        console.error("Error fetching modal options:", err);
+      }
+    };
+
+    fetchModalData();
+  }, [isOpen]);
 
   const initialRow = {
     selectedGroup: "",
@@ -56,8 +96,8 @@ const StoreProductModal = ({
 
   const initialExpenses = {
     shippingCost: 0,
-    vatValue: 0,
-    vatType: "percent",
+    vatValue: 5,
+    vatType: "%",
     transitCost: 0,
     otherCost: 0,
   };
@@ -65,12 +105,15 @@ const StoreProductModal = ({
   const [items, setItems] = useState([initialRow]);
   const [expenses, setExpenses] = useState(initialExpenses);
 
-  const availableGroups = useMemo(() => {
-    if (!Array.isArray(productsGroupSubgroup)) return [];
-    return productsGroupSubgroup
-      .map((item) => item.group || item.groupName || item.name)
-      .filter(Boolean);
-  }, [productsGroupSubgroup]);
+  useEffect(() => {
+    if (!isOpen) {
+      setItems([{ ...initialRow }]);
+      setExpenses(initialExpenses);
+      setSelectedSupplier("");
+      setOrderDate(getTodayISO());
+      setExpectedReceiveDate("");
+    }
+  }, [isOpen]);
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...items];
@@ -94,19 +137,14 @@ const StoreProductModal = ({
     } else if (field === "productId") {
       currentRow.productId = value;
       const selectedProd = products.find(
-        (p) => p.productId === value || p._id === value,
+        (p) => String(p._id || p.productId || p.id) === String(value)
       );
       if (selectedProd) {
-        currentRow.productName =
-          selectedProd.productName || selectedProd.name || "";
-        currentRow.currentStock =
-          selectedProd.quantity ?? selectedProd.currentStock ?? 0;
-        currentRow.transitStock =
-          selectedProd.inTransit ?? selectedProd.transitStock ?? 0;
-        currentRow.unitPrice =
-          selectedProd.purchasePrice ?? selectedProd.unitPrice ?? 0;
-        currentRow.unitWeight =
-          selectedProd.unitWeight ?? selectedProd.weight ?? 1;
+        currentRow.productName = selectedProd.productName || selectedProd.name || "";
+        currentRow.currentStock = selectedProd.quantity ?? selectedProd.currentStock ?? 0;
+        currentRow.transitStock = selectedProd.inTransit ?? selectedProd.transitStock ?? 0;
+        currentRow.unitPrice = selectedProd.purchasePrice ?? selectedProd.unitPrice ?? 0;
+        currentRow.unitWeight = selectedProd.unitWeight ?? selectedProd.weight ?? 1;
       }
     } else if (["orderQty", "unitPrice", "unitWeight"].includes(field)) {
       currentRow[field] = value === "" ? "" : Number(value);
@@ -135,42 +173,19 @@ const StoreProductModal = ({
     }));
   };
 
-  // Function to convert YYYY-MM-DD into DD/MM/YYYY for final save/display
-  const convertToDDMMYYYY = (dateString) => {
-    if (!dateString) return "";
-    const parts = dateString.split("-");
-    if (parts.length === 3) {
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-    return dateString;
-  };
-
   const calculations = useMemo(() => {
     const activeItems = items.filter((item) => item.productId !== "");
-
-    const totalCurrentStock = activeItems.reduce(
-      (acc, item) => acc + (Number(item.currentStock) || 0),
-      0,
-    );
-    const totalTransitStock = activeItems.reduce(
-      (acc, item) => acc + (Number(item.transitStock) || 0),
-      0,
-    );
-    const totalOrderQty = activeItems.reduce(
-      (acc, item) => acc + (Number(item.orderQty) || 0),
-      0,
-    );
 
     const rawSubtotal = activeItems.reduce(
       (acc, item) =>
         acc + (Number(item.orderQty) || 0) * (Number(item.unitPrice) || 0),
-      0,
+      0
     );
 
     const totalBatchWeight = activeItems.reduce(
       (acc, item) =>
         acc + (Number(item.orderQty) || 0) * (Number(item.unitWeight) || 0),
-      0,
+      0
     );
 
     const shippingCostNum = Number(expenses.shippingCost) || 0;
@@ -179,7 +194,7 @@ const StoreProductModal = ({
 
     const vatValNum = Number(expenses.vatValue) || 0;
     const calculatedVatAmount =
-      expenses.vatType === "percent"
+      expenses.vatType === "%"
         ? (rawSubtotal * vatValNum) / 100
         : vatValNum;
 
@@ -219,21 +234,11 @@ const StoreProductModal = ({
 
     const transitCostNum = Number(expenses.transitCost) || 0;
     const otherCostNum = Number(expenses.otherCost) || 0;
-
-    const totalExtraExpenses = transitCostNum + otherCostNum;
-
-    const grandTotal = totalItemsWithShipping + totalExtraExpenses;
+    const grandTotal = totalItemsWithShipping + transitCostNum + otherCostNum;
 
     return {
-      totalCurrentStock,
-      totalTransitStock,
-      totalOrderQty,
       rawSubtotal,
-      totalItemsWithShipping,
-      totalBatchWeight,
       shippingCostPerKg,
-      calculatedVatAmount,
-      totalExtraExpenses,
       grandTotal,
       calculatedItems,
     };
@@ -243,7 +248,7 @@ const StoreProductModal = ({
     e.preventDefault();
 
     const validItems = calculations.calculatedItems.filter(
-      (item) => item.productId !== "",
+      (item) => item.productId !== ""
     );
 
     if (validItems.length === 0) {
@@ -258,12 +263,12 @@ const StoreProductModal = ({
 
     Swal.fire({
       title: "Confirm Purchase Order?",
-      text: "This will create a new batch order with weight allocation.",
+      text: "This will create a new batch order in the system.",
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#0d9488",
       cancelButtonColor: "#64748b",
-      confirmButtonText: "Confirm Batch",
+      confirmButtonText: "Confirm Order",
       cancelButtonText: "Cancel",
       customClass: {
         popup: "rounded-2xl",
@@ -272,35 +277,28 @@ const StoreProductModal = ({
       },
     }).then((result) => {
       if (result.isConfirmed) {
-        onSaveStoreProduct?.({
+        const payload = {
+          purchaseId: `PO-${Date.now().toString().slice(-6)}`,
+          expectedDeliveryDate: expectedReceiveDate ? new Date(expectedReceiveDate).toISOString() : new Date().toISOString(),
           supplierName: selectedSupplier,
-          orderDate: convertToDDMMYYYY(orderDate),
-          expectedReceiveDate: convertToDDMMYYYY(expectedReceiveDate),
-          purchasedItems: validItems,
-          expenses: {
-            ...expenses,
-            vatAmount: calculations.calculatedVatAmount,
-            shippingCostPerKg: calculations.shippingCostPerKg,
-          },
-          totals: {
-            currentStock: calculations.totalCurrentStock,
-            transitStock: calculations.totalTransitStock,
-            orderQty: calculations.totalOrderQty,
-            batchWeight: calculations.totalBatchWeight,
-            rawSubtotal: calculations.rawSubtotal,
-            totalItemsWithShipping: calculations.totalItemsWithShipping,
-            grandTotal: calculations.grandTotal,
-          },
-          date: new Date().toISOString(),
-        });
+          items: validItems.map((item) => ({
+            group: item.selectedGroup,
+            subGroup: item.selectedSubGroup,
+            product: item.productId,
+            orderQuantity: Number(item.orderQty) || 0,
+            price: Number(item.unitPrice) || 0,
+            unitCost: Number(item.unitCostAfterCalc || item.unitPrice) || 0,
+            totalCost: Number(item.totalWithShipping || (item.orderQty * item.unitPrice)) || 0,
+            status: "Ordered",
+          })),
+          vatType: expenses.vatType,
+          vatValue: Number(expenses.vatValue) || 0,
+          baseSubtotal: calculations.rawSubtotal,
+          grandTotal: calculations.grandTotal,
+          status: "Ordered",
+        };
 
-        toast.success("Purchase order batch created successfully!", {
-          autoClose: 2000,
-        });
-        setItems([{ ...initialRow }]);
-        setExpenses(initialExpenses);
-        setSelectedSupplier("");
-        setExpectedReceiveDate("");
+        onSaveStoreProduct?.(payload);
         onClose();
       }
     });
@@ -309,7 +307,7 @@ const StoreProductModal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-[10px_20px]">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -322,86 +320,86 @@ const StoreProductModal = ({
             initial={{ scale: 0.96, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0, y: 15 }}
-            className="relative w-full max-w-[95vw] xl:max-w-7xl max-h-[92vh] bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden"
+            className="relative w-full h-full max-w-none max-h-none bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden text-sm"
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300">
+            <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300 shrink-0">
               <div className="flex items-center gap-2">
-                <Store className="size-5 text-teal-600" />
-                <h3 className="font-bold text-lg">
-                  Batch Purchase Order Entry
-                </h3>
+                <Store className="size-6 text-teal-600" />
+                <h3 className="font-bold text-xl">Create Purchase Order</h3>
               </div>
               <button
                 type="button"
                 onClick={onClose}
                 className="btn btn-sm btn-circle btn-ghost"
               >
-                <X className="size-5" />
+                <X className="size-6" />
               </button>
             </div>
 
             {/* Form Content */}
             <form
               onSubmit={handleSubmit}
-              className="p-4 overflow-y-auto space-y-4 grow"
+              className="p-5 overflow-y-auto space-y-5 grow"
             >
-              {/* Supplier & Dates Selection Row */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300">
-                {/* Supplier Name Dropdown */}
+              {/* Supplier & Dates Selection */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-base-200/50 p-4 rounded-xl border border-base-300">
                 <div>
-                  <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
-                    <Building2 className="size-3.5 text-teal-600" /> Supplier Name
+                  <label className="label py-1 text-sm font-semibold flex items-center gap-2 text-base-content/80">
+                    <Building2 className="size-4 text-teal-600" /> Supplier
                   </label>
                   <select
                     value={selectedSupplier}
                     onChange={(e) => setSelectedSupplier(e.target.value)}
-                    className="select select-bordered select-xs w-full font-medium"
+                    className="select select-bordered select-sm w-full font-medium text-sm"
                     required
                   >
                     <option value="">Select Supplier...</option>
-                    {suppliers.map((sup) => (
-                      <option key={sup.supplierID || sup._id} value={sup.supplierName}>
-                        {sup.supplierName}
-                      </option>
-                    ))}
+                    {suppliers.map((sup) => {
+                      const supId = sup._id || sup.supplierId;
+                      const supName = sup.supplierName || sup.name;
+                      return (
+                        <option key={supId} value={supId}>
+                          {supName} {sup.supplierId ? `(${sup.supplierId})` : ""}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
-                {/* Order Date */}
                 <div>
-                  <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
-                    <Calendar className="size-3.5 text-teal-600" /> Order Date <span className="text-[10px] text-teal-600 font-bold">({convertToDDMMYYYY(orderDate) || "DD/MM/YYYY"})</span>
+                  <label className="label py-1 text-sm font-semibold flex items-center gap-2 text-base-content/80">
+                    <Calendar className="size-4 text-teal-600" /> Order Date
                   </label>
                   <input
                     type="date"
                     value={orderDate}
                     onChange={(e) => setOrderDate(e.target.value)}
-                    className="input input-bordered input-xs w-full font-medium"
+                    className="input input-bordered input-sm w-full font-medium text-sm"
                     required
                   />
                 </div>
 
-                {/* Expected Receive Date */}
                 <div>
-                  <label className="label py-0.5 text-xs font-semibold flex items-center gap-1.5 text-base-content/70">
-                    <Calendar className="size-3.5 text-teal-600" /> Expected Receive Date <span className="text-[10px] text-teal-600 font-bold">({expectedReceiveDate ? convertToDDMMYYYY(expectedReceiveDate) : "DD/MM/YYYY"})</span>
+                  <label className="label py-1 text-sm font-semibold flex items-center gap-2 text-base-content/80">
+                    <Calendar className="size-4 text-teal-600" /> Expected Receive Date
                   </label>
                   <input
                     type="date"
                     value={expectedReceiveDate}
                     onChange={(e) => setExpectedReceiveDate(e.target.value)}
-                    className="input input-bordered input-xs w-full font-medium"
+                    className="input input-bordered input-sm w-full font-medium text-sm"
                   />
                 </div>
               </div>
 
-              <div className="space-y-2">
+              {/* Items Table */}
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="font-bold text-xs uppercase tracking-wider text-base-content/70 flex items-center gap-1.5">
-                    <Box className="size-4" /> Item Details
+                  <h4 className="font-bold text-sm uppercase tracking-wider text-base-content/80 flex items-center gap-2">
+                    <Box className="size-5" /> Item Details
                   </h4>
-                  <span className="text-xs text-base-content/60 font-medium">
+                  <span className="text-sm text-base-content/70 font-medium">
                     Shipping Rate:{" "}
                     <b className="text-teal-600">
                       ৳ {calculations.shippingCostPerKg.toFixed(2)} / kg
@@ -409,47 +407,32 @@ const StoreProductModal = ({
                   </span>
                 </div>
 
-                {/* Table Header */}
-                <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 bg-base-300/40 rounded-lg text-[11px] font-semibold text-base-content/70 text-center">
-                  <div className="w-32 text-left">Group</div>
-                  <div className="w-32 text-left">Sub-Group</div>
+                <div className="hidden lg:flex items-center gap-3 px-4 py-2 bg-base-300/40 rounded-lg text-xs font-bold text-base-content/80 text-center">
+                  <div className="w-40 text-left">Group</div>
+                  <div className="w-40 text-left">Sub-Group</div>
                   <div className="flex-1 text-left">Product</div>
-                  <div className="w-16">Cur. Stock</div>
-                  <div className="w-16">In Transit</div>
-                  <div className="w-16">Order Qty</div>
-                  <div className="w-20">Price (৳)</div>
-                  <div className="w-16">Wt (kg)</div>
-                  <div className="w-24 text-right">Unit Cost</div>
-                  <div className="w-24 text-right">Total + Ship</div>
-                  <div className="w-8"></div>
+                  <div className="w-20">Cur. Stock</div>
+                  <div className="w-20">In Transit</div>
+                  <div className="w-20">Order Qty</div>
+                  <div className="w-24">Price (৳)</div>
+                  <div className="w-20">Wt (kg)</div>
+                  <div className="w-28 text-right">Unit Cost</div>
+                  <div className="w-28 text-right">Total + Ship</div>
+                  <div className="w-10"></div>
                 </div>
 
-                {/* Rows */}
                 {items.map((item, idx) => {
-                  const matchedGroupObj = Array.isArray(productsGroupSubgroup)
-                    ? productsGroupSubgroup.find(
-                        (g) =>
-                          (g.group || g.groupName || g.name) ===
-                          item.selectedGroup,
-                      )
-                    : null;
-
-                  const availableSubGroups = matchedGroupObj
-                    ? matchedGroupObj.subGroup ||
-                      matchedGroupObj.subGroups ||
-                      []
-                    : [];
+                  const availableSubGroups = subGroups.filter((sg) => {
+                    const parentGroupId = sg.group?._id || sg.group;
+                    return String(parentGroupId) === String(item.selectedGroup);
+                  });
 
                   const filteredProducts = products.filter((p) => {
-                    const matchGroup =
-                      !item.selectedGroup ||
-                      p.productGroup === item.selectedGroup ||
-                      p.group === item.selectedGroup;
+                    const pGroup = p.group?._id || p.group || p.productGroup;
+                    const pSubGroup = p.subGroup?._id || p.subGroup || p.productSubGroup;
 
-                    const matchSubGroup =
-                      !item.selectedSubGroup ||
-                      p.productSubGroup === item.selectedSubGroup ||
-                      p.subGroup === item.selectedSubGroup;
+                    const matchGroup = !item.selectedGroup || String(pGroup) === String(item.selectedGroup);
+                    const matchSubGroup = !item.selectedSubGroup || String(pSubGroup) === String(item.selectedSubGroup);
 
                     return matchGroup && matchSubGroup;
                   });
@@ -461,68 +444,59 @@ const StoreProductModal = ({
                       key={idx}
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
-                      className="flex flex-wrap lg:flex-nowrap items-center gap-2 bg-base-200/50 p-2 rounded-xl border border-base-300 text-xs"
+                      className="flex flex-wrap lg:flex-nowrap items-center gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300 text-sm"
                     >
-                      {/* Group */}
-                      <div className="w-full sm:w-32">
+                      {/* Group Select */}
+                      <div className="w-full sm:w-40">
                         <select
                           value={item.selectedGroup}
-                          onChange={(e) =>
-                            handleItemChange(
-                              idx,
-                              "selectedGroup",
-                              e.target.value,
-                            )
-                          }
-                          className="select select-bordered select-xs w-full"
+                          onChange={(e) => handleItemChange(idx, "selectedGroup", e.target.value)}
+                          className="select select-bordered select-sm w-full text-sm"
                         >
                           <option value="">Group...</option>
-                          {availableGroups.map((g, i) => (
-                            <option key={i} value={g}>
-                              {g}
-                            </option>
-                          ))}
+                          {productGroups.map((g) => {
+                            const gId = g._id || g.id;
+                            const gName = g.groupName || g.name;
+                            return (
+                              <option key={gId} value={gId}>
+                                {gName}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
 
-                      {/* Sub-Group */}
-                      <div className="w-full sm:w-32">
+                      {/* SubGroup Select */}
+                      <div className="w-full sm:w-40">
                         <select
                           value={item.selectedSubGroup}
                           disabled={!item.selectedGroup}
-                          onChange={(e) =>
-                            handleItemChange(
-                              idx,
-                              "selectedSubGroup",
-                              e.target.value,
-                            )
-                          }
-                          className="select select-bordered select-xs w-full disabled:opacity-50"
+                          onChange={(e) => handleItemChange(idx, "selectedSubGroup", e.target.value)}
+                          className="select select-bordered select-sm w-full disabled:opacity-50 text-sm"
                         >
                           <option value="">Sub-Group...</option>
-                          {availableSubGroups.map((sg, i) => (
-                            <option
-                              key={i}
-                              value={typeof sg === "string" ? sg : sg.name}
-                            >
-                              {typeof sg === "string" ? sg : sg.name}
-                            </option>
-                          ))}
+                          {availableSubGroups.map((sg) => {
+                            const sgId = sg._id || sg.id;
+                            const sgName = sg.subGroupName || sg.name;
+                            return (
+                              <option key={sgId} value={sgId}>
+                                {sgName}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
 
-                      {/* Product */}
-                      <div className="flex-1 min-w-[150px]">
+                      {/* Product Select */}
+                      <div className="flex-1 min-w-[120px]">
                         <select
                           value={item.productId}
-                          onChange={(e) =>
-                            handleItemChange(idx, "productId", e.target.value)
-                          }
-                          className="select select-bordered select-xs w-full font-medium"
+                          onChange={(e) => handleItemChange(idx, "productId", e.target.value)}
+                          className="select select-bordered select-sm w-full font-medium text-sm"
                         >
                           <option value="">Select Product...</option>
                           {filteredProducts.map((p) => {
-                            const pId = p.productId || p._id;
+                            const pId = p._id || p.productId || p.id;
                             const pName = p.productName || p.name;
                             return (
                               <option key={pId} value={pId}>
@@ -533,89 +507,69 @@ const StoreProductModal = ({
                         </select>
                       </div>
 
-                      {/* Current Stock */}
-                      <div className="w-16 text-center">
-                        <span className="badge badge-ghost badge-sm w-full font-medium text-[11px] py-1">
+                      <div className="w-20 text-center">
+                        <span className="badge badge-ghost badge-md w-full font-medium text-xs py-2">
                           {item.currentStock}
                         </span>
                       </div>
 
-                      {/* In Transit */}
-                      <div className="w-16 text-center">
-                        <span className="badge badge-warning/20 text-warning-content badge-sm w-full font-medium text-[11px] py-1">
+                      <div className="w-20 text-center">
+                        <span className="badge badge-warning/20 text-warning-content badge-md w-full font-medium text-xs py-2">
                           {item.transitStock}
                         </span>
                       </div>
 
-                      {/* Order Qty */}
-                      <div className="w-16">
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.orderQty}
-                          onChange={(e) =>
-                            handleItemChange(idx, "orderQty", e.target.value)
-                          }
-                          className="input input-bordered input-xs w-full text-center font-bold"
-                        />
-                      </div>
-
-                      {/* Price */}
                       <div className="w-20">
                         <input
                           type="number"
                           min="0"
-                          value={item.unitPrice}
-                          onChange={(e) =>
-                            handleItemChange(idx, "unitPrice", e.target.value)
-                          }
-                          className="input input-bordered input-xs w-full text-right"
+                          value={item.orderQty}
+                          onChange={(e) => handleItemChange(idx, "orderQty", e.target.value)}
+                          className="input input-bordered input-sm w-full text-center font-bold text-sm"
                         />
                       </div>
 
-                      {/* Weight */}
-                      <div className="w-16">
+                      <div className="w-24">
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.unitPrice}
+                          onChange={(e) => handleItemChange(idx, "unitPrice", e.target.value)}
+                          className="input input-bordered input-sm w-full text-right text-sm"
+                        />
+                      </div>
+
+                      <div className="w-20">
                         <input
                           type="number"
                           step="0.01"
                           min="0"
                           value={item.unitWeight}
-                          onChange={(e) =>
-                            handleItemChange(idx, "unitWeight", e.target.value)
-                          }
-                          className="input input-bordered input-xs w-full text-center"
+                          onChange={(e) => handleItemChange(idx, "unitWeight", e.target.value)}
+                          className="input input-bordered input-sm w-full text-center text-sm"
                         />
                       </div>
 
-                      {/* Unit Cost */}
-                      <div className="w-24 text-right">
-                        <span className="font-bold text-xs text-info block px-1">
-                          ৳
-                          {calcItem?.unitCostAfterCalc
-                            ? calcItem.unitCostAfterCalc.toFixed(2)
-                            : "0.00"}
+                      <div className="w-28 text-right">
+                        <span className="font-bold text-sm text-info block px-1">
+                          ৳ {calcItem?.unitCostAfterCalc ? calcItem.unitCostAfterCalc.toFixed(2) : "0.00"}
                         </span>
                       </div>
 
-                      {/* Total + Ship */}
-                      <div className="w-24 text-right">
-                        <span className="font-bold text-xs text-teal-600 block px-1">
-                          ৳
-                          {calcItem?.totalWithShipping
-                            ? calcItem.totalWithShipping.toFixed(2)
-                            : "0.00"}
+                      <div className="w-28 text-right">
+                        <span className="font-bold text-sm text-teal-600 block px-1">
+                          ৳ {calcItem?.totalWithShipping ? calcItem.totalWithShipping.toFixed(2) : "0.00"}
                         </span>
                       </div>
 
-                      {/* Delete */}
-                      <div className="w-8 flex justify-center">
+                      <div className="w-10 flex justify-center">
                         <button
                           type="button"
                           onClick={() => handleRemoveItemRow(idx)}
                           disabled={items.length === 1}
-                          className="btn btn-square btn-ghost btn-xs text-error hover:bg-error/10 disabled:opacity-20"
+                          className="btn btn-square btn-ghost btn-sm text-error hover:bg-error/10 disabled:opacity-20"
                         >
-                          <Trash2 className="size-4" />
+                          <Trash2 className="size-5" />
                         </button>
                       </div>
                     </motion.div>
@@ -623,90 +577,38 @@ const StoreProductModal = ({
                 })}
               </div>
 
-              {/* Summary Bar */}
-              <div className="bg-base-200 p-2.5 rounded-xl border border-base-300 grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs">
-                <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    Cur. Stock
-                  </span>
-                  <span className="font-bold">
-                    {calculations.totalCurrentStock}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    In Transit
-                  </span>
-                  <span className="font-bold text-warning">
-                    {calculations.totalTransitStock}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    Order Qty
-                  </span>
-                  <span className="font-bold text-primary">
-                    {calculations.totalOrderQty}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    Total Weight
-                  </span>
-                  <span className="font-bold">
-                    {calculations.totalBatchWeight.toFixed(2)} kg
-                  </span>
-                </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <span className="text-[10px] uppercase font-semibold text-base-content/60 block">
-                    Subtotal (W/ Ship & VAT)
-                  </span>
-                  <span className="font-bold text-teal-600">
-                    ৳{" "}
-                    {calculations.totalItemsWithShipping.toLocaleString(
-                      undefined,
-                      { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-                    )}
-                  </span>
-                </div>
-              </div>
-
-              {/* Expenses Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
-                <div className="space-y-2 bg-base-200/40 p-3 rounded-xl border border-base-300">
-                  <h5 className="font-bold text-xs uppercase text-base-content/70 flex items-center gap-1.5">
-                    <Calculator className="size-4" /> Expenses Breakdown
+              {/* Summary & Expenses */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+                <div className="space-y-3 bg-base-200/40 p-4 rounded-xl border border-base-300">
+                  <h5 className="font-bold text-sm uppercase text-base-content/80 flex items-center gap-2">
+                    <Calculator className="size-5" /> Expenses Breakdown
                   </h5>
 
-                  <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="grid grid-cols-2 gap-3 text-sm">
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
-                        Shipping Cost (৳)
-                      </label>
+                      <label className="label py-1 text-xs font-semibold">Shipping Cost (৳)</label>
                       <input
                         type="number"
                         name="shippingCost"
                         value={expenses.shippingCost}
                         onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
+                        className="input input-bordered input-sm w-full text-sm"
                       />
                     </div>
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
-                        Transit Cost (৳)
-                      </label>
+                      <label className="label py-1 text-xs font-semibold">Transit Cost (৳)</label>
                       <input
                         type="number"
                         name="transitCost"
                         value={expenses.transitCost}
                         onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
+                        className="input input-bordered input-sm w-full text-sm"
                       />
                     </div>
 
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
-                        VAT {expenses.vatType === "percent" ? "(%)" : "(৳)"}
+                      <label className="label py-1 text-xs font-semibold">
+                        VAT {expenses.vatType === "%" ? "(%)" : "(৳)"}
                       </label>
                       <div className="flex gap-1">
                         <input
@@ -714,116 +616,68 @@ const StoreProductModal = ({
                           name="vatValue"
                           value={expenses.vatValue}
                           onChange={handleExpenseChange}
-                          placeholder={
-                            expenses.vatType === "percent" ? "%" : "৳"
-                          }
-                          className="input input-bordered input-xs w-full"
+                          className="input input-bordered input-sm w-full text-sm"
                         />
                         <select
                           name="vatType"
                           value={expenses.vatType}
                           onChange={handleExpenseChange}
-                          className="select select-bordered select-xs font-bold text-primary"
+                          className="select select-bordered select-sm font-bold text-primary text-sm"
                         >
-                          <option value="percent">%</option>
+                          <option value="%">%</option>
                           <option value="amount">৳</option>
                         </select>
                       </div>
                     </div>
 
                     <div>
-                      <label className="label py-0.5 text-[11px] font-semibold">
-                        Other Cost (৳)
-                      </label>
+                      <label className="label py-1 text-xs font-semibold">Other Cost (৳)</label>
                       <input
                         type="number"
                         name="otherCost"
                         value={expenses.otherCost}
                         onChange={handleExpenseChange}
-                        className="input input-bordered input-xs w-full"
+                        className="input input-bordered input-sm w-full text-sm"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="bg-base-200/70 p-3 rounded-xl border border-base-300 flex flex-col justify-between space-y-1">
-                  <h5 className="font-bold text-xs uppercase text-base-content/70">
+                <div className="bg-base-200/70 p-4 rounded-xl border border-base-300 flex flex-col justify-between space-y-2">
+                  <h5 className="font-bold text-sm uppercase text-base-content/80">
                     Grand Order Calculation
                   </h5>
 
-                  <div className="space-y-1 text-xs">
-                    <div className="flex justify-between text-base-content/70">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between text-base-content/80">
                       <span>Base Subtotal:</span>
-                      <span className="font-semibold">
-                        ৳ {calculations.rawSubtotal.toLocaleString()}
-                      </span>
+                      <span className="font-semibold">৳ {calculations.rawSubtotal.toLocaleString()}</span>
                     </div>
-
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
-                      <span>
-                        • Shipping ({calculations.totalBatchWeight.toFixed(2)}{" "}
-                        kg @ ৳{calculations.shippingCostPerKg.toFixed(2)}/kg):
-                      </span>
-                      <span>
-                        ৳{" "}
-                        {(Number(expenses.shippingCost) || 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
-                      <span>
-                        • VAT (
-                        {expenses.vatType === "percent"
-                          ? `${expenses.vatValue || 0}%`
-                          : "Fixed"}
-                        ):
-                      </span>
-                      <span>
-                        ৳ {calculations.calculatedVatAmount.toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
-                      <span>• Transit Cost:</span>
-                      <span>
-                        ৳ {(Number(expenses.transitCost) || 0).toLocaleString()}
-                      </span>
-                    </div>
-                    <div className="flex justify-between text-base-content/60 text-[11px] pl-2 border-l-2 border-teal-500/40">
-                      <span>• Other Expenses:</span>
-                      <span>
-                        ৳ {(Number(expenses.otherCost) || 0).toLocaleString()}
-                      </span>
-                    </div>
-
                     <div className="divider my-1"></div>
-                    <div className="flex justify-between text-sm font-bold text-teal-600">
+                    <div className="flex justify-between text-base font-bold text-teal-600">
                       <span>Grand Total:</span>
                       <span>
-                        ৳{" "}
-                        {calculations.grandTotal.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
+                        ৳ {calculations.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                       </span>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Submit Button */}
-              <div className="pt-2 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="btn btn-sm btn-ghost"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white px-6"
-                >
-                  Create Batch Order
-                </button>
+                  <div className="card-actions justify-end pt-3">
+                    <button
+                      type="button"
+                      onClick={onClose}
+                      className="btn btn-sm btn-ghost text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white text-sm px-5"
+                    >
+                      Save Order
+                    </button>
+                  </div>
+                </div>
               </div>
             </form>
           </motion.div>
@@ -833,4 +687,4 @@ const StoreProductModal = ({
   );
 };
 
-export default StoreProductModal;
+export default PurchaseOrderModal;

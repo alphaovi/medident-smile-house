@@ -1,191 +1,201 @@
-import  { useMemo } from "react";
-import Select from "react-select";
+import React, { useMemo } from "react";
 import { Trash2 } from "lucide-react";
-
-const rowSelectStyles = {
-  control: (provided, state) => ({
-    ...provided,
-    minHeight: "32px",
-    height: "32px",
-    fontSize: "13px",
-    borderRadius: "0.375rem",
-    borderColor: state.isFocused ? "#0d9488" : "#d1d5db",
-    boxShadow: "none",
-    "&:hover": { borderColor: "#0d9488" },
-  }),
-  valueContainer: (provided) => ({ ...provided, padding: "0 6px" }),
-  indicatorsContainer: (provided) => ({ ...provided, height: "32px" }),
-  menu: (provided) => ({ ...provided, fontSize: "13px", zIndex: 9999 }),
-};
 
 const SaleItemRow = ({
   idx,
   item,
   calcItem,
   itemsLength,
-  availableGroups = [],
-  productsGroupSubgroup = [],
-  products = [],
+  availableGroups,
+  productsGroupSubgroup, // Eta subgroups list
+  products,
   handleItemChange,
   handleRemoveItemRow,
 }) => {
-  const currentGroupName = item.selectedGroup?.value || item.selectedGroup;
+  // Selected Group-er under-er subgroups filter korar jonno
+  const availableSubgroups = useMemo(() => {
+    if (!Array.isArray(productsGroupSubgroup)) return [];
+    const selectedGroupId = item.selectedGroup?.value || item.selectedGroup;
+    if (!selectedGroupId) return [];
 
-  const subGroupOptions = useMemo(() => {
-    if (!currentGroupName || !Array.isArray(productsGroupSubgroup)) return [];
-    const foundGroup = productsGroupSubgroup.find(
-      (g) => (g.group || g.groupName || g.name) === currentGroupName
-    );
-    if (!foundGroup) return [];
-    const subs = foundGroup?.subgroups || foundGroup?.subGroup || foundGroup?.subcategories || [];
-    return subs
-      .map((sub) => {
-        const subName = typeof sub === "string" ? sub : sub.subGroup || sub.name;
-        return subName ? { value: subName, label: subName } : null;
+    return productsGroupSubgroup
+      .filter((sub) => {
+        const subGroupId = sub.group?._id || sub.group?.id || sub.group;
+        return String(subGroupId) === String(selectedGroupId);
       })
-      .filter(Boolean);
-  }, [currentGroupName, productsGroupSubgroup]);
-
-  const currentSubGroupName = item.selectedSubGroup?.value || item.selectedSubGroup;
-
-  const productOptions = useMemo(() => {
-    if (!Array.isArray(products)) return [];
-    return products
-      .filter((p) => {
-        const pGroup = p.group || p.productGroup;
-        const pSubGroup = p.subGroup || p.subgroup;
-        if (currentGroupName && pGroup !== currentGroupName) return false;
-        if (currentSubGroupName && pSubGroup && pSubGroup !== currentSubGroupName) return false;
-        return true;
-      })
-      .map((p) => ({
-        value: p.productId || p._id,
-        label: p.productName || p.name,
+      .map((sub) => ({
+        value: sub._id || sub.id,
+        label: sub.subGroupName || sub.name,
+        ...sub,
       }));
-  }, [products, currentGroupName, currentSubGroupName]);
+  }, [productsGroupSubgroup, item.selectedGroup]);
 
-  // Alternating row background logic:
-  // Jodi idx even (0, 2, 4...) hoy tahole bg-white, r odd (1, 3, 5...) hole bg-base-200/60 (halka gray)
-  const rowBackground = idx % 2 === 0 ? "bg-white" : "bg-base-200/60";
+  // Selected Group & Subgroup er under-er products filter korar jonno
+  const availableProducts = useMemo(() => {
+    if (!Array.isArray(products)) return [];
+    const selectedGroupId = item.selectedGroup?.value || item.selectedGroup;
+    const selectedSubGroupId = item.selectedSubGroup?.value || item.selectedSubGroup;
+
+    return products
+      .filter((prod) => {
+        const prodGroupId = prod.group?._id || prod.group?.id || prod.group;
+        const prodSubGroupId = prod.subGroup?._id || prod.subGroup?.id || prod.subGroup;
+
+        const matchesGroup = !selectedGroupId || String(prodGroupId) === String(selectedGroupId);
+        const matchesSubGroup = !selectedSubGroupId || String(prodSubGroupId) === String(selectedSubGroupId);
+
+        return matchesGroup && matchesSubGroup;
+      })
+      .map((prod) => ({
+        value: prod._id || prod.id,
+        label: prod.name || prod.productName,
+        ...prod,
+      }));
+  }, [products, item.selectedGroup, item.selectedSubGroup]);
 
   return (
-    <div className={`flex flex-col lg:flex-row items-stretch lg:items-center gap-2 p-3 rounded-xl border border-base-300 justify-end transition-all ${rowBackground} shadow-sm hover:shadow-md`}>
-      {/* Group */}
-      <div className="w-full lg:flex-1">
-        <label className="text-[11px] font-semibold text-base-content/70 lg:hidden">Group</label>
-        <Select
-          value={item.selectedGroup}
-          onChange={(val) => handleItemChange(idx, "selectedGroup", val)}
-          options={availableGroups}
-          placeholder="Group"
-          styles={rowSelectStyles}
-          isSearchable
-          isClearable
-        />
+    <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-2 p-3 bg-base-200/50 rounded-xl border border-base-300">
+      {/* Group Selection */}
+      <div className="flex-1">
+        <label className="text-[10px] font-bold lg:hidden text-base-content/70">Group</label>
+        <select
+          className="select select-bordered select-sm w-full"
+          value={item.selectedGroup?.value || item.selectedGroup || ""}
+          onChange={(e) => {
+            const val = e.target.value;
+            const found = availableGroups.find((g) => String(g.value) === String(val));
+            handleItemChange(idx, "selectedGroup", found || val);
+          }}
+        >
+          <option value="">Select Group</option>
+          {availableGroups.map((group) => (
+            <option key={group.value} value={group.value}>
+              {group.label}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Sub-Group */}
-      <div className="w-full lg:flex-1">
-        <label className="text-[11px] font-semibold text-base-content/70 lg:hidden">Sub-Group</label>
-        <Select
-          value={item.selectedSubGroup}
-          onChange={(val) => handleItemChange(idx, "selectedSubGroup", val)}
-          options={subGroupOptions}
-          placeholder="Sub-Group"
-          isDisabled={!currentGroupName}
-          styles={rowSelectStyles}
-          isSearchable
-          isClearable
-        />
+      {/* Subgroup Selection */}
+      <div className="flex-1">
+        <label className="text-[10px] font-bold lg:hidden text-base-content/70">Sub-Group</label>
+        <select
+          className="select select-bordered select-sm w-full"
+          value={item.selectedSubGroup?.value || item.selectedSubGroup || ""}
+          disabled={!item.selectedGroup}
+          onChange={(e) => {
+            const val = e.target.value;
+            const found = availableSubgroups.find((s) => String(s.value) === String(val));
+            handleItemChange(idx, "selectedSubGroup", found || val);
+          }}
+        >
+          <option value="">Select Sub-Group</option>
+          {availableSubgroups.map((sub) => (
+            <option key={sub.value} value={sub.value}>
+              {sub.label}
+            </option>
+          ))}
+        </select>
       </div>
 
-      {/* Product */}
-      <div className="w-full lg:flex-1">
-        <label className="text-[11px] font-semibold text-base-content/70 lg:hidden">Product</label>
-        <Select
-          value={item.productId}
-          onChange={(val) => handleItemChange(idx, "productId", val)}
-          options={productOptions}
-          placeholder="Search Product..."
-          styles={rowSelectStyles}
-          isSearchable
-          isClearable
-        />
+      {/* Product Selection */}
+      <div className="flex-1">
+        <label className="text-[10px] font-bold lg:hidden text-base-content/70">Product</label>
+        <select
+          className="select select-bordered select-sm w-full"
+          value={item.productId?.value || item.productId || ""}
+          disabled={!item.selectedGroup}
+          onChange={(e) => {
+            const val = e.target.value;
+            const found = availableProducts.find((p) => String(p.value) === String(val));
+            handleItemChange(idx, "productId", found || val);
+          }}
+        >
+          <option value="">Select Product</option>
+          {availableProducts.map((prod) => (
+            <option key={prod.value} value={prod.value}>
+              {prod.label}
+            </option>
+          ))}
+        </select>
       </div>
 
       {/* Stock */}
       <div className="w-full lg:w-16">
-        <label className="text-[11px] font-semibold text-base-content/70 lg:hidden">Stock</label>
+        <label className="text-[10px] font-bold lg:hidden text-base-content/70">Stock</label>
         <input
-          type="number"
+          type="text"
           readOnly
-          value={item.currentStock || 0}
-          className="input input-bordered input-sm h-[32px] w-full text-center bg-base-200 text-xs font-medium cursor-not-allowed"
+          className="input input-bordered input-sm w-full text-center bg-base-100"
+          value={calcItem?.currentStock ?? item.currentStock ?? 0}
         />
       </div>
 
       {/* Quantity */}
       <div className="w-full lg:w-16">
-        <label className="text-[11px] font-semibold text-base-content/70 lg:hidden">Quantity</label>
+        <label className="text-[10px] font-bold lg:hidden text-base-content/70">Quantity</label>
         <input
           type="number"
           min="1"
+          className="input input-bordered input-sm w-full text-center"
           value={item.orderQty}
           onChange={(e) => handleItemChange(idx, "orderQty", e.target.value)}
-          className="input input-bordered input-sm h-[32px] w-full text-center text-xs font-medium bg-base-100"
         />
       </div>
 
       {/* Unit Price */}
       <div className="w-full lg:w-20">
-        <label className="text-[11px] font-semibold text-base-content/70 lg:hidden">Price (৳)</label>
+        <label className="text-[10px] font-bold lg:hidden text-base-content/70">Price</label>
         <input
           type="number"
+          className="input input-bordered input-sm w-full text-center"
           value={item.unitPrice}
           onChange={(e) => handleItemChange(idx, "unitPrice", e.target.value)}
-          className="input input-bordered input-sm h-[32px] w-full text-center text-xs font-medium bg-base-100"
         />
       </div>
 
       {/* Discount */}
       <div className="w-full lg:w-32 flex gap-1">
-        <select
-          value={item.discountType}
-          onChange={(e) => handleItemChange(idx, "discountType", e.target.value)}
-          className="select select-bordered select-sm h-[32px] text-xs px-1 w-14 bg-base-100"
-        >
-          <option value="percent">%</option>
-          <option value="fixed">৳</option>
-        </select>
         <input
           type="number"
+          className="input input-bordered input-sm w-16 text-center"
+          placeholder="Val"
           value={item.discountValue}
           onChange={(e) => handleItemChange(idx, "discountValue", e.target.value)}
-          className="input input-bordered input-sm h-[32px] w-full text-center text-xs font-medium bg-base-100"
-          placeholder="Disc"
         />
+        <select
+          className="select select-bordered select-sm w-16 px-1"
+          value={item.discountType}
+          onChange={(e) => handleItemChange(idx, "discountType", e.target.value)}
+        >
+          <option value="percent">%</option>
+          <option value="flat">৳</option>
+        </select>
       </div>
 
       {/* Total Price */}
-      <div className="w-full lg:w-20 text-right font-medium text-xs hidden lg:block">
-        ৳ {calcItem?.totalPrice?.toFixed(2) || "0.00"}
+      <div className="w-full lg:w-20 text-left lg:text-right font-semibold text-sm">
+        <span className="lg:hidden font-bold text-xs">Total: </span>
+        ৳{calcItem?.totalPrice?.toFixed(2) || "0.00"}
       </div>
 
       {/* After Discount */}
-      <div className="w-full lg:w-24 text-right font-bold text-xs text-teal-600 hidden lg:block">
-        ৳ {calcItem?.afterDiscountPrice?.toFixed(2) || "0.00"}
+      <div className="w-full lg:w-24 text-left lg:text-right font-bold text-sm text-teal-600">
+        <span className="lg:hidden font-bold text-xs text-base-content">After Disc: </span>
+        ৳{calcItem?.afterDiscountPrice?.toFixed(2) || "0.00"}
       </div>
 
       {/* Remove Button */}
       <div className="w-full lg:w-8 flex justify-end lg:justify-center">
-        <button
-          type="button"
-          onClick={() => handleRemoveItemRow(idx)}
-          disabled={itemsLength === 1}
-          className="btn btn-ghost btn-xs text-error hover:bg-error/10 disabled:opacity-30"
-        >
-          <Trash2 className="size-4" />
-        </button>
+        {itemsLength > 1 && (
+          <button
+            type="button"
+            className="btn btn-ghost btn-sm text-error p-0 hover:bg-error/10"
+            onClick={() => handleRemoveItemRow(idx)}
+          >
+            <Trash2 className="size-4" />
+          </button>
+        )}
       </div>
     </div>
   );
