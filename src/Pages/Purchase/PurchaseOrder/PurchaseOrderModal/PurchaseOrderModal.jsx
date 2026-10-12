@@ -48,7 +48,7 @@ const PurchaseOrderModal = ({
           supplierService.getAllSuppliers().catch(() => []),
           fetch(`${baseUrl}/products`).catch(() => ({ ok: false })),
           fetch(`${baseUrl}/product-groups`).catch(() => ({ ok: false })),
-          fetch(`${baseUrl}/product-subgroups`).catch(() => ({ ok: false })) // Hyphen fixed here[cite: 2]
+          fetch(`${baseUrl}/product-subgroups`).catch(() => ({ ok: false }))
         ]);
 
         // 1. Supplier Data Handle
@@ -261,6 +261,7 @@ const PurchaseOrderModal = ({
       return;
     }
 
+    // SweetAlert2 styled properly to prevent overlapping and proper z-index positioning
     Swal.fire({
       title: "Confirm Purchase Order?",
       text: "This will create a new batch order in the system.",
@@ -270,10 +271,14 @@ const PurchaseOrderModal = ({
       cancelButtonColor: "#64748b",
       confirmButtonText: "Confirm Order",
       cancelButtonText: "Cancel",
+      heightAuto: false, // Prevents body overflow shift
       customClass: {
-        popup: "rounded-2xl",
-        confirmButton: "btn btn-sm text-white px-4 border-0",
-        cancelButton: "btn btn-sm btn-ghost px-4",
+        container: "z-[99999]", // Higher z-index than main modal
+        popup: "rounded-2xl p-6 shadow-2xl border border-base-200",
+        title: "text-xl font-bold text-base-content",
+        htmlContainer: "text-sm text-base-content/70",
+        confirmButton: "btn btn-sm bg-teal-600 hover:bg-teal-700 text-white px-5 border-0 shadow-none",
+        cancelButton: "btn btn-sm btn-ghost px-5 text-base-content/70 hover:bg-base-200",
       },
     }).then((result) => {
       if (result.isConfirmed) {
@@ -307,7 +312,7 @@ const PurchaseOrderModal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-[10px_20px]">
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-5">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -320,7 +325,7 @@ const PurchaseOrderModal = ({
             initial={{ scale: 0.96, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0, y: 15 }}
-            className="relative w-full h-full max-w-none max-h-none bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden text-sm"
+            className="relative w-full max-w-6xl h-[90vh] bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden text-sm"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300 shrink-0">
