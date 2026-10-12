@@ -23,7 +23,6 @@ const EmployeeManagement = () => {
 
   // Form inputs for Add/Edit
   const [formData, setFormData] = useState({
-    id: "",
     name: "",
     designation: "",
     joiningDate: "",
@@ -45,7 +44,6 @@ const EmployeeManagement = () => {
   const handleOpenEditModal = (employee) => {
     setSelectedEmployee(employee);
     setFormData({
-      id: employee.id,
       name: employee.name,
       designation: employee.designation,
       joiningDate: employee.joiningDate
@@ -70,11 +68,10 @@ const EmployeeManagement = () => {
     setIsAssignModalOpen(true);
   };
 
-  // Handle Create Employee Submit
+  // Handle Create Employee Submit (id pass kora hobe na, backend automated toiri korbe)
   const handleCreateEmployee = async (e) => {
     e.preventDefault();
     const payload = {
-      id: formData.id,
       name: formData.name,
       designation: formData.designation,
       joiningDate: formData.joiningDate ? new Date(formData.joiningDate).toISOString() : new Date().toISOString(),
@@ -88,7 +85,6 @@ const EmployeeManagement = () => {
     if (res.success) {
       setIsAddModalOpen(false);
       setFormData({
-        id: "",
         name: "",
         designation: "",
         joiningDate: "",
@@ -105,7 +101,6 @@ const EmployeeManagement = () => {
   const handleUpdateEmployee = async (e) => {
     e.preventDefault();
     const payload = {
-      id: selectedEmployee.id, // Backend-এ id ফিল্ডটি রিকোয়ার্ড থাকলে অবশ্যই পাঠাতে হবে
       name: formData.name,
       designation: formData.designation,
       joiningDate: formData.joiningDate ? new Date(formData.joiningDate).toISOString() : new Date().toISOString(),
@@ -134,7 +129,7 @@ const EmployeeManagement = () => {
     }
   };
 
-  // Save Assigned Customers (Including full employee payload to pass backend Zod validation)
+  // Save Assigned Customers
   const handleSaveAssignments = async () => {
     const formattedAssignCustomers = assignedCustomerIds.map((custId) => {
       const cust = customers.find((c) => c._id === custId);
@@ -145,15 +140,6 @@ const EmployeeManagement = () => {
     });
 
     const payload = {
-      id: selectedEmployee.id,
-      name: selectedEmployee.name,
-      designation: selectedEmployee.designation,
-      joiningDate: selectedEmployee.joiningDate 
-        ? new Date(selectedEmployee.joiningDate).toISOString() 
-        : new Date().toISOString(),
-      salary: Number(selectedEmployee.salary),
-      contact: selectedEmployee.contact,
-      status: selectedEmployee.status,
       assignCustomers: formattedAssignCustomers,
     };
 
@@ -192,7 +178,6 @@ const EmployeeManagement = () => {
         <button
           onClick={() => {
             setFormData({
-              id: "",
               name: "",
               designation: "",
               joiningDate: "",
@@ -309,7 +294,7 @@ const EmployeeManagement = () => {
         </table>
       </div>
 
-      {/* Add Employee Modal */}
+      {/* Add Employee Modal (Employee ID disabled/readOnly thakbe) */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 transform transition-all">
@@ -326,17 +311,15 @@ const EmployeeManagement = () => {
             </div>
             <form onSubmit={handleCreateEmployee} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
                   Employee ID
                 </label>
                 <input
                   type="text"
-                  name="id"
-                  value={formData.id}
-                  onChange={handleInputChange}
-                  required
-                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
-                  placeholder="e.g. EMP006"
+                  value="Auto Generated from Backend"
+                  disabled
+                  readOnly
+                  className="w-full border border-gray-200 bg-gray-100 text-gray-500 rounded-xl px-3.5 py-2 text-sm cursor-not-allowed select-none font-medium"
                 />
               </div>
               <div>
@@ -445,7 +428,7 @@ const EmployeeManagement = () => {
         </div>
       )}
 
-      {/* Edit Employee Modal */}
+      {/* Edit Employee Modal (ID readOnly/disabled) */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 transform transition-all">
@@ -461,6 +444,18 @@ const EmployeeManagement = () => {
               </button>
             </div>
             <form onSubmit={handleUpdateEmployee} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                  Employee ID
+                </label>
+                <input
+                  type="text"
+                  value={selectedEmployee?.id || ""}
+                  disabled
+                  readOnly
+                  className="w-full border border-gray-200 bg-gray-100 text-gray-500 rounded-xl px-3.5 py-2 text-sm cursor-not-allowed select-none font-mono"
+                />
+              </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-600 uppercase mb-1">
                   Full Name
@@ -550,7 +545,7 @@ const EmployeeManagement = () => {
         </div>
       )}
 
-      {/* Assign Customers Modal with 2 Tabs / Boxes */}
+      {/* Assign Customers Modal */}
       {isAssignModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all">
           <div className="bg-white rounded-2xl max-w-xl w-full p-6 shadow-2xl border border-gray-100 max-h-[85vh] flex flex-col">
@@ -563,7 +558,8 @@ const EmployeeManagement = () => {
                   Employee:{" "}
                   <span className="font-semibold text-gray-700">
                     {selectedEmployee?.name}
-                  </span>
+                  </span>{" "}
+                  <span className="font-mono text-gray-400">({selectedEmployee?.id})</span>
                 </p>
               </div>
               <button
