@@ -34,6 +34,22 @@ const EmployeeManagement = () => {
   // Assign customer temporary selection state (holds customer _ids)
   const [assignedCustomerIds, setAssignedCustomerIds] = useState([]);
 
+  // Helper function to calculate next employee ID preview for Add Modal
+  const getNextEmployeeIdPreview = () => {
+    if (!employees || employees.length === 0) {
+      return "EMP-0001";
+    }
+    // Find the last employee id or max number
+    const lastEmp = employees[employees.length - 1];
+    if (lastEmp && lastEmp.id) {
+      const numericPart = parseInt(lastEmp.id.replace("EMP-", ""), 10);
+      if (!isNaN(numericPart)) {
+        return `EMP-${String(numericPart + 1).padStart(4, "0")}`;
+      }
+    }
+    return "EMP-0001";
+  };
+
   // Handle Input Changes for Add/Edit Form
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -68,7 +84,7 @@ const EmployeeManagement = () => {
     setIsAssignModalOpen(true);
   };
 
-  // Handle Create Employee Submit (id pass kora hobe na, backend automated toiri korbe)
+  // Handle Create Employee Submit
   const handleCreateEmployee = async (e) => {
     e.preventDefault();
     const payload = {
@@ -294,7 +310,7 @@ const EmployeeManagement = () => {
         </table>
       </div>
 
-      {/* Add Employee Modal (Employee ID disabled/readOnly thakbe) */}
+      {/* Add Employee Modal (Shows upcoming unique ID preview, readOnly/disabled) */}
       {isAddModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 transform transition-all">
@@ -312,14 +328,14 @@ const EmployeeManagement = () => {
             <form onSubmit={handleCreateEmployee} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
-                  Employee ID
+                  Employee ID (Auto Generated)
                 </label>
                 <input
                   type="text"
-                  value="Auto Generated from Backend"
+                  value={getNextEmployeeIdPreview()}
                   disabled
                   readOnly
-                  className="w-full border border-gray-200 bg-gray-100 text-gray-500 rounded-xl px-3.5 py-2 text-sm cursor-not-allowed select-none font-medium"
+                  className="w-full border border-gray-200 bg-gray-100 text-gray-600 rounded-xl px-3.5 py-2 text-sm cursor-not-allowed select-none font-mono font-semibold"
                 />
               </div>
               <div>
@@ -428,7 +444,7 @@ const EmployeeManagement = () => {
         </div>
       )}
 
-      {/* Edit Employee Modal (ID readOnly/disabled) */}
+      {/* Edit Employee Modal */}
       {isEditModalOpen && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 z-50 transition-all">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-gray-100 transform transition-all">
