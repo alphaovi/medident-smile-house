@@ -2,41 +2,65 @@ import { useEffect, useState } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import SingleSellList from "./SingleSellList";
+import { useSaleOrderServices } from "../../../services/saleOrderService/useSaleOrderServices";
 
 const SellLists = () => {
     const [sellListDatas, setSellListDatas] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        fetch("/sellList.json")
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("Failed to fetch sell list data.");
-                }
-                return res.json();
-            })
-            .then((data) => {
-                setSellListDatas(data);
-                setLoading(false);
-            })
-            .catch((error) => {
-                console.error("Error loading sell list:", error);
-                toast.error("Failed to load sell list data!");
-                setLoading(false);
-            });
+        fetchDeliveredOrders();
     }, []);
 
-    // Send Back ক্লিক করলে স্ট্যাটাস Pending করে দেওয়া হবে এবং টেবিলে শুধু Deliveredগুলো ফিল্টার থাকবে
-    const handleSendBackOrder = (orderNo) => {
-        setSellListDatas((prevOrders) =>
-            prevOrders.map((order) =>
-                order.orderNo === orderNo ? { ...order, status: "Pending" } : order
-            )
-        );
-        toast.info(`Order ${orderNo} has been sent back to Pending!`);
+    const fetchDeliveredOrders = async () => {
+        try {
+            setLoading(true);
+            const res = await useSaleOrderServices.getAllSaleOrders();
+            const orderList = Array.isArray(res) ? res : (res?.data || res?.result || []);
+            
+            const formattedData = orderList.map((order) => ({
+                ...order,
+                // Custom readable ID or fallback to last 6 chars of _id
+                orderNo: order.id || order._id?.slice(-6).toUpperCase(),
+                realId: order._id,
+                customerName: order.customer?.name || order.customer?.customerName || "N/A",
+                customerState: order.customer?.state || order.stateOrRegion || "N/A",
+                customerOffice: order.customer?.address || order.customer?.office || "",
+                subtotal: order.grandTotal || 0,
+                status: order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : "Pending",
+                products: Array.isArray(order.products) ? order.products.map(p => ({
+                    productName: p.product?.name || p.product?.productName || "Product",
+                    orderQuantity: p.quantity || 1,
+                    unitPrice: p.price || 0,
+                    total: p.afterDiscount || p.totalPrice || 0
+                })) : []
+            }));
+
+            setSellListDatas(formattedData);
+        } catch (error) {
+            console.error("Error loading sell list:", error);
+            toast.error("Failed to load sell list data!");
+        } finally {
+            setLoading(false);
+        }
     };
 
-    // শুধুমাত্র Delivered অর্ডারগুলো ফিল্টার করে টেবিলে দেখানো হবে
+    const handleSendBackOrder = async (realId) => {
+        try {
+            await useSaleOrderServices.updateOrderStatus(realId, "Pending");
+
+            setSellListDatas((prevOrders) =>
+                prevOrders.map((order) =>
+                    order.realId === realId ? { ...order, status: "Pending" } : order
+                )
+            );
+            toast.info(`Order has been sent back to Pending!`);
+        } catch (error) {
+            console.error("Failed to update status:", error);
+            toast.error("Failed to send back order status.");
+        }
+    };
+
     const deliveredOrders = sellListDatas.filter(
         (order) => order.status === "Delivered"
     );
@@ -83,7 +107,7 @@ const SellLists = () => {
                                 </tr>
                             ) : (
                                 deliveredOrders.map((order, index) => {
-                                    const rowKey = order.orderNo || index;
+                                    const rowKey = order.realId || index;
                                     return (
                                         <SingleSellList
                                             key={rowKey} 

@@ -1,3 +1,4 @@
+
 import { X, Building2 } from "lucide-react";
 
 const SupplierModal = ({
@@ -21,7 +22,7 @@ const SupplierModal = ({
         {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
           <h3 className="text-xl font-bold text-gray-800 dark:text-white flex items-center gap-2">
-            <Building2 className="w-6 h-6 text-indigo-600 cursor-pointer" />
+            <Building2 className="w-6 h-6 text-indigo-600" />
             {isEditing ? "Edit Supplier" : "Add New Supplier"}
           </h3>
           <button

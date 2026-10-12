@@ -1,4 +1,4 @@
-
+// purchaseOrderService.js
 const API_BASE_URL = `${import.meta.env.VITE_API_URL || "https://alphaovi-medident-backend.vercel.app/api/v1"}/purchase-orders`;
 
 export const purchaseOrderService = {
@@ -33,18 +33,21 @@ export const purchaseOrderService = {
     }
   },
 
-  // Update an existing purchase order
+  // Update an existing purchase order (PATCH method with error response catch)
   updateOrder: async (id, orderData) => {
     try {
       const response = await fetch(`${API_BASE_URL}/${id}`, {
-        method: "PUT",
+        method: "PATCH", 
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(orderData),
       });
 
-      if (!response.ok) throw new Error("Failed to update purchase order");
+      if (!response.ok) {
+        const errRes = await response.json().catch(() => ({}));
+        throw new Error(errRes.message || "Failed to update purchase order");
+      }
       return await response.json();
     } catch (error) {
       console.error("Error updating purchase order:", error);

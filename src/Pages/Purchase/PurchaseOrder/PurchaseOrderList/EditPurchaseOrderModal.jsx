@@ -75,7 +75,12 @@ const EditPurchaseOrderModal = ({
   // Populate data when editing with robust group, subgroup, and product matching
   useEffect(() => {
     if (editData) {
-      setSelectedSupplier(editData.supplierName || editData.supplier || "");
+      // Resolve Supplier Name correctly (handle both string name or object/id reference)
+      const supMatch = suppliers.find(
+        (s) => String(s._id) === String(editData.supplierName || editData.supplier) ||
+               String(s.supplierName) === String(editData.supplierName || editData.supplier)
+      );
+      setSelectedSupplier(supMatch ? supMatch.supplierName : (editData.supplierName || editData.supplier || ""));
 
       if (editData.orderDate) {
         if (editData.orderDate.includes("/")) {
@@ -84,11 +89,11 @@ const EditPurchaseOrderModal = ({
             setOrderDate(`${parts[2]}-${parts[1]}-${parts[0]}`);
           }
         } else {
-          setOrderDate(editData.orderDate);
+          setOrderDate(editData.orderDate.split("T")[0]);
         }
       }
 
-      const expDate = editData.expectedReceiveDate || editData.expectedDate;
+      const expDate = editData.expectedReceiveDate || editData.expectedDate || editData.expectedDeliveryDate;
       if (expDate) {
         if (expDate.includes("/")) {
           const parts = expDate.split("/");
@@ -96,7 +101,7 @@ const EditPurchaseOrderModal = ({
             setExpectedReceiveDate(`${parts[2]}-${parts[1]}-${parts[0]}`);
           }
         } else {
-          setExpectedReceiveDate(expDate);
+          setExpectedReceiveDate(expDate.split("T")[0]);
         }
       }
 
@@ -122,7 +127,7 @@ const EditPurchaseOrderModal = ({
           const prodMatch = products.find(
             (p) =>
               String(p.productId || p._id || p.id) ===
-                String(item.productId || item._id || item.id) ||
+                String(item.productId || item.product || item._id || item.id) ||
               String(p.productName || p.name || "")
                 .trim()
                 .toLowerCase() ===
@@ -131,25 +136,24 @@ const EditPurchaseOrderModal = ({
                   .toLowerCase(),
           );
 
-          const resolvedGroup =
-            item.selectedGroup ||
-            item.group ||
-            item.productGroup ||
-            prodMatch?.productGroup ||
-            prodMatch?.group ||
-            "";
+          // Resolve Group Name instead of showing _id
+          const rawGroupRef = item.selectedGroup || item.group || prodMatch?.productGroup || prodMatch?.group || "";
+          const groupObj = productsGroupSubgroup.find(
+            (g) => String(g._id) === String(rawGroupRef) || String(g.group || g.groupName || g.name) === String(rawGroupRef)
+          );
+          const resolvedGroup = groupObj ? (groupObj.group || groupObj.groupName || groupObj.name) : rawGroupRef;
 
-          const resolvedSubGroup =
-            item.selectedSubGroup ||
-            item.subGroup ||
-            item.productSubGroup ||
-            prodMatch?.productSubGroup ||
-            prodMatch?.subGroup ||
-            "";
+          // Resolve SubGroup Name instead of showing _id
+          const rawSubGroupRef = item.selectedSubGroup || item.subGroup || prodMatch?.productSubGroup || prodMatch?.subGroup || "";
+          const subGroupsList = groupObj?.subGroup || groupObj?.subGroups || [];
+          const subGroupObj = subGroupsList.find(
+            (sg) => String(sg._id) === String(rawSubGroupRef) || String(sg.name || sg) === String(rawSubGroupRef)
+          );
+          const resolvedSubGroup = subGroupObj ? (subGroupObj.name || subGroupObj) : rawSubGroupRef;
 
           const resolvedProductId = prodMatch
             ? prodMatch.productId || prodMatch._id || prodMatch.id || ""
-            : item.productId || item._id || item.id || "";
+            : item.productId || item.product || item._id || item.id || "";
 
           const resolvedProductName =
             item.productName ||
@@ -169,17 +173,19 @@ const EditPurchaseOrderModal = ({
               prodMatch?.currentStock ??
               0,
             transitStock:
+              item.inTransit ??
               item.transitStock ??
               prodMatch?.inTransit ??
               prodMatch?.transitStock ??
               0,
-            orderQty: item.orderQty ?? item.quantity ?? 1,
+            orderQty: item.orderQuantity ?? item.orderQty ?? item.quantity ?? 1,
             unitPrice:
               item.unitPrice ??
               prodMatch?.purchasePrice ??
               prodMatch?.unitPrice ??
               0,
             unitWeight:
+              item.weight ??
               item.unitWeight ??
               prodMatch?.unitWeight ??
               prodMatch?.weight ??
@@ -196,7 +202,7 @@ const EditPurchaseOrderModal = ({
       setOrderDate(getTodayISO());
       setExpectedReceiveDate("");
     }
-  }, [editData, products]);
+  }, [editData, products, productsGroupSubgroup, suppliers]);
 
   const availableGroups = useMemo(() => {
     if (!Array.isArray(productsGroupSubgroup)) return [];
@@ -258,14 +264,6 @@ const EditPurchaseOrderModal = ({
     if (items.length > 1) {
       setItems(items.filter((_, i) => i !== index));
     }
-  };
-
-  const handleExpenseChange = (e) => {
-    const { name, value } = e.target;
-    setExpenses((prev) => ({
-      ...prev,
-      [name]: name === "vatType" ? value : value === "" ? "" : Number(value),
-    }));
   };
 
   const calculations = useMemo(() => {
@@ -342,9 +340,7 @@ const EditPurchaseOrderModal = ({
 
     const transitCostNum = Number(expenses.transitCost) || 0;
     const otherCostNum = Number(expenses.otherCost) || 0;
-
     const totalExtraExpenses = transitCostNum + otherCostNum;
-
     const grandTotal = totalItemsWithShipping + totalExtraExpenses;
 
     return {
@@ -397,51 +393,40 @@ const EditPurchaseOrderModal = ({
       },
     }).then((result) => {
       if (result.isConfirmed) {
-        onSaveStoreProduct?.({
+        // Map payload matching backend schema requirements
+        const payloadData = {
           ...(editData || {}),
           supplierName: selectedSupplier,
-          orderDate: orderDate,
-          expectedReceiveDate: expectedReceiveDate,
-          purchasedItems: validItems.map(
-            ({
-              lineWeight,
-              allocatedShipping,
-              allocatedVat,
-              rawLinePrice,
-              totalWithShipping,
-              unitCostAfterCalc,
-              ...rest
-            }) => rest,
-          ),
-          expenses: {
-            shippingCost: Number(expenses.shippingCost) || 0,
-            transitCost: Number(expenses.transitCost) || 0,
-            vatValue: Number(expenses.vatValue) || 0,
-            vatType: expenses.vatType,
-            otherCost: Number(expenses.otherCost) || 0,
-            vatAmount: calculations.calculatedVatAmount,
-            shippingCostPerKg: calculations.shippingCostPerKg,
-          },
-          totals: {
-            currentStock: calculations.totalCurrentStock,
-            transitStock: calculations.totalTransitStock,
-            orderQty: calculations.totalOrderQty,
-            batchWeight: calculations.totalBatchWeight,
-            rawSubtotal: calculations.rawSubtotal,
-            totalItemsWithShipping: calculations.totalItemsWithShipping,
-            grandTotal: calculations.grandTotal,
-          },
-          totalAmount: calculations.grandTotal,
-        });
+          purchaseDate: orderDate,
+          expectedDeliveryDate: expectedReceiveDate,
+          shippingCost: Number(expenses.shippingCost) || 0,
+          transitCost: Number(expenses.transitCost) || 0,
+          vatType: expenses.vatType === "amount" ? "flat" : expenses.vatType,
+          vatValue: Number(expenses.vatValue) || 0,
+          otherCost: Number(expenses.otherCost) || 0,
+          totalWeight: calculations.totalBatchWeight,
+          baseSubtotal: calculations.rawSubtotal,
+          grandTotal: calculations.grandTotal,
+          items: validItems.map((item) => ({
+            group: item.selectedGroup,
+            subGroup: item.selectedSubGroup,
+            product: item.productId,
+            currentStock: Number(item.currentStock) || 0,
+            inTransit: Number(item.transitStock) || 0,
+            orderQuantity: Number(item.orderQty) || 0,
+            price: Number(item.unitPrice) || 0,
+            weight: Number(item.unitWeight) || 0,
+            shippingCost: Number(item.allocatedShipping) || 0,
+            vatAmount: Number(item.allocatedVat) || 0,
+            transitCost: 0,
+            otherCost: 0,
+            unitCost: Number(item.unitCostAfterCalc) || 0,
+            totalCost: Number(item.totalWithShipping) || 0,
+            status: editData?.status || "Ordered",
+          })),
+        };
 
-        toast.success(
-          editData
-            ? "Purchase order updated successfully!"
-            : "Purchase order batch created successfully!",
-          {
-            autoClose: 2000,
-          },
-        );
+        onSaveStoreProduct?.(payloadData);
         onClose();
       }
     });
@@ -471,7 +456,7 @@ const EditPurchaseOrderModal = ({
                 <Store className="size-6 text-teal-600" />
                 <h3 className="font-bold text-xl">
                   {editData
-                    ? `Edit Purchase Order (${editData.orderID || editData.orderNo || editData._id || ""})`
+                    ? `Edit Purchase Order (${editData.purchaseId || editData.orderID || editData.orderNo || editData._id || ""})`
                     : "Batch Purchase Order Entry"}
                 </h3>
               </div>
@@ -493,8 +478,7 @@ const EditPurchaseOrderModal = ({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-base-200/50 p-4 rounded-xl border border-base-300">
                 <div>
                   <label className="label py-1 text-sm font-semibold flex items-center gap-2 text-base-content/80">
-                    <Building2 className="size-4 text-teal-600" /> Supplier
-                    Name
+                    <Building2 className="size-4 text-teal-600" /> Supplier Name
                   </label>
                   <select
                     value={selectedSupplier}
@@ -529,14 +513,14 @@ const EditPurchaseOrderModal = ({
 
                 <div>
                   <label className="label py-1 text-sm font-semibold flex items-center gap-2 text-base-content/80">
-                    <Calendar className="size-4 text-teal-600" /> Expected
-                    Receive Date
+                    <Calendar className="size-4 text-teal-600" /> Expected Receive Date
                   </label>
                   <input
                     type="date"
                     value={expectedReceiveDate}
                     onChange={(e) => setExpectedReceiveDate(e.target.value)}
                     className="input input-bordered input-sm w-full font-medium text-sm"
+                    required
                   />
                 </div>
               </div>
@@ -597,394 +581,257 @@ const EditPurchaseOrderModal = ({
                     return matchGroup && matchSubGroup;
                   });
 
-                  const calcItem = calculations.calculatedItems[idx];
-
                   return (
-                    <motion.div
+                    <div
                       key={idx}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex flex-wrap lg:flex-nowrap items-center gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300 text-sm"
+                      className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 p-3 lg:p-0 bg-base-200/40 lg:bg-transparent rounded-xl border lg:border-0 border-base-300"
                     >
-                      <div className="w-full sm:w-40">
+                      {/* Group Select */}
+                      <div className="w-full lg:w-40">
                         <select
                           value={item.selectedGroup}
                           onChange={(e) =>
-                            handleItemChange(
-                              idx,
-                              "selectedGroup",
-                              e.target.value,
-                            )
+                            handleItemChange(idx, "selectedGroup", e.target.value)
                           }
-                          className="select select-bordered select-sm w-full text-sm"
+                          className="select select-bordered select-sm w-full text-xs"
                         >
-                          <option value="">Group...</option>
-                          {availableGroups.map((g, i) => (
-                            <option key={i} value={g}>
-                              {g}
+                          <option value="">Select Group...</option>
+                          {availableGroups.map((grpName, gIdx) => (
+                            <option key={gIdx} value={grpName}>
+                              {grpName}
                             </option>
                           ))}
-                          {!availableGroups.includes(item.selectedGroup) &&
-                            item.selectedGroup && (
-                              <option value={item.selectedGroup}>
-                                {item.selectedGroup}
-                              </option>
-                            )}
                         </select>
                       </div>
 
-                      <div className="w-full sm:w-40">
+                      {/* Sub-Group Select */}
+                      <div className="w-full lg:w-40">
                         <select
                           value={item.selectedSubGroup}
-                          disabled={!item.selectedGroup}
                           onChange={(e) =>
-                            handleItemChange(
-                              idx,
-                              "selectedSubGroup",
-                              e.target.value,
-                            )
+                            handleItemChange(idx, "selectedSubGroup", e.target.value)
                           }
-                          className="select select-bordered select-sm w-full disabled:opacity-50 text-sm"
+                          className="select select-bordered select-sm w-full text-xs"
+                          disabled={!item.selectedGroup}
                         >
-                          <option value="">Sub-Group...</option>
-                          {availableSubGroups.map((sg, i) => (
-                            <option
-                              key={i}
-                              value={typeof sg === "string" ? sg : sg.name}
-                            >
-                              {typeof sg === "string" ? sg : sg.name}
-                            </option>
-                          ))}
-                          {!availableSubGroups.some(
-                            (sg) =>
-                              (typeof sg === "string" ? sg : sg.name) ===
-                              item.selectedSubGroup,
-                          ) &&
-                            item.selectedSubGroup && (
-                              <option value={item.selectedSubGroup}>
-                                {item.selectedSubGroup}
+                          <option value="">Select Sub-Group...</option>
+                          {availableSubGroups.map((sg, sgIdx) => {
+                            const sgName = typeof sg === "object" ? (sg.name || sg.subGroupName) : sg;
+                            return (
+                              <option key={sgIdx} value={sgName}>
+                                {sgName}
                               </option>
-                            )}
+                            );
+                          })}
                         </select>
                       </div>
 
-                      <div className="flex-1 min-w-[120px]">
+                      {/* Product Select */}
+                      <div className="flex-1">
                         <select
                           value={item.productId}
                           onChange={(e) =>
                             handleItemChange(idx, "productId", e.target.value)
                           }
-                          className="select select-bordered select-sm w-full font-medium text-sm"
+                          className="select select-bordered select-sm w-full text-xs"
                         >
                           <option value="">Select Product...</option>
-                          {filteredProducts.map((p) => {
-                            const pId = p.productId || p._id || p.id;
-                            const pName = p.productName || p.name;
+                          {filteredProducts.map((prod) => {
+                            const pId = prod.productId || prod._id || prod.id;
+                            const pName = prod.productName || prod.name;
                             return (
                               <option key={pId} value={pId}>
                                 {pName}
                               </option>
                             );
                           })}
-                          {!filteredProducts.some(
-                            (p) =>
-                              String(p.productId || p._id || p.id) ===
-                              String(item.productId),
-                          ) &&
-                            item.productId && (
-                              <option value={item.productId}>
-                                {item.productName || item.productId}
-                              </option>
-                            )}
                         </select>
                       </div>
 
-                      <div className="w-20 text-center">
-                        <span className="badge badge-ghost badge-md w-full font-medium text-xs py-2">
-                          {item.currentStock}
-                        </span>
-                      </div>
-
-                      <div className="w-20 text-center">
-                        <span className="badge badge-warning/20 text-warning-content badge-md w-full font-medium text-xs py-2">
-                          {item.transitStock}
-                        </span>
-                      </div>
-
-                      <div className="w-20">
+                      {/* Current Stock */}
+                      <div className="w-full lg:w-20 text-center">
                         <input
                           type="number"
-                          min="0"
+                          value={item.currentStock}
+                          readOnly
+                          className="input input-bordered input-sm w-full text-center text-xs bg-base-200"
+                        />
+                      </div>
+
+                      {/* In Transit */}
+                      <div className="w-full lg:w-20 text-center">
+                        <input
+                          type="number"
+                          value={item.transitStock}
+                          readOnly
+                          className="input input-bordered input-sm w-full text-center text-xs bg-base-200"
+                        />
+                      </div>
+
+                      {/* Order Qty */}
+                      <div className="w-full lg:w-20">
+                        <input
+                          type="number"
+                          min="1"
                           value={item.orderQty}
                           onChange={(e) =>
                             handleItemChange(idx, "orderQty", e.target.value)
                           }
-                          className="input input-bordered input-sm w-full text-center font-bold text-sm"
+                          className="input input-bordered input-sm w-full text-center text-xs"
                         />
                       </div>
 
-                      <div className="w-24">
+                      {/* Price */}
+                      <div className="w-full lg:w-24">
                         <input
                           type="number"
                           min="0"
+                          step="0.01"
                           value={item.unitPrice}
                           onChange={(e) =>
                             handleItemChange(idx, "unitPrice", e.target.value)
                           }
-                          className="input input-bordered input-sm w-full text-right text-sm"
+                          className="input input-bordered input-sm w-full text-right text-xs"
                         />
                       </div>
 
-                      <div className="w-20">
+                      {/* Weight */}
+                      <div className="w-full lg:w-20">
                         <input
                           type="number"
-                          step="0.01"
                           min="0"
+                          step="0.01"
                           value={item.unitWeight}
                           onChange={(e) =>
                             handleItemChange(idx, "unitWeight", e.target.value)
                           }
-                          className="input input-bordered input-sm w-full text-center text-sm"
+                          className="input input-bordered input-sm w-full text-center text-xs"
                         />
                       </div>
 
-                      <div className="w-28 text-right">
-                        <span className="font-bold text-sm text-info block px-1">
-                          ৳
-                          {calcItem?.unitCostAfterCalc
-                            ? calcItem.unitCostAfterCalc.toFixed(2)
-                            : "0.00"}
-                        </span>
+                      {/* Unit Cost */}
+                      <div className="w-full lg:w-28 text-right font-semibold text-xs py-1">
+                        ৳ {(item.unitCostAfterCalc || 0).toFixed(2)}
                       </div>
 
-                      <div className="w-28 text-right">
-                        <span className="font-bold text-sm text-teal-600 block px-1">
-                          ৳
-                          {calcItem?.totalWithShipping
-                            ? calcItem.totalWithShipping.toFixed(2)
-                            : "0.00"}
-                        </span>
+                      {/* Total + Ship */}
+                      <div className="w-full lg:w-28 text-right font-semibold text-xs py-1 text-teal-600">
+                        ৳ {(item.totalWithShipping || 0).toFixed(2)}
                       </div>
 
-                      <div className="w-10 flex justify-center">
+                      {/* Remove Row */}
+                      <div className="w-full lg:w-10 flex justify-end lg:justify-center">
                         <button
                           type="button"
                           onClick={() => handleRemoveItemRow(idx)}
+                          className="btn btn-ghost btn-xs text-error hover:bg-error/10"
                           disabled={items.length === 1}
-                          className="btn btn-square btn-ghost btn-sm text-error hover:bg-error/10 disabled:opacity-20"
                         >
-                          <Trash2 className="size-5" />
+                          <Trash2 className="size-4" />
                         </button>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })}
               </div>
 
-              {/* Summary Bar */}
-              <div className="bg-base-200 p-3.5 rounded-xl border border-base-300 grid grid-cols-2 sm:grid-cols-5 gap-3 text-center text-sm">
+              {/* Expenses / Shipping Costs Section */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-base-200/50 p-4 rounded-xl border border-base-300">
                 <div>
-                  <span className="text-xs uppercase font-semibold text-base-content/70 block">
-                    Cur. Stock
-                  </span>
-                  <span className="font-bold text-base">
-                    {calculations.totalCurrentStock}
-                  </span>
+                  <label className="label py-1 text-xs font-semibold text-base-content/80">
+                    Shipping Cost (৳)
+                  </label>
+                  <input
+                    type="number"
+                    name="shippingCost"
+                    min="0"
+                    step="0.01"
+                    value={expenses.shippingCost}
+                    onChange={handleExpenseChange}
+                    className="input input-bordered input-sm w-full text-xs font-medium"
+                  />
                 </div>
                 <div>
-                  <span className="text-xs uppercase font-semibold text-base-content/70 block">
-                    In Transit
-                  </span>
-                  <span className="font-bold text-base text-warning">
-                    {calculations.totalTransitStock}
-                  </span>
+                  <label className="label py-1 text-xs font-semibold text-base-content/80">
+                    Transit Cost (৳)
+                  </label>
+                  <input
+                    type="number"
+                    name="transitCost"
+                    min="0"
+                    step="0.01"
+                    value={expenses.transitCost}
+                    onChange={handleExpenseChange}
+                    className="input input-bordered input-sm w-full text-xs font-medium"
+                  />
                 </div>
                 <div>
-                  <span className="text-xs uppercase font-semibold text-base-content/70 block">
-                    Order Qty
-                  </span>
-                  <span className="font-bold text-base text-primary">
-                    {calculations.totalOrderQty}
-                  </span>
+                  <label className="label py-1 text-xs font-semibold text-base-content/80">
+                    VAT Value
+                  </label>
+                  <div className="flex gap-1">
+                    <input
+                      type="number"
+                      name="vatValue"
+                      min="0"
+                      step="0.01"
+                      value={expenses.vatValue}
+                      onChange={handleExpenseChange}
+                      className="input input-bordered input-sm w-full text-xs font-medium"
+                    />
+                    <select
+                      name="vatType"
+                      value={expenses.vatType}
+                      onChange={handleExpenseChange}
+                      className="select select-bordered select-sm text-xs px-2"
+                    >
+                      <option value="percent">%</option>
+                      <option value="flat">Flat</option>
+                    </select>
+                  </div>
                 </div>
                 <div>
-                  <span className="text-xs uppercase font-semibold text-base-content/70 block">
-                    Total Weight
-                  </span>
-                  <span className="font-bold text-base">
-                    {calculations.totalBatchWeight.toFixed(2)} kg
-                  </span>
-                </div>
-                <div className="col-span-2 sm:col-span-1">
-                  <span className="text-xs uppercase font-semibold text-base-content/70 block">
-                    Subtotal (W/ Ship & VAT)
-                  </span>
-                  <span className="font-bold text-base text-teal-600">
-                    ৳{" "}
-                    {calculations.totalItemsWithShipping.toLocaleString(
-                      undefined,
-                      { minimumFractionDigits: 2, maximumFractionDigits: 2 },
-                    )}
-                  </span>
+                  <label className="label py-1 text-xs font-semibold text-base-content/80">
+                    Other Cost (৳)
+                  </label>
+                  <input
+                    type="number"
+                    name="otherCost"
+                    min="0"
+                    step="0.01"
+                    value={expenses.otherCost}
+                    onChange={handleExpenseChange}
+                    className="input input-bordered input-sm w-full text-xs font-medium"
+                  />
                 </div>
               </div>
 
-              {/* Expenses Breakdown */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
-                <div className="space-y-3 bg-base-200/40 p-4 rounded-xl border border-base-300">
-                  <h5 className="font-bold text-sm uppercase text-base-content/80 flex items-center gap-2">
-                    <Calculator className="size-5" /> Expenses Breakdown
-                  </h5>
-
-                  <div className="grid grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <label className="label py-1 text-xs font-semibold">
-                        Shipping Cost (৳)
-                      </label>
-                      <input
-                        type="number"
-                        name="shippingCost"
-                        value={expenses.shippingCost}
-                        onChange={handleExpenseChange}
-                        className="input input-bordered input-sm w-full text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="label py-1 text-xs font-semibold">
-                        Transit Cost (৳)
-                      </label>
-                      <input
-                        type="number"
-                        name="transitCost"
-                        value={expenses.transitCost}
-                        onChange={handleExpenseChange}
-                        className="input input-bordered input-sm w-full text-sm"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="label py-1 text-xs font-semibold">
-                        VAT {expenses.vatType === "percent" ? "(%)" : "(৳)"}
-                      </label>
-                      <div className="flex gap-1">
-                        <input
-                          type="number"
-                          name="vatValue"
-                          value={expenses.vatValue}
-                          onChange={handleExpenseChange}
-                          placeholder={
-                            expenses.vatType === "percent" ? "%" : "৳"
-                          }
-                          className="input input-bordered input-sm w-full text-sm"
-                        />
-                        <select
-                          name="vatType"
-                          value={expenses.vatType}
-                          onChange={handleExpenseChange}
-                          className="select select-bordered select-sm font-bold text-primary text-sm"
-                        >
-                          <option value="percent">%</option>
-                          <option value="amount">৳</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="label py-1 text-xs font-semibold">
-                        Other Cost (৳)
-                      </label>
-                      <input
-                        type="number"
-                        name="otherCost"
-                        value={expenses.otherCost}
-                        onChange={handleExpenseChange}
-                        className="input input-bordered input-sm w-full text-sm"
-                      />
-                    </div>
-                  </div>
+              {/* Grand Total Summary Bar */}
+              <div className="flex items-center justify-between bg-teal-50 border border-teal-200 p-4 rounded-xl">
+                <div className="flex items-center gap-2 text-teal-800 font-semibold text-sm">
+                  <Calculator className="size-5" />
+                  <span>Grand Total Amount:</span>
                 </div>
-
-                <div className="bg-base-200/70 p-4 rounded-xl border border-base-300 flex flex-col justify-between space-y-2">
-                  <h5 className="font-bold text-sm uppercase text-base-content/80">
-                    Grand Order Calculation
-                  </h5>
-
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between text-base-content/80">
-                      <span>Base Subtotal:</span>
-                      <span className="font-semibold">
-                        ৳ {calculations.rawSubtotal.toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between text-base-content/70 text-xs pl-2 border-l-2 border-teal-500/40">
-                      <span>
-                        • Shipping ({calculations.totalBatchWeight.toFixed(2)}{" "}
-                        kg @ ৳{calculations.shippingCostPerKg.toFixed(2)}/kg):
-                      </span>
-                      <span>
-                        ৳{" "}
-                        {(Number(expenses.shippingCost) || 0).toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between text-base-content/70 text-xs pl-2 border-l-2 border-teal-500/40">
-                      <span>
-                        • VAT (
-                        {expenses.vatType === "percent"
-                          ? `${expenses.vatValue || 0}%`
-                          : "Fixed"}
-                        ):
-                      </span>
-                      <span>
-                        ৳{" "}
-                        {calculations.calculatedVatAmount.toLocaleString(
-                          undefined,
-                          {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          },
-                        )}
-                      </span>
-                    </div>
-
-                    <div className="flex justify-between text-base-content/70 text-xs pl-2 border-l-2 border-teal-500/40">
-                      <span>• Extra Expenses (Transit + Other):</span>
-                      <span>
-                        ৳ {calculations.totalExtraExpenses.toLocaleString()}
-                      </span>
-                    </div>
-
-                    <div className="divider my-1"></div>
-
-                    <div className="flex justify-between text-base font-bold text-teal-600">
-                      <span>Grand Total:</span>
-                      <span>
-                        ৳{" "}
-                        {calculations.grandTotal.toLocaleString(undefined, {
-                          minimumFractionDigits: 2,
-                          maximumFractionDigits: 2,
-                        })}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="card-actions justify-end pt-3">
-                    <button
-                      type="button"
-                      onClick={onClose}
-                      className="btn btn-sm btn-ghost text-sm"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white text-sm px-5"
-                    >
-                      {editData ? "Update Order" : "Save Order"}
-                    </button>
-                  </div>
+                <div className="text-xl font-bold text-teal-700">
+                  ৳ {calculations.grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </div>
+              </div>
+
+              {/* Footer Actions */}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="btn btn-sm btn-ghost px-5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white px-6 border-0"
+                >
+                  {editData ? "Update Purchase Order" : "Save Purchase Order"}
+                </button>
               </div>
             </form>
           </motion.div>

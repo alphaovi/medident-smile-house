@@ -5,9 +5,9 @@ import Swal from "sweetalert2";
 const SingleSellList = ({ order, onSendBack }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const orderDate = order.orderDate || "N/A";
+  const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleDateString() : "N/A";
   const totalAmount = order.subtotal || 0;
-  const uniqueId = order.orderNo;
+  const uniqueId = order.realId; // Backend update er jonno real _id use hobe
 
   const firstProductName = order.products?.[0]?.productName || "N/A";
   const totalProductsCount = order.products?.length || 0;
@@ -18,12 +18,12 @@ const SingleSellList = ({ order, onSendBack }) => {
       text: `Order No: ${order.orderNo} status will be changed to Pending!`,
       icon: "question",
       showCancelButton: true,
-      confirmButtonColor: "#d97706", // Amber/Yellow for Send Back
+      confirmButtonColor: "#d97706",
       cancelButtonColor: "#6b7280",
       confirmButtonText: "Yes, Send Back!",
     }).then((result) => {
       if (result.isConfirmed) {
-        onSendBack(uniqueId); // Status pending করার ফাংশন কল হলো
+        onSendBack(uniqueId);
         setIsModalOpen(false);
 
         Swal.fire(

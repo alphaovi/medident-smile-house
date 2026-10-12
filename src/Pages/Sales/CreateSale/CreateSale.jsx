@@ -53,17 +53,73 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
   const [paidAmount, setPaidAmount] = useState(0);
 
+  // Dependency data load and editData mapping logic
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
         const data = await fetchSaleDependencies();
 
-        setStates(Array.isArray(data.states) ? data.states : []);
-        setCustomers(Array.isArray(data.customers) ? data.customers : []);
-        setProducts(Array.isArray(data.products) ? data.products : []);
-        setProductsGroupSubgroup(Array.isArray(data.productsGroupSubgroup) ? data.productsGroupSubgroup : []);
-        setSubgroupsList(Array.isArray(data.subgroups) ? data.subgroups : []);
+        const loadedStates = Array.isArray(data.states) ? data.states : [];
+        const loadedCustomers = Array.isArray(data.customers) ? data.customers : [];
+        const loadedProducts = Array.isArray(data.products) ? data.products : [];
+        const loadedGroups = Array.isArray(data.productsGroupSubgroup) ? data.productsGroupSubgroup : [];
+        const loadedSubgroups = Array.isArray(data.subgroups) ? data.subgroups : [];
+
+        setStates(loadedStates);
+        setCustomers(loadedCustomers);
+        setProducts(loadedProducts);
+        setProductsGroupSubgroup(loadedGroups);
+        setSubgroupsList(loadedSubgroups);
+
+        // If editing an existing order, populate the form fields
+        if (editData) {
+          setSelectedState(editData.customerState || null);
+          
+          const foundCust = loadedCustomers.find(
+            (c) => c.name === editData.customerName || c.customerName === editData.customerName || c._id === editData.customerId
+          );
+          if (foundCust) {
+            setSelectedCustomer({
+              value: foundCust.id || foundCust._id,
+              label: foundCust.customerName || foundCust.name,
+            });
+          }
+
+          if (editData.orderDate) {
+            const formattedDate = new Date(editData.orderDate).toISOString().split("T")[0];
+            setOrderDate(formattedDate);
+          }
+
+          setGlobalDiscount({
+            type: editData.generalDiscountType === "%" ? "percent" : "amount",
+            value: editData.generalDiscountValue || 0,
+          });
+
+          setPaidAmount(editData.paidAmount || 0);
+
+          if (Array.isArray(editData.soldItems) && editData.soldItems.length > 0) {
+            const mappedRows = editData.soldItems.map((item) => {
+              const targetId = item.productId;
+              const matchedProd = loadedProducts.find(
+                (p) => p._id === targetId || p.id === targetId || p.product === targetId || p.productId === targetId || p.product?._id === targetId
+              );
+
+              return {
+                selectedGroup: item.selectedGroup || null,
+                selectedSubGroup: item.selectedSubGroup || null,
+                productId: item.productId || null,
+                productName: item.productName || "",
+                currentStock: matchedProd?.currentStock ?? matchedProd?.totalStock ?? matchedProd?.quantity ?? 0,
+                orderQty: item.orderQty || 1,
+                unitPrice: item.unitPrice || 0,
+                discountType: "percent",
+                discountValue: item.discount || 0,
+              };
+            });
+            setItems([...mappedRows, { ...initialRow }]);
+          }
+        }
       } catch (err) {
         console.error("Error loading dependency data:", err);
         toast.error("Failed to load initial data for sales.");
@@ -73,7 +129,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     };
 
     fetchData();
-  }, []);
+  }, [editData]);
 
   const availableGroups = useMemo(() => {
     if (!Array.isArray(productsGroupSubgroup)) return [];
@@ -127,13 +183,32 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     } else if (field === "productId") {
       currentRow.productId = value;
       const targetId = value?.value || value;
+      
       const selectedProd = products.find(
-        (p) => p._id === targetId || p.id === targetId || p.productId === targetId
+        (p) => 
+          p._id === targetId || 
+          p.id === targetId || 
+          p.product === targetId || 
+          p.productId === targetId ||
+          p.product?._id === targetId
       );
+
       if (selectedProd) {
-        currentRow.productName = selectedProd.name || selectedProd.productName || "";
-        currentRow.currentStock = selectedProd.quantity ?? selectedProd.currentStock ?? 0;
-        currentRow.unitPrice = selectedProd.sellingPrice ?? selectedProd.unitPrice ?? selectedProd.price ?? 0;
+        currentRow.productName = selectedProd.name || selectedProd.productName || selectedProd.product?.name || "";
+        
+        currentRow.currentStock = 
+          selectedProd.currentStock ?? 
+          selectedProd.totalStock ?? 
+          selectedProd.quantity ?? 
+          selectedProd.stock ?? 
+          0;
+
+        currentRow.unitPrice = 
+          selectedProd.sellingPrice ?? 
+          selectedProd.unitPrice ?? 
+          selectedProd.price ?? 
+          selectedProd.avgBuyingPrice ?? 
+          0;
       }
     } else if (["orderQty", "unitPrice", "discountValue"].includes(field)) {
       currentRow[field] = value === "" ? "" : Number(value);
@@ -182,13 +257,29 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
       const afterDiscountPrice = Math.max(0, totalPrice - discountAmount);
 
       const targetProdId = item.productId?.value || item.productId;
-      const matchedProd = products.find(p => p._id === targetProdId || p.id === targetProdId || p.productId === targetProdId);
+      const matchedProd = products.find(
+        (p) => 
+          p._id === targetProdId || 
+          p.id === targetProdId || 
+          p.product === targetProdId || 
+          p.productId === targetProdId ||
+          p.product?._id === targetProdId
+      );
+
+      const matchedStock = 
+        matchedProd?.currentStock ?? 
+        matchedProd?.totalStock ?? 
+        matchedProd?.quantity ?? 
+        matchedProd?.stock ?? 
+        item.currentStock ?? 
+        0;
 
       return {
         ...item,
         groupId: matchedProd?.group?._id || matchedProd?.group || item.selectedGroup?.value || item.selectedGroup,
         subGroupId: matchedProd?.subGroup?._id || matchedProd?.subGroup || item.selectedSubGroup?.value || item.selectedSubGroup,
-        productObjId: matchedProd?._id || matchedProd?.id || targetProdId,
+        productObjId: matchedProd?.product?._id || matchedProd?.product || matchedProd?._id || targetProdId,
+        currentStock: matchedStock,
         totalPrice,
         discountAmount,
         afterDiscountPrice,
@@ -289,6 +380,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
           setOrderDate(getTodayISO());
           setGlobalDiscount({ type: "percent", value: 0 });
           setPaidAmount(0);
+          onUpdateSuccess();
         } catch (error) {
           console.error("Submission error:", error);
           toast.error(error.message || "Failed to save sale order.");
@@ -305,7 +397,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
       
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-base-300">
         <ShoppingCart className="size-6 text-teal-600" />
-        <h1 className="text-xl font-bold">Create Sale Order</h1>
+        <h1 className="text-xl font-bold">{editData ? "Edit Sale Order" : "Create Sale Order"}</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -378,7 +470,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
             type="submit"
             className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white px-8"
           >
-            Create Sale Order
+            {editData ? "Update Sale Order" : "Create Sale Order"}
           </button>
         </div>
       </form>

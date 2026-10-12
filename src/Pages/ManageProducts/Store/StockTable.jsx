@@ -1,4 +1,4 @@
-import React from "react";
+
 import "./StockTable.css";
 
 const StockTable = ({ stockData, onPriceChange }) => {
@@ -48,11 +48,11 @@ const StockTable = ({ stockData, onPriceChange }) => {
             const rowBuyingValue = currentStock * averageBuyingPrice;
             const rowSaleValue = currentStock * sellingPrice;
             return (
-              <tr key={item.productId}>
+              <tr key={item.id}>
                 <td>
                   <div className="product-info">
+                    {/* Only product name is shown, ID part removed completely */}
                     <strong>{item.productName}</strong>
-                    <span>{item.productId}</span>
                   </div>
                 </td>
                 <td>{Number(item.totalStock) || 0}</td>
@@ -68,7 +68,7 @@ const StockTable = ({ stockData, onPriceChange }) => {
                     type="number"
                     value={averageBuyingPrice}
                     onChange={(e) =>
-                      onPriceChange(item.productId, e.target.value)
+                      onPriceChange(item.id, e.target.value)
                     }
                   />
                 </td>
@@ -92,5 +92,6 @@ const StockTable = ({ stockData, onPriceChange }) => {
     </div>
   );
 };
+
 
 export default StockTable;

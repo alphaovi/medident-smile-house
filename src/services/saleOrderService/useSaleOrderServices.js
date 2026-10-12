@@ -4,22 +4,43 @@ import { stateService } from "../useStateService/useStateService";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002/api/v1";
 
-// Individual Named Exports (Jate CreateSale.jsx ba onno kothao direct import korar shomoy error na ashe)
 export const fetchSaleDependencies = async () => {
   try {
-    const [statesData, customersData, prodRes, groupRes, subgroupRes] = await Promise.all([
+    // Inventory api o sathe fetch korar jonno call add kora holo
+    const [statesData, customersData, prodRes, groupRes, subgroupRes, inventoryRes] = await Promise.all([
       stateService.getAllStates().catch(() => []),
       customerService.getAllCustomers().catch(() => []),
       fetch(`${API_URL}/products`).catch(() => ({ ok: false })),
       fetch(`${API_URL}/product-groups`).catch(() => ({ ok: false })),
       fetch(`${API_URL}/product-subgroups`).catch(() => ({ ok: false })),
+      fetch(`${API_URL}/inventory`).catch(() => ({ ok: false })), // Inventory endpoint check
     ]);
 
     const states = Array.isArray(statesData) ? statesData : (statesData?.data || statesData?.result || []);
     const customers = Array.isArray(customersData) ? customersData : (customersData?.data || customersData?.result || []);
     
     const prodJson = prodRes.ok ? await prodRes.json() : [];
-    const products = Array.isArray(prodJson) ? prodJson : (prodJson?.data || prodJson?.result || []);
+    const rawProducts = Array.isArray(prodJson) ? prodJson : (prodJson?.data || prodJson?.result || []);
+
+    const invJson = inventoryRes.ok ? await inventoryRes.json() : [];
+    const inventories = Array.isArray(invJson) ? invJson : (invJson?.data || invJson?.result || []);
+
+    // Product er sathe inventory stock data merge kore dewa holo
+    const products = rawProducts.map((prod) => {
+      const prodId = prod._id || prod.id;
+      // Inventory khuje ber kora jar sathe product id match kore
+      const matchedInv = inventories.find(
+        (inv) => 
+          String(inv.product?._id || inv.product) === String(prodId) || 
+          String(inv.productId) === String(prodId)
+      );
+
+      return {
+        ...prod,
+        currentStock: matchedInv?.currentStock ?? matchedInv?.totalStock ?? prod.currentStock ?? 0,
+        sellingPrice: prod.sellingPrice || prod.price || matchedInv?.avgBuyingPrice || 0,
+      };
+    });
 
     const groupJson = groupRes.ok ? await groupRes.json() : [];
     const groups = Array.isArray(groupJson) ? groupJson : (groupJson?.data || groupJson?.result || []);
@@ -96,7 +117,6 @@ export const deleteSaleOrder = async (orderId) => {
   return data;
 };
 
-// Object Export (Jodi keu object hishebe use korte chay)
 export const useSaleOrderServices = {
   fetchSaleDependencies,
   createSaleOrder,

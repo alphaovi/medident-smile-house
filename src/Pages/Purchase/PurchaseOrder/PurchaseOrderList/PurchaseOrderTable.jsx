@@ -7,7 +7,8 @@ const PurchaseOrderTable = ({
   searchTerm,
   setSearchTerm,
   onStatusChange,
-  onEditOrder
+  onEditOrder,
+  suppliers = []
 }) => {
   return (
     <div className="space-y-4">
@@ -54,17 +55,22 @@ const PurchaseOrderTable = ({
               </tr>
             ) : (
               orders.map((order, idx) => {
-                const orderKey = order.orderID || order.orderNo || order._id || order.id || `PO-${idx + 1}`;
+                const orderKey = order.purchaseId || order.orderID || order.orderNo || order._id || order.id || `PO-${idx + 1}`;
                 
-                // Format status to Title Case so it matches select options (e.g., "received" -> "Received")
+                // Format status to Title Case
                 const rawStatus = order.status || order.orderStatus || order.state || "Ordered";
                 const currentStatus = rawStatus.replace(/\b\w/g, (char) => char.toUpperCase());
                 const isReceived = currentStatus === "Received";
+                const isOnTransit = currentStatus === "On Transit";
+                const isOrdered = currentStatus === "Ordered";
+
+                // Edit button condition: Sirf 'Ordered' hone par hi edit allow hoga
+                const isEditable = isOrdered;
                 
-                // Calculate total if it is missing from the JSON root
+                // Calculate total if missing
                 let calculatedTotal = 0;
                 if (order.purchasedItems && Array.isArray(order.purchasedItems)) {
-                  const subtotal = order.purchasedItems.reduce((sum, item) => sum + ((item.orderQty || 0) * (item.unitPrice || 0)), 0);
+                  const subtotal = order.purchasedItems.reduce((sum, item) => sum + ((item.orderQty || item.orderQuantity || 0) * (item.unitPrice || item.price || 0)), 0);
                   const exp = order.expenses || {};
                   const ship = Number(exp.shippingCost || exp.shipping || 0);
                   const trans = Number(exp.transitCost || exp.transit || 0);
@@ -86,38 +92,71 @@ const PurchaseOrderTable = ({
                   order.amount ?? 
                   calculatedTotal;
 
+                // --- ROBUST SUPPLIER NAME RESOLUTION ---
+                let supplierDisplay = "N/A";
+                const rawSupplierRef = order.supplierName || order.supplier;
+
+                if (typeof rawSupplierRef === "object" && rawSupplierRef !== null) {
+                  // Agar backend se populate hokar object aaya hai (e.g., { supplierName: "Jobbor Khan", ... })
+                  supplierDisplay = rawSupplierRef.supplierName || rawSupplierRef.name || "N/A";
+                } else {
+                  // Agar sirf ID string aayi hai, toh suppliers array ya list mein se match karein
+                  const matchedSupplier = Array.isArray(suppliers) ? suppliers.find(
+                    (s) => String(s._id) === String(rawSupplierRef) || String(s.supplierId) === String(rawSupplierRef)
+                  ) : null;
+                  
+                  supplierDisplay = matchedSupplier ? matchedSupplier.supplierName : (rawSupplierRef || "N/A");
+                }
+
                 return (
                   <tr key={orderKey} className="hover">
                     <td className="font-semibold text-teal-600 px-4 py-3">
                       {orderKey}
                     </td>
-                    <td className="font-medium px-4 py-3">{order.supplierName || order.supplier || "N/A"}</td>
-                    <td className="px-4 py-3 text-sm">{order.orderDate || "N/A"}</td>
-                    <td className="px-4 py-3 text-sm">{order.expectedReceiveDate || order.expectedDate || "N/A"}</td>
+                    <td className="font-medium px-4 py-3">{supplierDisplay}</td>
+                    <td className="px-4 py-3 text-sm">{order.orderDate ? order.orderDate.split("T")[0] : "N/A"}</td>
+                    <td className="px-4 py-3 text-sm">{order.expectedDeliveryDate ? order.expectedDeliveryDate.split("T")[0] : (order.expectedReceiveDate || order.expectedDate || "N/A")}</td>
                     <td className="font-semibold px-4 py-3">
                       ৳ {Number(totalAmountVal).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
+                        {/* Edit Button with Conditional Disabling */}
                         <button
-                          onClick={() => onEditOrder(order)}
-                          className="btn btn-ghost btn-xs text-blue-600 hover:bg-blue-50 cursor-pointer"
-                          title="Edit Order"
+                          type="button"
+                          onClick={() => isEditable && onEditOrder(order)}
+                          disabled={!isEditable}
+                          className={`btn btn-ghost btn-xs cursor-pointer ${
+                            isEditable 
+                              ? "text-blue-600 hover:bg-blue-50" 
+                              : "text-base-content/30 cursor-not-allowed hover:bg-transparent"
+                          }`}
+                          title={isEditable ? "Edit Order" : "Cannot edit order once it is On Transit or Received"}
                         >
                           <Edit className="size-4" />
                         </button>
+
+                        {/* Status Select with Hierarchy Constraints */}
                         <select
                           value={currentStatus}
                           onChange={(e) => onStatusChange(orderKey, e.target.value)}
                           className={`select select-xs font-semibold rounded-lg border-0 cursor-pointer w-28 px-2 ${
                             isReceived
                               ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                              : isOnTransit
+                              ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
                               : "bg-blue-100 text-blue-700 hover:bg-blue-200"
                           }`}
                         >
-                          <option value="Ordered">Ordered</option>
-                          <option value="On Transit">On Transit</option>
-                          <option value="Received">Received</option>
+                          <option value="Ordered" disabled={!isOrdered}>
+                            Ordered
+                          </option>
+                          <option value="On Transit" disabled={isReceived}>
+                            On Transit
+                          </option>
+                          <option value="Received">
+                            Received
+                          </option>
                         </select>
                       </div>
                     </td>

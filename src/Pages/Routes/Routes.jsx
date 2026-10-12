@@ -14,6 +14,8 @@ import Sales from "../Sales/Sales/Sales";
 import CreateSell from "../Sales/CreateSale/CreateSale";
 import SaleRequest from "../Sales/SaleRequest/SaleRequest/SaleRequest";
 import SellLists from "../Sales/SellList/SellLists";
+import State from "../Settings/State/State";
+import EmployeeManagement from "../Settings/EmployeeManagement/EmployeeManagement"
 
 const router = createBrowserRouter([
   {
@@ -75,6 +77,14 @@ const router = createBrowserRouter([
       {
         path: "/settings/manage-suppliers",
         element: <ManageSuppliers></ManageSuppliers>,
+      },
+      {
+        path: "/settings/employee-management",
+        element: <EmployeeManagement></EmployeeManagement>,
+      },
+      {
+        path: "/settings/state",
+        element: <State></State>,
       },
     ],
   },

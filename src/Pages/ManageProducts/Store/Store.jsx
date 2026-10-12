@@ -1,4 +1,3 @@
-
 import StockManagement from './StockManagement';
 
 const Store = () => {

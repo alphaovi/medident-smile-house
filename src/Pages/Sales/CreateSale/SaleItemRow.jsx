@@ -1,3 +1,4 @@
+// src/components/sale/SaleItemRow.jsx
 import React, { useMemo } from "react";
 import { Trash2 } from "lucide-react";
 
@@ -46,11 +47,40 @@ const SaleItemRow = ({
 
         return matchesGroup && matchesSubGroup;
       })
-      .map((prod) => ({
-        value: prod._id || prod.id,
-        label: prod.name || prod.productName,
-        ...prod,
-      }));
+      .map((prod) => {
+        // Product name shob possible property theke ber korar safety check
+        const productName = 
+          prod.name || 
+          prod.productName || 
+          prod.product?.name || 
+          prod.product?.productName || 
+          "Unnamed Product";
+
+        // Stock shob possible property theke ber korar safety check
+        const stockVal = 
+          prod.currentStock ?? 
+          prod.totalStock ?? 
+          prod.quantity ?? 
+          prod.stock ?? 
+          0;
+
+        // Selling price shob possible property theke ber korar safety check
+        const priceVal = 
+          prod.sellingPrice ?? 
+          prod.unitPrice ?? 
+          prod.price ?? 
+          prod.avgBuyingPrice ?? 
+          0;
+
+        return {
+          value: prod._id || prod.id,
+          label: `${productName} (Stock: ${stockVal})`, // Dropdown-e name er sathe stock dekhabe
+          productName,
+          currentStock: stockVal,
+          sellingPrice: priceVal,
+          ...prod,
+        };
+      });
   }, [products, item.selectedGroup, item.selectedSubGroup]);
 
   return (
@@ -126,7 +156,7 @@ const SaleItemRow = ({
         <input
           type="text"
           readOnly
-          className="input input-bordered input-sm w-full text-center bg-base-100"
+          className="input input-bordered input-sm w-full text-center bg-base-100 font-bold text-teal-700"
           value={calcItem?.currentStock ?? item.currentStock ?? 0}
         />
       </div>

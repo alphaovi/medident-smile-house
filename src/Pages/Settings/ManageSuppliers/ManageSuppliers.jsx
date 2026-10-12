@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   Plus,
   Edit,
@@ -7,14 +7,15 @@ import {
   MapPin,
   Search,
 } from "lucide-react";
-import { toast, ToastContainer } from "react-toastify";
+import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
 import SupplierModal from "./SupplierModal";
+import { useSuppliersService } from "../../../services/supplierService/useSuppliersService";
 
 const ManageSuppliers = () => {
-  const [suppliers, setSuppliers] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { suppliers, loading, addSupplier, updateSupplier, toggleSupplierStatus } = useSuppliersService();
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,24 +25,6 @@ const ManageSuppliers = () => {
   const [supplierName, setSupplierName] = useState("");
   const [supplierPhone, setSupplierPhone] = useState("");
   const [supplierAddress, setSupplierAddress] = useState("");
-
-  // Fetch JSON data using useEffect from public folder
-  useEffect(() => {
-    fetch("/suppliersData.json")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch suppliers data");
-        return res.json();
-      })
-      .then((data) => {
-        setSuppliers(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        toast.error("Could not load suppliers data!");
-        setLoading(false);
-      });
-  }, []);
 
   // Open Modal for Adding New Supplier
   const handleOpenAddModal = () => {
@@ -68,59 +51,40 @@ const ManageSuppliers = () => {
   };
 
   // Save or Update Supplier Form Handler
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     if (!supplierName || !supplierPhone || !supplierAddress) {
-      toast.warning("Please fill in all fields!");
       return;
     }
 
+    let success = false;
     if (isEditing) {
-      const updatedList = suppliers.map((sup) =>
-        sup.supplierID === currentId
-          ? { ...sup, supplierName, supplierPhone, supplierAddress }
-          : sup
-      );
-      setSuppliers(updatedList);
-      toast.success("Supplier updated successfully!");
+      success = await updateSupplier(currentId, {
+        supplierName,
+        supplierPhone,
+        supplierAddress,
+      });
     } else {
-      const newSupplier = {
+      success = await addSupplier({
         supplierID: currentId,
         supplierName,
         supplierPhone,
         supplierAddress,
-        status: true, // নতুন সাপ্লায়ার ডিফল্টভাবে active থাকবে
-      };
-      setSuppliers([newSupplier, ...suppliers]);
-      toast.success("New supplier added successfully!");
+        status: true,
+      });
     }
 
-    setIsModalOpen(false);
+    if (success) {
+      setIsModalOpen(false);
+    }
   };
 
-  // Toggle Supplier Status (Active / Inactive) from Action button
-  const handleToggleStatus = (id) => {
-    const updatedList = suppliers.map((sup) => {
-      if (sup.supplierID === id) {
-        const newStatus = !sup.status;
-        if (newStatus) {
-          toast.success(`${sup.supplierName} is now Active!`);
-        } else {
-          toast.info(`${sup.supplierName} is now Inactive!`);
-        }
-        return { ...sup, status: newStatus };
-      }
-      return sup;
-    });
-    setSuppliers(updatedList);
-  };
-
-  // Filter suppliers based on search query (All suppliers remain visible)
+  // Filter suppliers based on search query
   const filteredSuppliers = suppliers.filter(
     (sup) =>
-      sup.supplierName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sup.supplierID.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      sup.supplierPhone.includes(searchTerm)
+      sup.supplierName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sup.supplierID?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      sup.supplierPhone?.includes(searchTerm)
   );
 
   return (
@@ -177,7 +141,7 @@ const ManageSuppliers = () => {
               {loading ? (
                 <tr>
                   <td colSpan="5" className="py-8 text-center text-gray-400">
-                    Loading suppliers from JSON...
+                    Loading suppliers from Database...
                   </td>
                 </tr>
               ) : filteredSuppliers.length > 0 ? (
@@ -207,7 +171,6 @@ const ManageSuppliers = () => {
                         </span>
                       </div>
                     </td>
-                    {/* Action Column with Fixed-width Active/Inactive Status Button */}
                     <td className="py-4 px-6 text-center">
                       <div className="flex items-center justify-center gap-2">
                         <button
@@ -218,7 +181,7 @@ const ManageSuppliers = () => {
                           <Edit className="w-4 h-4" />
                         </button>
                         <button
-                          onClick={() => handleToggleStatus(sup.supplierID)}
+                          onClick={() => toggleSupplierStatus(sup.supplierID)}
                           className={`w-24 py-1.5 rounded-lg text-xs font-semibold text-center transition-all cursor-pointer inline-flex items-center justify-center ${
                             sup.status
                               ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200 dark:bg-emerald-900/40 dark:text-emerald-400"
