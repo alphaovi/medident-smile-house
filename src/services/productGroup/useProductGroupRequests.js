@@ -33,6 +33,24 @@ export const useProductGroupRequests = () => {
     }
   }, []);
 
+  // --- UPDATE GROUP (ADDED) ---
+  const updateGroup = useCallback(async (id, updatePayload) => {
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/product-groups/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ productGroup: updatePayload }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw { response: { data } };
+      return data.data || data;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const deleteGroup = useCallback(async (id) => {
     setLoading(true);
     try {
@@ -110,6 +128,7 @@ export const useProductGroupRequests = () => {
     loading,
     getAllGroups,
     createGroup,
+    updateGroup, // Added here
     deleteGroup,
     getAllSubgroups,
     createSubgroup,

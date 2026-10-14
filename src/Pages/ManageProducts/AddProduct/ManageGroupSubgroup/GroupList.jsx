@@ -3,15 +3,35 @@ import { Layers, Edit2, Trash2, Check, X, CornerDownRight } from "lucide-react";
 import Swal from "sweetalert2";
 import { toast } from "react-toastify";
 
-const GroupList = ({ groups, subgroups, isLoading, deleteGroup, deleteSubgroup, updateSubgroup, fetchAllData, onDataChange }) => {
+const GroupList = ({ groups, subgroups, isLoading, updateGroup, deleteGroup, deleteSubgroup, updateSubgroup, fetchAllData, onDataChange }) => {
   const [editingGroupId, setEditingGroupId] = useState(null);
   const [editedGroupName, setEditedGroupName] = useState("");
 
   const [editingSubId, setEditingSubId] = useState(null);
   const [editedSubName, setEditedSubName] = useState("");
 
+  // গ্রুপ এডিট সেভ করার ফাংশন
+  const handleSaveGroupEdit = async (groupItem) => {
+    if (!editedGroupName.trim()) {
+      toast.error("Group name cannot be empty!");
+      return;
+    }
+
+    try {
+      // _id ba id jeta thake seta diye update call hobe
+      const targetId = groupItem.id || groupItem._id;
+      await updateGroup(targetId, { groupName: editedGroupName.trim() });
+      setEditingGroupId(null);
+      setEditedGroupName("");
+      fetchAllData();
+      if (onDataChange) onDataChange();
+    } catch (error) {
+      // Error already handled in parent modal via toast
+    }
+  };
+
   // গ্রুপ ডিলিট করার ফাংশন
-  const handleDeleteGroup = (groupId) => {
+  const handleDeleteGroup = (groupItem) => {
     Swal.fire({
       title: "Delete Group?",
       text: "All associated subgroups under this group may be affected.",
@@ -31,19 +51,19 @@ const GroupList = ({ groups, subgroups, isLoading, deleteGroup, deleteSubgroup, 
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await deleteGroup(groupId);
-          toast.success("Group deleted successfully!");
+          const targetId = groupItem._id || groupItem.id;
+          await deleteGroup(targetId);
           fetchAllData();
           if (onDataChange) onDataChange();
         } catch (error) {
-          toast.error(error.response?.data?.message || "Failed to delete group");
+          toast.error("Failed to delete group");
         }
       }
     });
   };
 
   // সাব-গ্রুপ ডিলিট করার ফাংশন
-  const handleDeleteSubGroup = (subId) => {
+  const handleDeleteSubGroup = (sub) => {
     Swal.fire({
       title: "Delete Subgroup?",
       text: "Are you sure you want to delete this subgroup?",
@@ -63,33 +83,33 @@ const GroupList = ({ groups, subgroups, isLoading, deleteGroup, deleteSubgroup, 
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          await deleteSubgroup(subId);
-          toast.success("Subgroup deleted successfully!");
+          const targetId = sub.id || sub._id;
+          await deleteSubgroup(targetId);
           fetchAllData();
           if (onDataChange) onDataChange();
         } catch (error) {
-          toast.error(error.response?.data?.message || "Failed to delete subgroup");
+          toast.error("Failed to delete subgroup");
         }
       }
     });
   };
 
   // সাব-গ্রুপ এডিট সেভ করার ফাংশন
-  const handleSaveSubEdit = async (subId) => {
+  const handleSaveSubEdit = async (sub) => {
     if (!editedSubName.trim()) {
       toast.error("Subgroup name cannot be empty!");
       return;
     }
 
     try {
-      await updateSubgroup(subId, { subGroupName: editedSubName.trim() });
-      toast.success("Subgroup updated successfully!");
+      const targetId = sub.id || sub._id;
+      await updateSubgroup(targetId, { subGroupName: editedSubName.trim() });
       setEditingSubId(null);
       setEditedSubName("");
       fetchAllData();
       if (onDataChange) onDataChange();
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update subgroup");
+      // Error handled in parent modal
     }
   };
 
@@ -103,16 +123,18 @@ const GroupList = ({ groups, subgroups, isLoading, deleteGroup, deleteSubgroup, 
         ) : groups.length > 0 ? (
           groups.map((groupItem) => {
             const groupSubs = subgroups.filter(
-              (sub) => sub.group === groupItem._id || sub.group?._id === groupItem._id
+              (sub) => sub.group === groupItem._id || sub.group?._id === groupItem._id || sub.group === groupItem.id
             );
 
+            const isEditingThisGroup = editingGroupId === groupItem._id;
+
             return (
-              <div key={groupItem._id} className="p-4 hover:bg-gray-50/50 transition-colors space-y-3">
+              <div key={groupItem._id || groupItem.id} className="p-4 hover:bg-gray-50/50 transition-colors space-y-3">
                 {/* Group Row */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2.5 flex-1">
                     <Layers className="size-4 text-teal-600 shrink-0" />
-                    {editingGroupId === groupItem._id ? (
+                    {isEditingThisGroup ? (
                       <div className="flex items-center gap-2 flex-1 max-w-xs">
                         <input
                           type="text"
@@ -122,8 +144,8 @@ const GroupList = ({ groups, subgroups, isLoading, deleteGroup, deleteSubgroup, 
                           autoFocus
                         />
                         <button
-                          onClick={() => setEditingGroupId(null)}
-                          className="btn btn-xs bg-teal-600 text-white border-0"
+                          onClick={() => handleSaveGroupEdit(groupItem)}
+                          className="btn btn-xs bg-emerald-600 text-white border-0"
                         >
                           <Check className="size-3.5" />
                         </button>
@@ -140,10 +162,20 @@ const GroupList = ({ groups, subgroups, isLoading, deleteGroup, deleteSubgroup, 
                   </div>
 
                   {/* Group Actions */}
-                  {editingGroupId !== groupItem._id && (
+                  {!isEditingThisGroup && (
                     <div className="flex items-center gap-1">
                       <button
-                        onClick={() => handleDeleteGroup(groupItem._id)}
+                        onClick={() => {
+                          setEditingGroupId(groupItem._id);
+                          setEditedGroupName(groupItem.groupName);
+                        }}
+                        className="p-1.5 rounded text-gray-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                        title="Edit Group"
+                      >
+                        <Edit2 className="size-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteGroup(groupItem)}
                         className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                         title="Delete Group"
                       >
@@ -160,7 +192,7 @@ const GroupList = ({ groups, subgroups, isLoading, deleteGroup, deleteSubgroup, 
                       const isEditingThisSub = editingSubId === sub._id;
 
                       return (
-                        <div key={sub._id} className="flex items-center justify-between bg-gray-50/80 px-3 py-1.5 rounded-lg border border-gray-100">
+                        <div key={sub._id || sub.id} className="flex items-center justify-between bg-gray-50/80 px-3 py-1.5 rounded-lg border border-gray-100">
                           <div className="flex items-center gap-2 flex-1">
                             <CornerDownRight className="size-3.5 text-gray-400 shrink-0" />
                             {isEditingThisSub ? (
@@ -173,7 +205,7 @@ const GroupList = ({ groups, subgroups, isLoading, deleteGroup, deleteSubgroup, 
                                   autoFocus
                                 />
                                 <button
-                                  onClick={() => handleSaveSubEdit(sub._id)}
+                                  onClick={() => handleSaveSubEdit(sub)}
                                   className="btn btn-xs bg-emerald-600 text-white border-0"
                                 >
                                   <Check className="size-3.5" />
@@ -203,7 +235,7 @@ const GroupList = ({ groups, subgroups, isLoading, deleteGroup, deleteSubgroup, 
                                 <Edit2 className="size-3" />
                               </button>
                               <button
-                                onClick={() => handleDeleteSubGroup(sub._id)}
+                                onClick={() => handleDeleteSubGroup(sub)}
                                 className="p-1.5 rounded text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors"
                                 title="Delete Subgroup"
                               >

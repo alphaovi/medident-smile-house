@@ -53,11 +53,39 @@ const ManageGroupModal = ({ isOpen, onClose, onDataChange }) => {
     }
   };
 
+  // --- GROUP UPDATE (ADDED) ---
+  const handleUpdateGroup = async (groupIdOrMongoId, updatePayload) => {
+    try {
+      // Subgroup-er motoi groupId ba _id khuje ber kora
+      const targetGroup = groups.find(
+        (g) => g.id === groupIdOrMongoId || g._id === groupIdOrMongoId
+      );
+
+      const updateKey = targetGroup ? targetGroup.id : groupIdOrMongoId;
+
+      // Backend route /:id hishabe id (string) ba custom id nibe
+      const response = await axios.patch(`${API_URL}/product-groups/${updateKey}`, {
+        productGroup: updatePayload,
+      });
+      const updatedGroup = response.data.data || response.data;
+
+      setGroups((prev) =>
+        prev.map((g) => (g.id === updateKey || g._id === groupIdOrMongoId ? updatedGroup : g))
+      );
+
+      toast.success("Group updated successfully!");
+      if (onDataChange) onDataChange();
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to update group!");
+      throw error;
+    }
+  };
+
   // Group Delete
   const handleDeleteGroup = async (id) => {
     try {
       await axios.delete(`${API_URL}/product-groups/${id}`);
-      setGroups((prev) => prev.filter((group) => group._id !== id));
+      setGroups((prev) => prev.filter((group) => group._id !== id && group.id !== id));
       toast.success("Group deleted successfully!");
       if (onDataChange) onDataChange();
     } catch (error) {
@@ -72,7 +100,7 @@ const ManageGroupModal = ({ isOpen, onClose, onDataChange }) => {
       const newSubgroup = response.data.data || response.data;
 
       setSubgroups((prev) => [...prev, newSubgroup]);
-      toast.success("Subgroup created successfully!"); // Only 1 toast here
+      toast.success("Subgroup created successfully!");
       if (onDataChange) onDataChange();
     } catch (error) {
       toast.error(error.response?.data?.message || "Failed to create subgroup!");
@@ -167,6 +195,7 @@ const ManageGroupModal = ({ isOpen, onClose, onDataChange }) => {
             groups={groups}
             subgroups={subgroups}
             isLoading={loading}
+            updateGroup={handleUpdateGroup}
             deleteGroup={handleDeleteGroup}
             deleteSubgroup={handleDeleteSubgroup}
             updateSubgroup={handleUpdateSubgroup}
