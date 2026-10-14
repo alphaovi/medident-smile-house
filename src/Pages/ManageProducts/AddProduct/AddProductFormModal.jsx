@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, PackagePlus, Sparkles } from "lucide-react";
+import { X, PackagePlus } from "lucide-react";
 
 const AddProductFormModal = ({
   isOpen,
@@ -25,9 +25,8 @@ const AddProductFormModal = ({
 
   useEffect(() => {
     if (isOpen) {
-      const generatedId = `PROD-${Math.floor(1000 + Math.random() * 9000)}`;
       setFormData({
-        productId: generatedId,
+        productId: "",
         productName: "",
         productGroup: "",
         productSubGroup: "",
@@ -41,13 +40,11 @@ const AddProductFormModal = ({
     }
   }, [isOpen]);
 
-  // Group change hole group er _id diye subgroup filter kora
   const handleGroupChange = (e) => {
-    const groupId = e.target.value; // Ekhane group er _id asche
+    const groupId = e.target.value;
     setSelectedGroupId(groupId);
 
     if (groupId) {
-      // Subgroup er 'group' field er sathe select kora group er _id match korano hocche
       const matchedSubs = subGroupsList.filter((sub) => {
         const subGroupRef =
           typeof sub.group === "string" ? sub.group : sub.group?._id;
@@ -60,13 +57,13 @@ const AddProductFormModal = ({
 
     setFormData((prev) => ({
       ...prev,
-      productGroup: groupId, // Group er _id save hobe
-      productSubGroup: "", // Group change hole sub-group reset hobe
+      productGroup: groupId,
+      productSubGroup: "",
     }));
   };
 
   const handleSubGroupChange = (e) => {
-    const subId = e.target.value; // Subgroup er _id
+    const subId = e.target.value;
     setFormData((prev) => ({
       ...prev,
       productSubGroup: subId,
@@ -75,6 +72,7 @@ const AddProductFormModal = ({
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "productId" && value.length > 10) return; // সর্বোচ্চ ১০ ক্যারেক্টার রেস্ট্রিকশন
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
@@ -120,18 +118,18 @@ const AddProductFormModal = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="label text-xs font-semibold">
-                    Product ID (Auto)
+                    Product ID (Max 10 chars) <span className="text-error">*</span>
                   </label>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      name="productId"
-                      value={formData.productId}
-                      disabled
-                      className="input input-bordered w-full bg-base-200 font-mono text-sm font-semibold text-primary"
-                    />
-                    <Sparkles className="size-4 text-primary absolute right-3 top-3" />
-                  </div>
+                  <input
+                    type="text"
+                    name="productId"
+                    required
+                    maxLength={10}
+                    placeholder="e.g. 103-2025"
+                    value={formData.productId}
+                    onChange={handleChange}
+                    className="input input-bordered w-full text-sm font-mono"
+                  />
                 </div>
 
                 <div>
@@ -149,7 +147,6 @@ const AddProductFormModal = ({
                   />
                 </div>
 
-                {/* Product Group Dropdown */}
                 <div>
                   <label className="label text-xs font-semibold">
                     Product Group <span className="text-error">*</span>
@@ -170,7 +167,6 @@ const AddProductFormModal = ({
                   </select>
                 </div>
 
-                {/* Product Sub Group Dropdown */}
                 <div>
                   <label className="label text-xs font-semibold">
                     Product Sub Group <span className="text-error">*</span>
@@ -269,4 +265,5 @@ const AddProductFormModal = ({
     </AnimatePresence>
   );
 };
+
 export default AddProductFormModal;

@@ -72,7 +72,7 @@ const AddProduct = () => {
 
   const handleAddProduct = (formData) => {
     const payload = {
-      id: formData.productId,
+      id: formData.productId, // ইউজার প্রদত্ত কাস্টম আইডি (সর্বোচ্চ ১০ ক্যারেক্টার)
       name: formData.productName,
       code: formData.productId,
       group: formData.productGroup,
@@ -100,6 +100,7 @@ const AddProduct = () => {
     }
 
     const payload = {
+      id: updatedData.productId,
       name: updatedData.productName,
       purchasePrice: Number(updatedData.buyingPrice),
       sellingPrice: Number(updatedData.sellingPrice),
@@ -149,10 +150,16 @@ const AddProduct = () => {
         <div className="p-5 border-b border-base-200 bg-base-200/30 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-2 text-sm">
             <span>Show</span>
-            <select value={entries} onChange={(e) => setEntries(Number(e.target.value))} className="select select-bordered select-xs w-20">
+            <select 
+              value={entries} 
+              onChange={(e) => setEntries(e.target.value === "all" ? "all" : Number(e.target.value))} 
+              className="select select-bordered select-xs w-24"
+            >
               <option value={10}>10</option>
               <option value={25}>25</option>
               <option value={50}>50</option>
+              <option value={100}>100</option>
+              <option value="all">All</option>
             </select>
             <span>entries</span>
           </div>

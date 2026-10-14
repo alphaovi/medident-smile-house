@@ -19,7 +19,6 @@ const EditProductModal = ({ isOpen, onClose, product, groups = [], onUpdateProdu
 
   const [availableSubGroups, setAvailableSubGroups] = useState([]);
 
-  // Subgroups fetch korar ba filter korar function
   const fetchSubgroupsForGroup = async (groupId) => {
     if (!groupId) {
       setAvailableSubGroups([]);
@@ -46,7 +45,7 @@ const EditProductModal = ({ isOpen, onClose, product, groups = [], onUpdateProdu
 
       setFormData({
         ...product,
-        productId: product.code || product.id || product.productId || "",
+        productId: product.id || product.code || "",
         productName: product.name || product.productName || "",
         productGroup: groupId || "",
         productSubGroup: subGroupId || "",
@@ -76,6 +75,7 @@ const EditProductModal = ({ isOpen, onClose, product, groups = [], onUpdateProdu
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === "productId" && value.length > 10) return;
     setFormData((prev) => ({
       ...prev,
       [name]: ["buyingPrice", "sellingPrice", "weight"].includes(name) ? Number(value) : value,
@@ -101,13 +101,12 @@ const EditProductModal = ({ isOpen, onClose, product, groups = [], onUpdateProdu
       buttonsStyling: false,
     }).then((result) => {
       if (result.isConfirmed) {
-        // Product er ID ensure kora hoise (_id, id ba code theke)
-        const productId = product._id || product.id || product.code;
+        const dbId = product._id; // ডাটাবেজ ফাইন্ড করার মূল আইডি (_id)
 
         const updatePayload = {
-          id: productId,
+          id: formData.productId, // নতুন কাস্টম আইডি যা ইউজার দিয়েছে
           productName: formData.productName,
-          productGroup: formData.productGroup,       
+          productGroup: formatGroup(formData.productGroup),          
           productSubGroup: formData.productSubGroup, 
           buyingPrice: Number(formData.buyingPrice),
           sellingPrice: Number(formData.sellingPrice),
@@ -115,11 +114,14 @@ const EditProductModal = ({ isOpen, onClose, product, groups = [], onUpdateProdu
           weight: Number(formData.weight || 0),
         };
 
-        onUpdateProduct(updatePayload);
+        onUpdateProduct({ ...updatePayload, _id: dbId });
         onClose();
       }
     });
   };
+
+  // Helper for group format if needed
+  const formatGroup = (val) => val;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -138,7 +140,12 @@ const EditProductModal = ({ isOpen, onClose, product, groups = [], onUpdateProdu
           <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-200 space-y-4">
             <h3 className="text-xs font-bold text-gray-500 tracking-wider uppercase">Product Basic Information</h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 mb-1">Product ID (Max 10)</label>
+                <input type="text" name="productId" maxLength={10} value={formData.productId} onChange={handleChange} required className="w-full input input-sm input-bordered font-mono" />
+              </div>
+
               <div>
                 <label className="block text-xs font-semibold text-gray-600 mb-1">Product Name</label>
                 <input type="text" name="productName" value={formData.productName} onChange={handleChange} required className="w-full input input-sm input-bordered" />
