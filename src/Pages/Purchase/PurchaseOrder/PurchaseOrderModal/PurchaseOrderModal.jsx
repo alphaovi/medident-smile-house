@@ -23,6 +23,7 @@ const PurchaseOrderModal = ({
   const [products, setProducts] = useState([]);
   const [productGroups, setProductGroups] = useState([]);
   const [subGroups, setSubGroups] = useState([]);
+  const [inventories, setInventories] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState("");
 
   const getTodayISO = () => {
@@ -43,11 +44,12 @@ const PurchaseOrderModal = ({
       const baseUrl = import.meta.env.VITE_API_URL || "https://alphaovi-medident-backend.vercel.app/api/v1";
       
       try {
-        const [supRes, prodRes, groupRes, subGroupRes] = await Promise.all([
+        const [supRes, prodRes, groupRes, subGroupRes, invRes] = await Promise.all([
           supplierService.getAllSuppliers().catch(() => []),
           fetch(`${baseUrl}/products`).catch(() => ({ ok: false })),
           fetch(`${baseUrl}/product-groups`).catch(() => ({ ok: false })),
-          fetch(`${baseUrl}/product-subgroups`).catch(() => ({ ok: false }))
+          fetch(`${baseUrl}/product-subgroups`).catch(() => ({ ok: false })),
+          fetch(`${baseUrl}/inventory`).catch(() => ({ ok: false }))
         ]);
 
         let supData = supRes;
@@ -64,6 +66,9 @@ const PurchaseOrderModal = ({
         
         const subGroupData = subGroupRes.ok ? await subGroupRes.json() : [];
         setSubGroups(Array.isArray(subGroupData) ? subGroupData : (subGroupData?.data || subGroupData?.result || []));
+
+        const invData = invRes.ok ? await invRes.json() : [];
+        setInventories(Array.isArray(invData) ? invData : (invData?.data || invData?.result || []));
 
       } catch (err) {
         console.error("Error fetching modal options:", err);
@@ -129,12 +134,17 @@ const PurchaseOrderModal = ({
       const selectedProd = products.find(
         (p) => String(p._id || p.productId || p.id) === String(value)
       );
-      if (selectedProd) {
-        currentRow.productName = selectedProd.productName || selectedProd.name || "";
-        currentRow.currentStock = selectedProd.quantity ?? selectedProd.currentStock ?? 0;
-        currentRow.transitStock = selectedProd.inTransit ?? selectedProd.transitStock ?? 0;
-        currentRow.unitPrice = selectedProd.purchasePrice ?? selectedProd.unitPrice ?? 0;
-        currentRow.unitWeight = selectedProd.unitWeight ?? selectedProd.weight ?? 1;
+
+      const matchedInventory = inventories.find(
+        (inv) => String(inv.product?._id || inv.product) === String(value)
+      );
+
+      if (selectedProd || matchedInventory) {
+        currentRow.productName = selectedProd?.productName || selectedProd?.name || "";
+        currentRow.currentStock = matchedInventory?.currentStock ?? selectedProd?.quantity ?? selectedProd?.currentStock ?? 0;
+        currentRow.transitStock = matchedInventory?.onTransit ?? matchedInventory?.transitStock ?? selectedProd?.inTransit ?? 0;
+        currentRow.unitPrice = selectedProd?.purchasePrice ?? selectedProd?.unitPrice ?? 0;
+        currentRow.unitWeight = selectedProd?.unitWeight ?? selectedProd?.weight ?? 1;
       }
     } else if (["orderQty", "unitPrice", "unitWeight"].includes(field)) {
       currentRow[field] = value === "" ? "" : Number(value);
@@ -179,10 +189,13 @@ const PurchaseOrderModal = ({
     );
 
     const shippingCostNum = Number(expenses.shippingCost) || 0;
-    const shippingCostPerKg =
-      totalBatchWeight > 0 ? shippingCostNum / totalBatchWeight : 0;
+    const transitCostNum = Number(expenses.transitCost) || 0;
+    const otherCostNum = Number(expenses.otherCost) || 0;
 
-    // Parse VAT input (supports e.g. "5%" or "50")
+    const shippingCostPerKg = totalBatchWeight > 0 ? shippingCostNum / totalBatchWeight : 0;
+    const transitCostPerKg = totalBatchWeight > 0 ? transitCostNum / totalBatchWeight : 0;
+    const otherCostPerKg = totalBatchWeight > 0 ? otherCostNum / totalBatchWeight : 0;
+
     const vatStr = String(expenses.vatInput || "0").trim();
     const isPercent = vatStr.includes("%");
     const vatValNum = Number(vatStr.replace("%", "")) || 0;
@@ -200,6 +213,9 @@ const PurchaseOrderModal = ({
 
       const lineWeight = qty * unitWt;
       const allocatedShipping = lineWeight * shippingCostPerKg;
+      const allocatedTransit = lineWeight * transitCostPerKg;
+      const allocatedOther = lineWeight * otherCostPerKg;
+
       const rawLinePrice = qty * uPrice;
       const allocatedVat =
         rawSubtotal > 0
@@ -207,13 +223,15 @@ const PurchaseOrderModal = ({
           : 0;
 
       const totalWithShippingAndVat =
-        rawLinePrice + allocatedShipping + allocatedVat;
+        rawLinePrice + allocatedShipping + allocatedTransit + allocatedOther + allocatedVat;
       const unitCostAfterCalc = qty > 0 ? totalWithShippingAndVat / qty : 0;
 
       return {
         ...item,
         lineWeight,
         allocatedShipping,
+        allocatedTransit,
+        allocatedOther,
         allocatedVat,
         rawLinePrice,
         totalWithShipping: totalWithShippingAndVat,
@@ -225,13 +243,13 @@ const PurchaseOrderModal = ({
       .filter((item) => item.productId !== "")
       .reduce((acc, item) => acc + (item.totalWithShipping || 0), 0);
 
-    const transitCostNum = Number(expenses.transitCost) || 0;
-    const otherCostNum = Number(expenses.otherCost) || 0;
-    const grandTotal = totalItemsWithShipping + transitCostNum + otherCostNum;
+    const grandTotal = totalItemsWithShipping;
 
     return {
       rawSubtotal,
       shippingCostPerKg,
+      transitCostPerKg,
+      otherCostPerKg,
       grandTotal,
       calculatedItems,
       totalBatchWeight,
@@ -301,8 +319,8 @@ const PurchaseOrderModal = ({
             weight: Number(item.unitWeight) || 0,
             shippingCost: Number(item.allocatedShipping) || 0,
             vatAmount: Number(item.allocatedVat) || 0,
-            transitCost: 0,
-            otherCost: 0,
+            transitCost: Number(item.allocatedTransit) || 0,
+            otherCost: Number(item.allocatedOther) || 0,
             unitCost: Number(item.unitCostAfterCalc || item.unitPrice) || 0,
             totalCost: Number(item.totalWithShipping || (item.orderQty * item.unitPrice)) || 0,
             status: "Ordered",

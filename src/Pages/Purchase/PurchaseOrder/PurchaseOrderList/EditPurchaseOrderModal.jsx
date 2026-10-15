@@ -24,6 +24,7 @@ const EditPurchaseOrderModal = ({
 }) => {
   const [selectedSupplier, setSelectedSupplier] = useState("");
   const [subGroups, setSubGroups] = useState([]);
+  const [inventories, setInventories] = useState([]);
 
   const getTodayISO = () => {
     const today = new Date();
@@ -39,18 +40,25 @@ const EditPurchaseOrderModal = ({
   useEffect(() => {
     if (!isOpen) return;
 
-    const fetchSubGroups = async () => {
+    const fetchExtraData = async () => {
       try {
         const baseUrl = import.meta.env.VITE_API_URL || "https://alphaovi-medident-backend.vercel.app/api/v1";
-        const res = await fetch(`${baseUrl}/product-subgroups`);
-        const data = res.ok ? await res.json() : [];
-        setSubGroups(Array.isArray(data) ? data : (data?.data || data?.result || []));
+        const [subRes, invRes] = await Promise.all([
+          fetch(`${baseUrl}/product-subgroups`),
+          fetch(`${baseUrl}/inventory`)
+        ]);
+        
+        const subData = subRes.ok ? await subRes.json() : [];
+        setSubGroups(Array.isArray(subData) ? subData : (subData?.data || subData?.result || []));
+
+        const invData = invRes.ok ? await invRes.json() : [];
+        setInventories(Array.isArray(invData) ? invData : (invData?.data || invData?.result || []));
       } catch (err) {
-        console.error("Error fetching subgroups:", err);
+        console.error("Error fetching extra data:", err);
       }
     };
 
-    fetchSubGroups();
+    fetchExtraData();
   }, [isOpen]);
 
   const initialRow = {
@@ -151,6 +159,10 @@ const EditPurchaseOrderModal = ({
           const finalProdId = prodMatch ? (prodMatch._id || prodMatch.productId || prodMatch.id) : prodId;
           const finalProdName = prodName || item.productName || prodMatch?.productName || prodMatch?.name || "";
 
+          const matchedInventory = inventories.find(
+            (inv) => String(inv.product?._id || inv.product) === String(finalProdId)
+          );
+
           const rawGroupRef = item.group || item.selectedGroup || prodMatch?.productGroup || prodMatch?.group || "";
           let groupVal = typeof rawGroupRef === "object" && rawGroupRef !== null ? (rawGroupRef._id || rawGroupRef.id || rawGroupRef.group || "") : rawGroupRef;
           
@@ -176,8 +188,8 @@ const EditPurchaseOrderModal = ({
             selectedSubGroup: resolvedSubGroupId || "",
             productId: finalProdId || "",
             productName: finalProdName,
-            currentStock: item.currentStock ?? prodMatch?.quantity ?? prodMatch?.currentStock ?? 0,
-            transitStock: item.inTransit ?? item.transitStock ?? prodMatch?.inTransit ?? prodMatch?.transitStock ?? 0,
+            currentStock: matchedInventory?.currentStock ?? item.currentStock ?? prodMatch?.quantity ?? prodMatch?.currentStock ?? 0,
+            transitStock: matchedInventory?.onTransit ?? item.inTransit ?? item.transitStock ?? prodMatch?.inTransit ?? prodMatch?.transitStock ?? 0,
             orderQty: item.orderQuantity ?? item.orderQty ?? item.quantity ?? 1,
             unitPrice: item.price ?? item.unitPrice ?? prodMatch?.purchasePrice ?? prodMatch?.unitPrice ?? 0,
             unitWeight: item.weight ?? item.unitWeight ?? prodMatch?.unitWeight ?? prodMatch?.weight ?? 1,
@@ -193,7 +205,7 @@ const EditPurchaseOrderModal = ({
       setOrderDate(getTodayISO());
       setExpectedReceiveDate("");
     }
-  }, [isOpen, editData?._id, subGroups]);
+  }, [isOpen, editData?._id, subGroups, inventories]);
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...items];
@@ -219,12 +231,17 @@ const EditPurchaseOrderModal = ({
       const selectedProd = products.find(
         (p) => String(p._id || p.productId || p.id) === String(value)
       );
-      if (selectedProd) {
-        currentRow.productName = selectedProd.productName || selectedProd.name || "";
-        currentRow.currentStock = selectedProd.quantity ?? selectedProd.currentStock ?? 0;
-        currentRow.transitStock = selectedProd.inTransit ?? selectedProd.transitStock ?? 0;
-        currentRow.unitPrice = selectedProd.purchasePrice ?? selectedProd.unitPrice ?? 0;
-        currentRow.unitWeight = selectedProd.unitWeight ?? selectedProd.weight ?? 1;
+
+      const matchedInventory = inventories.find(
+        (inv) => String(inv.product?._id || inv.product) === String(value)
+      );
+
+      if (selectedProd || matchedInventory) {
+        currentRow.productName = selectedProd?.productName || selectedProd?.name || "";
+        currentRow.currentStock = matchedInventory?.currentStock ?? selectedProd?.quantity ?? selectedProd?.currentStock ?? 0;
+        currentRow.transitStock = matchedInventory?.onTransit ?? matchedInventory?.transitStock ?? selectedProd?.inTransit ?? 0;
+        currentRow.unitPrice = selectedProd?.purchasePrice ?? selectedProd?.unitPrice ?? 0;
+        currentRow.unitWeight = selectedProd?.unitWeight ?? selectedProd?.weight ?? 1;
       }
     } else if (["orderQty", "unitPrice", "unitWeight"].includes(field)) {
       currentRow[field] = value === "" ? "" : Number(value);
@@ -261,8 +278,12 @@ const EditPurchaseOrderModal = ({
     );
 
     const shippingCostNum = Number(expenses.shippingCost) || 0;
-    const shippingCostPerKg =
-      totalBatchWeight > 0 ? shippingCostNum / totalBatchWeight : 0;
+    const transitCostNum = Number(expenses.transitCost) || 0;
+    const otherCostNum = Number(expenses.otherCost) || 0;
+
+    const shippingCostPerKg = totalBatchWeight > 0 ? shippingCostNum / totalBatchWeight : 0;
+    const transitCostPerKg = totalBatchWeight > 0 ? transitCostNum / totalBatchWeight : 0;
+    const otherCostPerKg = totalBatchWeight > 0 ? otherCostNum / totalBatchWeight : 0;
 
     const vatStr = String(expenses.vatInput || "0").trim();
     const isPercent = vatStr.includes("%");
@@ -281,6 +302,9 @@ const EditPurchaseOrderModal = ({
 
       const lineWeight = qty * unitWt;
       const allocatedShipping = lineWeight * shippingCostPerKg;
+      const allocatedTransit = lineWeight * transitCostPerKg;
+      const allocatedOther = lineWeight * otherCostPerKg;
+
       const rawLinePrice = qty * uPrice;
       const allocatedVat =
         rawSubtotal > 0
@@ -288,13 +312,15 @@ const EditPurchaseOrderModal = ({
           : 0;
 
       const totalWithShippingAndVat =
-        rawLinePrice + allocatedShipping + allocatedVat;
+        rawLinePrice + allocatedShipping + allocatedTransit + allocatedOther + allocatedVat;
       const unitCostAfterCalc = qty > 0 ? totalWithShippingAndVat / qty : uPrice;
 
       return {
         ...item,
         lineWeight,
         allocatedShipping,
+        allocatedTransit,
+        allocatedOther,
         allocatedVat,
         rawLinePrice,
         totalWithShipping: totalWithShippingAndVat,
@@ -306,13 +332,13 @@ const EditPurchaseOrderModal = ({
       .filter((item) => item.productId !== "")
       .reduce((acc, item) => acc + (item.totalWithShipping || 0), 0);
 
-    const transitCostNum = Number(expenses.transitCost) || 0;
-    const otherCostNum = Number(expenses.otherCost) || 0;
-    const grandTotal = totalItemsWithShipping + transitCostNum + otherCostNum;
+    const grandTotal = totalItemsWithShipping;
 
     return {
       rawSubtotal,
       shippingCostPerKg,
+      transitCostPerKg,
+      otherCostPerKg,
       grandTotal,
       calculatedItems,
       totalBatchWeight,
@@ -382,8 +408,8 @@ const EditPurchaseOrderModal = ({
             weight: Number(item.unitWeight) || 0,
             shippingCost: Number(item.allocatedShipping) || 0,
             vatAmount: Number(item.allocatedVat) || 0,
-            transitCost: 0,
-            otherCost: 0,
+            transitCost: Number(item.allocatedTransit) || 0,
+            otherCost: Number(item.allocatedOther) || 0,
             unitCost: Number(item.unitCostAfterCalc) || 0,
             totalCost: Number(item.totalWithShipping) || 0,
             status: editData?.status || "Ordered",
@@ -701,7 +727,7 @@ const EditPurchaseOrderModal = ({
                 })}
               </div>
 
-              {/* Expenses / Shipping Costs Section without dropdown */}
+              {/* Expenses / Shipping Costs Section */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-base-200/50 p-4 rounded-xl border border-base-300">
                 <div>
                   <label className="label py-1 text-xs font-semibold text-base-content/80">
