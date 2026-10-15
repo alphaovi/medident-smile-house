@@ -12,7 +12,6 @@ const StockTable = ({ stockData, onPriceChange }) => {
     const currentStock = calculateCurrentStock(item);
     const averageBuyingPrice = Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
     
-    // Jodi currentStock 0 hoy, kintu database-e totalStockValue thake, tahole totalStockValue use hobe, nahole currentStock * price
     const stockVal = Number(item.totalStockValue) > 0 && currentStock === 0 
       ? Number(item.totalStockValue) 
       : currentStock * averageBuyingPrice;
@@ -22,8 +21,19 @@ const StockTable = ({ stockData, onPriceChange }) => {
 
   const totalSaleValue = stockData.reduce((total, item) => {
     const currentStock = calculateCurrentStock(item);
-    const sellingPrice = Number(item.sellingPrice ?? item.totalSaleValue) || 0;
-    return total + currentStock * sellingPrice;
+    // Product ba inventory theke selling price ba total sale value resolve kora
+    const sellingPrice = Number(
+      item.sellingPrice ?? 
+      item.product?.sellingPrice ?? 
+      item.product?.price ?? 
+      item.totalSaleValue / (currentStock || 1)
+    ) || 0;
+
+    const rowSaleVal = Number(item.totalSaleValue) > 0 && currentStock === 0
+      ? Number(item.totalSaleValue)
+      : currentStock * sellingPrice;
+
+    return total + rowSaleVal;
   }, 0);
 
   return (
@@ -57,14 +67,25 @@ const StockTable = ({ stockData, onPriceChange }) => {
               stockData.map((item, idx) => {
                 const currentStock = calculateCurrentStock(item);
                 const averageBuyingPrice = Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
-                const sellingPrice = Number(item.sellingPrice) || 0;
+                
+                // Resolve selling price properly from item or product reference
+                const sellingPrice = Number(
+                  item.sellingPrice ?? 
+                  item.product?.sellingPrice ?? 
+                  item.product?.price ?? 
+                  0
+                );
                 
                 // Row stock value calculation
                 const rowBuyingValue = Number(item.totalStockValue) > 0 && currentStock === 0
                   ? Number(item.totalStockValue)
                   : currentStock * averageBuyingPrice;
                 
-                const rowSaleValue = currentStock * sellingPrice;
+                // Row sale value calculation
+                const rowSaleValue = Number(item.totalSaleValue) > 0 && currentStock === 0
+                  ? Number(item.totalSaleValue)
+                  : currentStock * sellingPrice;
+
                 const onTransitVal = Number(item.onTransit ?? item.transitStock ?? item.inTransit) || 0;
                 
                 return (
