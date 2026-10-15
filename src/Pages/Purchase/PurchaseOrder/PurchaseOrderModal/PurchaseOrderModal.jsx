@@ -13,6 +13,7 @@ import {
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
 import { supplierService } from "../../../../services/supplierService/supplierService";
+import { useQueryClient } from "@tanstack/react-query";
 
 const PurchaseOrderModal = ({
   isOpen,
@@ -25,6 +26,8 @@ const PurchaseOrderModal = ({
   const [subGroups, setSubGroups] = useState([]);
   const [inventories, setInventories] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState("");
+  const [loadingSuppliers, setLoadingSuppliers] = useState(false);
+  const queryClient = useQueryClient();
 
   const getTodayISO = () => {
     const today = new Date();
@@ -42,6 +45,7 @@ const PurchaseOrderModal = ({
 
     const fetchModalData = async () => {
       const baseUrl = import.meta.env.VITE_API_URL || "https://alphaovi-medident-backend.vercel.app/api/v1";
+      setLoadingSuppliers(true);
       
       try {
         const [supRes, prodRes, groupRes, subGroupRes, invRes] = await Promise.all([
@@ -72,6 +76,8 @@ const PurchaseOrderModal = ({
 
       } catch (err) {
         console.error("Error fetching modal options:", err);
+      } finally {
+        setLoadingSuppliers(false);
       }
     };
 
@@ -329,6 +335,8 @@ const PurchaseOrderModal = ({
         };
 
         onSaveStoreProduct?.(payload);
+        queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+        queryClient.invalidateQueries({ queryKey: ["inventories"] });
         onClose();
       }
     });
@@ -383,8 +391,11 @@ const PurchaseOrderModal = ({
                     onChange={(e) => setSelectedSupplier(e.target.value)}
                     className="select select-bordered select-sm w-full font-medium text-sm"
                     required
+                    disabled={loadingSuppliers}
                   >
-                    <option value="">Select Supplier...</option>
+                    <option value="">
+                      {loadingSuppliers ? "Loading suppliers..." : "Select Supplier..."}
+                    </option>
                     {suppliers.map((sup) => {
                       const supId = sup._id || sup.supplierId;
                       const supName = sup.supplierName || sup.name;
@@ -477,7 +488,6 @@ const PurchaseOrderModal = ({
                       animate={{ opacity: 1 }}
                       className="flex flex-wrap lg:flex-nowrap items-center gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300 text-sm"
                     >
-                      {/* Group Select */}
                       <div className="w-full sm:w-40">
                         <select
                           value={item.selectedGroup}
@@ -497,7 +507,6 @@ const PurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      {/* SubGroup Select */}
                       <div className="w-full sm:w-40">
                         <select
                           value={item.selectedSubGroup}
@@ -518,7 +527,6 @@ const PurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      {/* Product Select */}
                       <div className="flex-1 min-w-[120px]">
                         <select
                           value={item.productId}

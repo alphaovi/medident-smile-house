@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import Swal from "sweetalert2";
+import { useQueryClient } from "@tanstack/react-query";
 
 const EditPurchaseOrderModal = ({
   isOpen,
@@ -25,6 +26,7 @@ const EditPurchaseOrderModal = ({
   const [selectedSupplier, setSelectedSupplier] = useState("");
   const [subGroups, setSubGroups] = useState([]);
   const [inventories, setInventories] = useState([]);
+  const queryClient = useQueryClient();
 
   const getTodayISO = () => {
     const today = new Date();
@@ -417,6 +419,8 @@ const EditPurchaseOrderModal = ({
         };
 
         onSaveStoreProduct?.(payloadData);
+        queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+        queryClient.invalidateQueries({ queryKey: ["inventories"] });
         onClose();
       }
     });
@@ -475,8 +479,11 @@ const EditPurchaseOrderModal = ({
                     onChange={(e) => setSelectedSupplier(e.target.value)}
                     className="select select-bordered select-sm w-full font-medium text-sm"
                     required
+                    disabled={suppliers.length === 0}
                   >
-                    <option value="">Select Supplier...</option>
+                    <option value="">
+                      {suppliers.length === 0 ? "Loading suppliers..." : "Select Supplier..."}
+                    </option>
                     {suppliers.map((sup) => {
                       const supId = sup._id || sup.supplierId;
                       const supName = sup.supplierName || sup.name;
@@ -573,7 +580,6 @@ const EditPurchaseOrderModal = ({
                       key={idx}
                       className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 p-3 lg:p-0 bg-base-200/40 lg:bg-transparent rounded-xl border lg:border-0 border-base-300"
                     >
-                      {/* Group Select */}
                       <div className="w-full lg:w-32">
                         <select
                           value={item.selectedGroup}
@@ -595,7 +601,6 @@ const EditPurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      {/* Sub-Group Select */}
                       <div className="w-full lg:w-32">
                         <select
                           value={item.selectedSubGroup}
@@ -618,7 +623,6 @@ const EditPurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      {/* Product Select */}
                       <div className="flex-1 min-w-[220px]">
                         <select
                           value={item.productId}
@@ -640,7 +644,6 @@ const EditPurchaseOrderModal = ({
                         </select>
                       </div>
 
-                      {/* Current Stock */}
                       <div className="w-full lg:w-20 text-center">
                         <input
                           type="number"
@@ -650,7 +653,6 @@ const EditPurchaseOrderModal = ({
                         />
                       </div>
 
-                      {/* In Transit */}
                       <div className="w-full lg:w-20 text-center">
                         <input
                           type="number"
@@ -660,7 +662,6 @@ const EditPurchaseOrderModal = ({
                         />
                       </div>
 
-                      {/* Order Qty */}
                       <div className="w-full lg:w-20">
                         <input
                           type="number"
@@ -673,7 +674,6 @@ const EditPurchaseOrderModal = ({
                         />
                       </div>
 
-                      {/* Price */}
                       <div className="w-full lg:w-24">
                         <input
                           type="number"
@@ -687,7 +687,6 @@ const EditPurchaseOrderModal = ({
                         />
                       </div>
 
-                      {/* Weight */}
                       <div className="w-full lg:w-20">
                         <input
                           type="number"
@@ -701,17 +700,14 @@ const EditPurchaseOrderModal = ({
                         />
                       </div>
 
-                      {/* Unit Cost */}
                       <div className="w-full lg:w-28 text-right font-semibold text-xs py-1">
                         ৳ {(calcItem.unitCostAfterCalc || item.unitPrice || 0).toFixed(2)}
                       </div>
 
-                      {/* Total + Ship */}
                       <div className="w-full lg:w-28 text-right font-semibold text-xs py-1 text-teal-600">
                         ৳ {(calcItem.totalWithShipping || (item.orderQty * item.unitPrice) || 0).toFixed(2)}
                       </div>
 
-                      {/* Remove Row */}
                       <div className="w-full lg:w-10 flex justify-end lg:justify-center">
                         <button
                           type="button"
