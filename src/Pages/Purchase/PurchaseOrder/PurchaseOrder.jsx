@@ -1,133 +1,115 @@
 // PurchaseOrder.jsx
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { PlusCircle, ShoppingBag } from "lucide-react";
 import PurchaseOrderModal from "./PurchaseOrderModal/PurchaseOrderModal";
 import { toast } from "react-toastify";
 import PurchaseOrderList from "./PurchaseOrderList/PurchaseOrderList";
 import { purchaseOrderService } from "../../../services/purchaseOrderService/purchaseOrderService";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://alphaovi-medident-backend.vercel.app/api/v1";
 
 const PurchaseOrder = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [purchaseHistory, setPurchaseHistory] = useState([]);
-  
-  const [products, setProducts] = useState([]);
-  const [productsGroupSubgroup, setProductsGroupSubgroup] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [ordersData, resProducts, resGroups] = await Promise.all([
-          purchaseOrderService.getAllOrders().catch(() => []),
-          fetch(`${API_URL}/products`).catch(() => ({ ok: false })),
-          fetch(`${API_URL}/product-groups`).catch(() => ({ ok: false }))
-        ]);
+  // 1. Fetch Purchase Orders
+  const { data: rawOrders = [], isLoading: ordersLoading } = useQuery({
+    queryKey: ["purchase-orders"],
+    queryFn: purchaseOrderService.getAllOrders,
+  });
 
-        const prodJson = resProducts.ok ? await resProducts.json() : [];
-        const productsData = Array.isArray(prodJson) ? prodJson : (prodJson.data || prodJson.result || []);
+  // 2. Fetch Products
+  const { data: products = [] } = useQuery({
+    queryKey: ["products-list"],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/products`);
+      const json = res.ok ? await res.json() : [];
+      return Array.isArray(json) ? json : (json.data || json.result || []);
+    },
+  });
 
-        const groupJson = resGroups.ok ? await resGroups.json() : [];
-        const groupsData = Array.isArray(groupJson) ? groupJson : (groupJson.data || groupJson.result || []);
+  // 3. Fetch Product Groups
+  const { data: productsGroupSubgroup = [] } = useQuery({
+    queryKey: ["product-groups-list"],
+    queryFn: async () => {
+      const res = await fetch(`${API_URL}/product-groups`);
+      const json = res.ok ? await res.json() : [];
+      return Array.isArray(json) ? json : (json.data || json.result || []);
+    },
+  });
 
-        let rawOrders = ordersData;
-        if (ordersData && !Array.isArray(ordersData)) {
-          rawOrders = ordersData.data || ordersData.result || [];
-        }
+  // Normalize orders for UI
+  const normalizedOrders = (Array.isArray(rawOrders) ? rawOrders : []).map((ord) => {
+    const sup = ord.supplierName;
+    let resolvedSupName = "Default Supplier";
+    let rawSupRef = sup;
 
-        const normalizedOrders = (Array.isArray(rawOrders) ? rawOrders : []).map((ord) => {
-          const sup = ord.supplierName;
-          let resolvedSupName = "Default Supplier";
-          let rawSupRef = sup;
+    if (typeof sup === "object" && sup !== null) {
+      resolvedSupName = sup.supplierName || sup.name || "Default Supplier";
+      rawSupRef = sup._id || sup.supplierId || sup;
+    } else {
+      resolvedSupName = sup;
+      rawSupRef = sup;
+    }
 
-          if (typeof sup === "object" && sup !== null) {
-            resolvedSupName = sup.supplierName || sup.name || "Default Supplier";
-            rawSupRef = sup._id || sup.supplierId || sup;
-          } else {
-            resolvedSupName = sup;
-            rawSupRef = sup;
-          }
-
-          return {
-            ...ord,
-            orderID: ord.purchaseId || ord.orderID || ord._id,
-            orderDate: ord.purchaseDate ? ord.purchaseDate.split("T")[0] : (ord.orderDate || "N/A"),
-            expectedReceiveDate: ord.expectedDeliveryDate ? ord.expectedDeliveryDate.split("T")[0] : (ord.expectedReceiveDate || ord.expectedDate || "N/A"),
-            totalAmount: ord.grandTotal ?? ord.totalAmount ?? ord.total ?? 0,
-            supplierName: resolvedSupName,
-            supplierRef: rawSupRef,
-            purchasedItems: ord.items || ord.purchasedItems || []
-          };
-        });
-
-        setPurchaseHistory(normalizedOrders);
-        setProducts(productsData);
-        setProductsGroupSubgroup(groupsData);
-      } catch (error) {
-        console.error("Error loading initial data:", error);
-        toast.error("Failed to load initial data from server.");
-        setPurchaseHistory([]);
-      } finally {
-        setIsLoading(false);
-      }
+    return {
+      ...ord,
+      orderID: ord.purchaseId || ord.orderID || ord._id,
+      orderDate: ord.purchaseDate ? ord.purchaseDate.split("T")[0] : (ord.orderDate || "N/A"),
+      expectedReceiveDate: ord.expectedDeliveryDate ? ord.expectedDeliveryDate.split("T")[0] : (ord.expectedReceiveDate || ord.expectedDate || "N/A"),
+      totalAmount: ord.grandTotal ?? ord.totalAmount ?? ord.total ?? 0,
+      supplierName: resolvedSupName,
+      supplierRef: rawSupRef,
+      purchasedItems: ord.items || ord.purchasedItems || []
     };
+  });
 
-    fetchData();
-  }, []);
+  // Mutation for Creating Order
+  const createMutation = useMutation({
+    mutationFn: purchaseOrderService.createOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      toast.success("Purchase order created successfully!");
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create purchase order.");
+    },
+  });
+
+  // Mutation for Updating Order (Main invalidate queries, Toast handle dynamic hobe)
+  const updateMutation = useMutation({
+    mutationFn: ({ id, orderData }) => purchaseOrderService.updateOrder({ id, orderData }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to update purchase order.");
+    },
+  });
 
   const handleSaveStoreProduct = async (purchaseBatchData) => {
-    try {
-      if (purchaseBatchData.orderID || purchaseBatchData._id) {
-        const id = purchaseBatchData._id || purchaseBatchData.orderID;
-        const updated = await purchaseOrderService.updateOrder(id, purchaseBatchData);
-        
-        const sup = (updated || purchaseBatchData).supplierName;
-        const resolvedSupName = typeof sup === "object" && sup !== null ? (sup.supplierName || sup.name || "Default Supplier") : (sup || "Default Supplier");
+    const id = purchaseBatchData._id || purchaseBatchData.orderID || purchaseBatchData.purchaseId;
+    const isExisting = normalizedOrders.some(ord => ord._id === id || ord.purchaseId === id || ord.orderID === id);
 
-        const normalizedUpdated = {
-          ...(updated || purchaseBatchData),
-          orderID: (updated || purchaseBatchData).purchaseId || (updated || purchaseBatchData).orderID || id,
-          orderDate: (updated || purchaseBatchData).purchaseDate ? (updated || purchaseBatchData).purchaseDate.split("T")[0] : new Date().toISOString().split("T")[0],
-          totalAmount: (updated || purchaseBatchData).grandTotal ?? (updated || purchaseBatchData).totalAmount ?? 0,
-          supplierName: resolvedSupName,
-        };
-
-        setPurchaseHistory((prev) =>
-          prev.map((ord) => ((ord._id === id || ord.orderID === id) ? { ...ord, ...normalizedUpdated } : ord))
-        );
-        toast.success("Purchase order updated successfully!");
-      } else {
-        const newOrderPayload = {
-          purchaseId: `PO-${Date.now().toString().slice(-6)}`,
-          grandTotal: purchaseBatchData.grandTotal || purchaseBatchData.totals?.grandTotal || 0,
-          baseSubtotal: purchaseBatchData.baseSubtotal || purchaseBatchData.totals?.rawSubtotal || 0,
-          status: "Ordered",
-          ...purchaseBatchData
-        };
-        
-        const savedOrder = await purchaseOrderService.createOrder(newOrderPayload);
-        const actualSaved = savedOrder?.data || savedOrder || newOrderPayload;
-
-        const sup = actualSaved.supplierName;
-        const resolvedSupName = typeof sup === "object" && sup !== null ? (sup.supplierName || sup.name || "Default Supplier") : (sup || "Default Supplier");
-
-        const formattedNewOrder = {
-          ...actualSaved,
-          orderID: actualSaved.purchaseId || "PO-NEW",
-          orderDate: actualSaved.purchaseDate ? actualSaved.purchaseDate.split("T")[0] : new Date().toISOString().split("T")[0],
-          expectedReceiveDate: actualSaved.expectedDeliveryDate ? actualSaved.expectedDeliveryDate.split("T")[0] : "N/A",
-          totalAmount: actualSaved.grandTotal ?? 0,
-          supplierName: resolvedSupName,
-          purchasedItems: actualSaved.items || []
-        };
-
-        setPurchaseHistory((prev) => [formattedNewOrder, ...prev]);
-        toast.success("Purchase order created successfully!");
-      }
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to save purchase order to database.");
+    if (isExisting) {
+      updateMutation.mutate(
+        { id: purchaseBatchData.purchaseId || id, orderData: purchaseBatchData },
+        {
+          onSuccess: () => {
+            toast.success("Purchase order updated successfully!");
+          }
+        }
+      );
+    } else {
+      const newOrderPayload = {
+        purchaseId: `PO-${Date.now().toString().slice(-6)}`,
+        grandTotal: purchaseBatchData.grandTotal || purchaseBatchData.totals?.grandTotal || 0,
+        baseSubtotal: purchaseBatchData.baseSubtotal || purchaseBatchData.totals?.rawSubtotal || 0,
+        status: "Ordered",
+        ...purchaseBatchData
+      };
+      createMutation.mutate(newOrderPayload);
     }
   };
 
@@ -140,26 +122,26 @@ const PurchaseOrder = () => {
             Purchase Orders
           </h1>
           <p className="text-sm text-base-content/70 mt-1">
-            Create batch purchase orders and update product inventory stock.
+            Create batch purchase orders and update product inventory stock instantly.
           </p>
         </div>
 
         <button
           onClick={() => setIsModalOpen(true)}
-          disabled={isLoading}
+          disabled={ordersLoading}
           className="btn text-white bg-teal-600 hover:bg-teal-700 btn-md gap-2 shadow-md border-0 disabled:opacity-50 cursor-pointer"
         >
           <PlusCircle className="size-5" />
-          {isLoading ? "Loading Data..." : "Create Purchase Order"}
+          {ordersLoading ? "Loading Data..." : "Create Purchase Order"}
         </button>
       </div>
 
       <PurchaseOrderList 
-        orders={purchaseHistory}
-        setOrders={setPurchaseHistory}
-        loading={isLoading}
+        orders={normalizedOrders}
+        loading={ordersLoading}
         products={products}
         productsGroupSubgroup={productsGroupSubgroup}
+        updateMutation={updateMutation}
       />
 
       <PurchaseOrderModal

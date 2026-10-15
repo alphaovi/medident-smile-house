@@ -64,8 +64,8 @@ const PurchaseOrderTable = ({
                 const isOnTransit = currentStatus === "On Transit";
                 const isOrdered = currentStatus === "Ordered";
 
-                // Edit button condition: Sirf 'Ordered' hone par hi edit allow hoga
-                const isEditable = isOrdered;
+                // --- CHANGE HERE: Ordered ebong OnTransit thakle edit kora jabe, Received hoye gele edit block thakbe ---
+                const isEditable = !isReceived;
                 
                 // Calculate total if missing
                 let calculatedTotal = 0;
@@ -97,10 +97,8 @@ const PurchaseOrderTable = ({
                 const rawSupplierRef = order.supplierName || order.supplier;
 
                 if (typeof rawSupplierRef === "object" && rawSupplierRef !== null) {
-                  // Agar backend se populate hokar object aaya hai (e.g., { supplierName: "Jobbor Khan", ... })
                   supplierDisplay = rawSupplierRef.supplierName || rawSupplierRef.name || "N/A";
                 } else {
-                  // Agar sirf ID string aayi hai, toh suppliers array ya list mein se match karein
                   const matchedSupplier = Array.isArray(suppliers) ? suppliers.find(
                     (s) => String(s._id) === String(rawSupplierRef) || String(s.supplierId) === String(rawSupplierRef)
                   ) : null;
@@ -121,7 +119,7 @@ const PurchaseOrderTable = ({
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center justify-center gap-2">
-                        {/* Edit Button with Conditional Disabling */}
+                        {/* Edit Button: isEditable = true (Ordered & On Transit), false (Received) */}
                         <button
                           type="button"
                           onClick={() => isEditable && onEditOrder(order)}
@@ -131,18 +129,19 @@ const PurchaseOrderTable = ({
                               ? "text-blue-600 hover:bg-blue-50" 
                               : "text-base-content/30 cursor-not-allowed hover:bg-transparent"
                           }`}
-                          title={isEditable ? "Edit Order" : "Cannot edit order once it is On Transit or Received"}
+                          title={isEditable ? "Edit Order" : "Cannot edit order once it is Received"}
                         >
                           <Edit className="size-4" />
                         </button>
 
-                        {/* Status Select with Hierarchy Constraints */}
+                        {/* Status Select: Received hoye gele dropdown o disable ba lock thakbe */}
                         <select
                           value={currentStatus}
+                          disabled={isReceived}
                           onChange={(e) => onStatusChange(orderKey, e.target.value)}
                           className={`select select-xs font-semibold rounded-lg border-0 cursor-pointer w-28 px-2 ${
                             isReceived
-                              ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                              ? "bg-emerald-100 text-emerald-700 cursor-not-allowed"
                               : isOnTransit
                               ? "bg-amber-100 text-amber-700 hover:bg-amber-200"
                               : "bg-blue-100 text-blue-700 hover:bg-blue-200"

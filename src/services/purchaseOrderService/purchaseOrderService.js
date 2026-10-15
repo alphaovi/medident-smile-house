@@ -2,30 +2,44 @@
 const API_BASE_URL = `${import.meta.env.VITE_API_URL || "https://alphaovi-medident-backend.vercel.app/api/v1"}/purchase-orders`;
 
 export const purchaseOrderService = {
-  // Get all purchase orders
   getAllOrders: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}`);
       if (!response.ok) throw new Error("Failed to fetch purchase orders");
-      return await response.json();
+      const result = await response.json();
+      return result.data || result.result || result;
     } catch (error) {
       console.error("Error fetching purchase orders:", error);
       throw error;
     }
   },
 
-  // Create a new purchase order -> POST /api/v1/purchase-orders/create-purchase-order
   createOrder: async (orderData) => {
     try {
+      const formattedPayload = {
+        ...orderData,
+        purchaseDate: orderData.purchaseDate ? new Date(orderData.purchaseDate).toISOString() : new Date().toISOString(),
+        expectedDeliveryDate: orderData.expectedDeliveryDate || orderData.expectedReceiveDate ? new Date(orderData.expectedDeliveryDate || orderData.expectedReceiveDate).toISOString() : new Date().toISOString(),
+        shippingCost: Number(orderData.shippingCost) || 0,
+        transitCost: Number(orderData.transitCost) || 0,
+        vatValue: Number(orderData.vatValue) || 0,
+        vatType: orderData.vatType === "flat" || orderData.vatType === "amount" ? "flat" : "%",
+        otherCost: Number(orderData.otherCost) || 0,
+        totalWeight: Number(orderData.totalWeight) || 0,
+        baseSubtotal: Number(orderData.baseSubtotal || orderData.totals?.rawSubtotal) || 0,
+        grandTotal: Number(orderData.grandTotal || orderData.totalAmount) || 0,
+      };
+
       const response = await fetch(`${API_BASE_URL}/create-purchase-order`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(orderData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formattedPayload),
       });
 
-      if (!response.ok) throw new Error("Failed to create purchase order");
+      if (!response.ok) {
+        const errRes = await response.json().catch(() => ({}));
+        throw new Error(errRes.message || "Failed to create purchase order");
+      }
       return await response.json();
     } catch (error) {
       console.error("Error creating purchase order:", error);
@@ -33,15 +47,22 @@ export const purchaseOrderService = {
     }
   },
 
-  // Update an existing purchase order (PATCH method with error response catch)
-  updateOrder: async (id, orderData) => {
+  updateOrder: async ({ id, orderData }) => {
     try {
+      const formattedPayload = {
+        ...orderData,
+        expectedDeliveryDate: orderData.expectedDeliveryDate || orderData.expectedReceiveDate ? new Date(orderData.expectedDeliveryDate || orderData.expectedReceiveDate).toISOString() : undefined,
+        shippingCost: Number(orderData.shippingCost) || 0,
+        transitCost: Number(orderData.transitCost) || 0,
+        vatValue: Number(orderData.vatValue) || 0,
+        vatType: orderData.vatType === "flat" || orderData.vatType === "amount" ? "flat" : "%",
+        otherCost: Number(orderData.otherCost) || 0,
+      };
+
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: "PATCH", 
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(orderData),
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formattedPayload),
       });
 
       if (!response.ok) {
@@ -55,13 +76,11 @@ export const purchaseOrderService = {
     }
   },
 
-  // Delete a purchase order
   deleteOrder: async (id) => {
     try {
       const response = await fetch(`${API_BASE_URL}/${id}`, {
         method: "DELETE",
       });
-
       if (!response.ok) throw new Error("Failed to delete purchase order");
       return await response.json();
     } catch (error) {

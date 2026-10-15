@@ -36,7 +36,6 @@ const PurchaseOrderModal = ({
   const [orderDate, setOrderDate] = useState(getTodayISO());
   const [expectedReceiveDate, setExpectedReceiveDate] = useState("");
 
-  // Fetch dynamic data from backend / endpoints safely
   useEffect(() => {
     if (!isOpen) return;
 
@@ -51,28 +50,20 @@ const PurchaseOrderModal = ({
           fetch(`${baseUrl}/product-subgroups`).catch(() => ({ ok: false }))
         ]);
 
-        // 1. Supplier Data Handle
         let supData = supRes;
         if (supRes && typeof supRes.json === "function") {
           supData = await supRes.json();
         }
-        const extractedSuppliers = Array.isArray(supData) ? supData : (supData?.data || supData?.result || []);
-        setSuppliers(extractedSuppliers);
+        setSuppliers(Array.isArray(supData) ? supData : (supData?.data || supData?.result || []));
 
-        // 2. Product Data Handle
         const prodData = prodRes.ok ? await prodRes.json() : [];
         setProducts(Array.isArray(prodData) ? prodData : (prodData?.data || prodData?.result || []));
 
-        // 3. Product Group Data Handle
         const groupData = groupRes.ok ? await groupRes.json() : [];
         setProductGroups(Array.isArray(groupData) ? groupData : (groupData?.data || groupData?.result || []));
         
-        // 4. Sub-Group Data Handle
         const subGroupData = subGroupRes.ok ? await subGroupRes.json() : [];
-        const extractedSubGroups = Array.isArray(subGroupData) 
-          ? subGroupData 
-          : (subGroupData?.data || subGroupData?.result || []);
-        setSubGroups(extractedSubGroups);
+        setSubGroups(Array.isArray(subGroupData) ? subGroupData : (subGroupData?.data || subGroupData?.result || []));
 
       } catch (err) {
         console.error("Error fetching modal options:", err);
@@ -96,8 +87,7 @@ const PurchaseOrderModal = ({
 
   const initialExpenses = {
     shippingCost: 0,
-    vatValue: 5,
-    vatType: "%",
+    vatInput: "0",
     transitCost: 0,
     otherCost: 0,
   };
@@ -169,7 +159,7 @@ const PurchaseOrderModal = ({
     const { name, value } = e.target;
     setExpenses((prev) => ({
       ...prev,
-      [name]: name === "vatType" ? value : value === "" ? "" : Number(value),
+      [name]: name === "vatInput" ? value : (value === "" ? "" : Number(value)),
     }));
   };
 
@@ -192,11 +182,14 @@ const PurchaseOrderModal = ({
     const shippingCostPerKg =
       totalBatchWeight > 0 ? shippingCostNum / totalBatchWeight : 0;
 
-    const vatValNum = Number(expenses.vatValue) || 0;
-    const calculatedVatAmount =
-      expenses.vatType === "%"
-        ? (rawSubtotal * vatValNum) / 100
-        : vatValNum;
+    // Parse VAT input (supports e.g. "5%" or "50")
+    const vatStr = String(expenses.vatInput || "0").trim();
+    const isPercent = vatStr.includes("%");
+    const vatValNum = Number(vatStr.replace("%", "")) || 0;
+
+    const calculatedVatAmount = isPercent
+      ? (rawSubtotal * vatValNum) / 100
+      : vatValNum;
 
     const calculatedItems = items.map((item) => {
       if (!item.productId) return item;
@@ -241,6 +234,9 @@ const PurchaseOrderModal = ({
       shippingCostPerKg,
       grandTotal,
       calculatedItems,
+      totalBatchWeight,
+      vatValNum,
+      isPercent,
     };
   }, [items, expenses]);
 
@@ -261,7 +257,6 @@ const PurchaseOrderModal = ({
       return;
     }
 
-    // SweetAlert2 styled properly to prevent overlapping and proper z-index positioning
     Swal.fire({
       title: "Confirm Purchase Order?",
       text: "This will create a new batch order in the system.",
@@ -271,9 +266,9 @@ const PurchaseOrderModal = ({
       cancelButtonColor: "#64748b",
       confirmButtonText: "Confirm Order",
       cancelButtonText: "Cancel",
-      heightAuto: false, // Prevents body overflow shift
+      heightAuto: false,
       customClass: {
-        container: "z-[99999]", // Higher z-index than main modal
+        container: "z-[99999]",
         popup: "rounded-2xl p-6 shadow-2xl border border-base-200",
         title: "text-xl font-bold text-base-content",
         htmlContainer: "text-sm text-base-content/70",
@@ -284,22 +279,34 @@ const PurchaseOrderModal = ({
       if (result.isConfirmed) {
         const payload = {
           purchaseId: `PO-${Date.now().toString().slice(-6)}`,
+          purchaseDate: orderDate ? new Date(orderDate).toISOString() : new Date().toISOString(),
           expectedDeliveryDate: expectedReceiveDate ? new Date(expectedReceiveDate).toISOString() : new Date().toISOString(),
           supplierName: selectedSupplier,
+          shippingCost: Number(expenses.shippingCost) || 0,
+          transitCost: Number(expenses.transitCost) || 0,
+          vatType: calculations.isPercent ? "%" : "flat",
+          vatValue: calculations.vatValNum,
+          otherCost: Number(expenses.otherCost) || 0,
+          totalWeight: calculations.totalBatchWeight || 0,
+          baseSubtotal: calculations.rawSubtotal,
+          grandTotal: calculations.grandTotal,
           items: validItems.map((item) => ({
             group: item.selectedGroup,
             subGroup: item.selectedSubGroup,
             product: item.productId,
+            currentStock: Number(item.currentStock) || 0,
+            inTransit: Number(item.transitStock) || 0,
             orderQuantity: Number(item.orderQty) || 0,
             price: Number(item.unitPrice) || 0,
+            weight: Number(item.unitWeight) || 0,
+            shippingCost: Number(item.allocatedShipping) || 0,
+            vatAmount: Number(item.allocatedVat) || 0,
+            transitCost: 0,
+            otherCost: 0,
             unitCost: Number(item.unitCostAfterCalc || item.unitPrice) || 0,
             totalCost: Number(item.totalWithShipping || (item.orderQty * item.unitPrice)) || 0,
             status: "Ordered",
           })),
-          vatType: expenses.vatType,
-          vatValue: Number(expenses.vatValue) || 0,
-          baseSubtotal: calculations.rawSubtotal,
-          grandTotal: calculations.grandTotal,
           status: "Ordered",
         };
 
@@ -394,6 +401,7 @@ const PurchaseOrderModal = ({
                     value={expectedReceiveDate}
                     onChange={(e) => setExpectedReceiveDate(e.target.value)}
                     className="input input-bordered input-sm w-full font-medium text-sm"
+                    required
                   />
                 </div>
               </div>
@@ -612,27 +620,15 @@ const PurchaseOrderModal = ({
                     </div>
 
                     <div>
-                      <label className="label py-1 text-xs font-semibold">
-                        VAT {expenses.vatType === "%" ? "(%)" : "(৳)"}
-                      </label>
-                      <div className="flex gap-1">
-                        <input
-                          type="number"
-                          name="vatValue"
-                          value={expenses.vatValue}
-                          onChange={handleExpenseChange}
-                          className="input input-bordered input-sm w-full text-sm"
-                        />
-                        <select
-                          name="vatType"
-                          value={expenses.vatType}
-                          onChange={handleExpenseChange}
-                          className="select select-bordered select-sm font-bold text-primary text-sm"
-                        >
-                          <option value="%">%</option>
-                          <option value="amount">৳</option>
-                        </select>
-                      </div>
+                      <label className="label py-1 text-xs font-semibold">VAT (e.g. 5% or 50)</label>
+                      <input
+                        type="text"
+                        name="vatInput"
+                        placeholder="e.g. 5% or 50"
+                        value={expenses.vatInput}
+                        onChange={handleExpenseChange}
+                        className="input input-bordered input-sm w-full text-sm font-medium"
+                      />
                     </div>
 
                     <div>

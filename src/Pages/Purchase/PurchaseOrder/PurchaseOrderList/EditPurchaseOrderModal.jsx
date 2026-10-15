@@ -20,9 +20,10 @@ const EditPurchaseOrderModal = ({
   productsGroupSubgroup = [],
   onSaveStoreProduct,
   editData = null,
+  suppliers = [],
 }) => {
-  const [suppliers, setSuppliers] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState("");
+  const [subGroups, setSubGroups] = useState([]);
 
   const getTodayISO = () => {
     const today = new Date();
@@ -36,18 +37,21 @@ const EditPurchaseOrderModal = ({
   const [expectedReceiveDate, setExpectedReceiveDate] = useState("");
 
   useEffect(() => {
-    fetch("/suppliersData.json")
-      .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch suppliers");
-        return res.json();
-      })
-      .then((data) => {
-        setSuppliers(data);
-      })
-      .catch((err) => {
-        console.error(err);
-      });
-  }, []);
+    if (!isOpen) return;
+
+    const fetchSubGroups = async () => {
+      try {
+        const baseUrl = import.meta.env.VITE_API_URL || "https://alphaovi-medident-backend.vercel.app/api/v1";
+        const res = await fetch(`${baseUrl}/product-subgroups`);
+        const data = res.ok ? await res.json() : [];
+        setSubGroups(Array.isArray(data) ? data : (data?.data || data?.result || []));
+      } catch (err) {
+        console.error("Error fetching subgroups:", err);
+      }
+    };
+
+    fetchSubGroups();
+  }, [isOpen]);
 
   const initialRow = {
     selectedGroup: "",
@@ -63,8 +67,7 @@ const EditPurchaseOrderModal = ({
 
   const initialExpenses = {
     shippingCost: 0,
-    vatValue: 0,
-    vatType: "percent",
+    vatInput: "0",
     transitCost: 0,
     otherCost: 0,
   };
@@ -72,144 +75,125 @@ const EditPurchaseOrderModal = ({
   const [items, setItems] = useState([initialRow]);
   const [expenses, setExpenses] = useState(initialExpenses);
 
-  // Populate data when editing with robust group, subgroup, and product matching
-  useEffect(() => {
-    if (editData) {
-      // Resolve Supplier Name correctly (handle both string name or object/id reference)
-      const supMatch = suppliers.find(
-        (s) => String(s._id) === String(editData.supplierName || editData.supplier) ||
-               String(s.supplierName) === String(editData.supplierName || editData.supplier)
-      );
-      setSelectedSupplier(supMatch ? supMatch.supplierName : (editData.supplierName || editData.supplier || ""));
+  const handleExpenseChange = (e) => {
+    const { name, value } = e.target;
+    setExpenses((prev) => ({
+      ...prev,
+      [name]: name === "vatInput" ? value : (value === "" ? "" : Number(value)),
+    }));
+  };
 
-      if (editData.orderDate) {
-        if (editData.orderDate.includes("/")) {
-          const parts = editData.orderDate.split("/");
-          if (parts.length === 3) {
-            setOrderDate(`${parts[2]}-${parts[1]}-${parts[0]}`);
-          }
-        } else {
-          setOrderDate(editData.orderDate.split("T")[0]);
-        }
+  useEffect(() => {
+    if (editData && isOpen) {
+      const rawSupRef = editData.supplierName || editData.supplier;
+      let resolvedSupplierVal = "";
+      if (typeof rawSupRef === "object" && rawSupRef !== null) {
+        resolvedSupplierVal = rawSupRef._id || rawSupRef.supplierId || rawSupRef.supplierName || "";
+      } else {
+        resolvedSupplierVal = rawSupRef || "";
+      }
+
+      const foundSup = suppliers.find(
+        (s) =>
+          String(s._id) === String(resolvedSupplierVal) ||
+          String(s.supplierId) === String(resolvedSupplierVal) ||
+          String(s.supplierName || s.name || "").trim().toLowerCase() === String(resolvedSupplierVal || "").trim().toLowerCase()
+      );
+      setSelectedSupplier(foundSup ? (foundSup._id || foundSup.supplierId) : resolvedSupplierVal);
+
+      if (editData.orderDate || editData.purchaseDate) {
+        const oDate = editData.purchaseDate || editData.orderDate;
+        const dateStr = typeof oDate === "string" ? oDate : new Date(oDate).toISOString();
+        setOrderDate(dateStr.split("T")[0]);
       }
 
       const expDate = editData.expectedReceiveDate || editData.expectedDate || editData.expectedDeliveryDate;
       if (expDate) {
-        if (expDate.includes("/")) {
-          const parts = expDate.split("/");
-          if (parts.length === 3) {
-            setExpectedReceiveDate(`${parts[2]}-${parts[1]}-${parts[0]}`);
-          }
-        } else {
-          setExpectedReceiveDate(expDate.split("T")[0]);
-        }
+        const dateStr = typeof expDate === "string" ? expDate : new Date(expDate).toISOString();
+        setExpectedReceiveDate(dateStr.split("T")[0]);
       }
 
-      if (editData.expenses) {
-        setExpenses({
-          shippingCost:
-            editData.expenses.shippingCost ?? editData.expenses.shipping ?? 0,
-          transitCost:
-            editData.expenses.transitCost ?? editData.expenses.transit ?? 0,
-          vatValue: editData.expenses.vatValue ?? editData.expenses.vat ?? 0,
-          vatType:
-            editData.expenses.vatType ||
-            (editData.expenses.vat ? "amount" : "percent"),
-          otherCost:
-            editData.expenses.otherCost ?? editData.expenses.other ?? 0,
-        });
-      }
+      const extShipping = editData.shippingCost ?? editData.shipping ?? editData.expenses?.shippingCost ?? editData.expenses?.shipping ?? 0;
+      const extTransit = editData.transitCost ?? editData.transit ?? editData.expenses?.transitCost ?? editData.expenses?.transit ?? 0;
+      const extVatVal = editData.vatValue ?? editData.vatAmount ?? editData.vat ?? editData.expenses?.vatValue ?? editData.expenses?.vat ?? 0;
+      const extOther = editData.otherCost ?? editData.other ?? editData.expenses?.otherCost ?? editData.expenses?.other ?? 0;
+      
+      const rawVatType = editData.vatType ?? editData.expenses?.vatType ?? "%";
+      const normalizedVatInput = rawVatType === "%" ? `${extVatVal}%` : `${extVatVal}`;
 
-      const rawItems =
-        editData.purchasedItems || editData.products || editData.items || [];
+      setExpenses({
+        shippingCost: Number(extShipping),
+        transitCost: Number(extTransit),
+        vatInput: normalizedVatInput,
+        otherCost: Number(extOther),
+      });
+
+      const rawItems = editData.items || editData.purchasedItems || editData.products || [];
       if (rawItems.length > 0) {
         const mappedItems = rawItems.map((item) => {
+          const rawProdRef = item.product || item.productId || item._id;
+          let prodId = "";
+          let prodName = "";
+          
+          if (typeof rawProdRef === "object" && rawProdRef !== null) {
+            prodId = rawProdRef._id || rawProdRef.productId || rawProdRef.id || "";
+            prodName = rawProdRef.productName || rawProdRef.name || "";
+          } else {
+            prodId = rawProdRef || "";
+          }
+
           const prodMatch = products.find(
             (p) =>
-              String(p.productId || p._id || p.id) ===
-                String(item.productId || item.product || item._id || item.id) ||
-              String(p.productName || p.name || "")
-                .trim()
-                .toLowerCase() ===
-                String(item.productName || item.name || "")
-                  .trim()
-                  .toLowerCase(),
+              String(p._id || p.productId || p.id) === String(prodId) ||
+              String(p.productName || p.name || "").trim().toLowerCase() === String(prodName || item.productName || "").trim().toLowerCase()
           );
 
-          // Resolve Group Name instead of showing _id
-          const rawGroupRef = item.selectedGroup || item.group || prodMatch?.productGroup || prodMatch?.group || "";
-          const groupObj = productsGroupSubgroup.find(
-            (g) => String(g._id) === String(rawGroupRef) || String(g.group || g.groupName || g.name) === String(rawGroupRef)
+          const finalProdId = prodMatch ? (prodMatch._id || prodMatch.productId || prodMatch.id) : prodId;
+          const finalProdName = prodName || item.productName || prodMatch?.productName || prodMatch?.name || "";
+
+          const rawGroupRef = item.group || item.selectedGroup || prodMatch?.productGroup || prodMatch?.group || "";
+          let groupVal = typeof rawGroupRef === "object" && rawGroupRef !== null ? (rawGroupRef._id || rawGroupRef.id || rawGroupRef.group || "") : rawGroupRef;
+          
+          const groupMatch = productsGroupSubgroup.find(
+            (g) =>
+              String(g._id || g.id) === String(groupVal) ||
+              String(g.group || g.groupName || g.name || "").trim().toLowerCase() === String(groupVal || "").trim().toLowerCase()
           );
-          const resolvedGroup = groupObj ? (groupObj.group || groupObj.groupName || groupObj.name) : rawGroupRef;
+          const resolvedGroupId = groupMatch ? (groupMatch._id || groupMatch.id) : groupVal;
 
-          // Resolve SubGroup Name instead of showing _id
-          const rawSubGroupRef = item.selectedSubGroup || item.subGroup || prodMatch?.productSubGroup || prodMatch?.subGroup || "";
-          const subGroupsList = groupObj?.subGroup || groupObj?.subGroups || [];
-          const subGroupObj = subGroupsList.find(
-            (sg) => String(sg._id) === String(rawSubGroupRef) || String(sg.name || sg) === String(rawSubGroupRef)
+          const rawSubGroupRef = item.subGroup || item.selectedSubGroup || prodMatch?.productSubGroup || prodMatch?.subGroup || "";
+          let subGroupVal = typeof rawSubGroupRef === "object" && rawSubGroupRef !== null ? (rawSubGroupRef._id || rawSubGroupRef.id || rawSubGroupRef.name || "") : rawSubGroupRef;
+
+          const subGroupMatch = subGroups.find(
+            (sg) =>
+              String(sg._id || sg.id) === String(subGroupVal) ||
+              String(sg.subGroupName || sg.name || "").trim().toLowerCase() === String(subGroupVal || "").trim().toLowerCase()
           );
-          const resolvedSubGroup = subGroupObj ? (subGroupObj.name || subGroupObj) : rawSubGroupRef;
-
-          const resolvedProductId = prodMatch
-            ? prodMatch.productId || prodMatch._id || prodMatch.id || ""
-            : item.productId || item.product || item._id || item.id || "";
-
-          const resolvedProductName =
-            item.productName ||
-            item.name ||
-            prodMatch?.productName ||
-            prodMatch?.name ||
-            "";
+          const resolvedSubGroupId = subGroupMatch ? (subGroupMatch._id || subGroupMatch.id) : subGroupVal;
 
           return {
-            selectedGroup: resolvedGroup,
-            selectedSubGroup: resolvedSubGroup,
-            productId: resolvedProductId,
-            productName: resolvedProductName,
-            currentStock:
-              item.currentStock ??
-              prodMatch?.quantity ??
-              prodMatch?.currentStock ??
-              0,
-            transitStock:
-              item.inTransit ??
-              item.transitStock ??
-              prodMatch?.inTransit ??
-              prodMatch?.transitStock ??
-              0,
+            selectedGroup: resolvedGroupId || "",
+            selectedSubGroup: resolvedSubGroupId || "",
+            productId: finalProdId || "",
+            productName: finalProdName,
+            currentStock: item.currentStock ?? prodMatch?.quantity ?? prodMatch?.currentStock ?? 0,
+            transitStock: item.inTransit ?? item.transitStock ?? prodMatch?.inTransit ?? prodMatch?.transitStock ?? 0,
             orderQty: item.orderQuantity ?? item.orderQty ?? item.quantity ?? 1,
-            unitPrice:
-              item.unitPrice ??
-              prodMatch?.purchasePrice ??
-              prodMatch?.unitPrice ??
-              0,
-            unitWeight:
-              item.weight ??
-              item.unitWeight ??
-              prodMatch?.unitWeight ??
-              prodMatch?.weight ??
-              1,
+            unitPrice: item.price ?? item.unitPrice ?? prodMatch?.purchasePrice ?? prodMatch?.unitPrice ?? 0,
+            unitWeight: item.weight ?? item.unitWeight ?? prodMatch?.unitWeight ?? prodMatch?.weight ?? 1,
           };
         });
         mappedItems.push({ ...initialRow });
         setItems(mappedItems);
       }
-    } else {
+    } else if (!editData && isOpen) {
       setItems([{ ...initialRow }]);
       setExpenses(initialExpenses);
       setSelectedSupplier("");
       setOrderDate(getTodayISO());
       setExpectedReceiveDate("");
     }
-  }, [editData, products, productsGroupSubgroup, suppliers]);
-
-  const availableGroups = useMemo(() => {
-    if (!Array.isArray(productsGroupSubgroup)) return [];
-    return productsGroupSubgroup
-      .map((item) => item.group || item.groupName || item.name)
-      .filter(Boolean);
-  }, [productsGroupSubgroup]);
+  }, [isOpen, editData?._id, subGroups]);
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...items];
@@ -233,19 +217,14 @@ const EditPurchaseOrderModal = ({
     } else if (field === "productId") {
       currentRow.productId = value;
       const selectedProd = products.find(
-        (p) => String(p.productId || p._id || p.id) === String(value),
+        (p) => String(p._id || p.productId || p.id) === String(value)
       );
       if (selectedProd) {
-        currentRow.productName =
-          selectedProd.productName || selectedProd.name || "";
-        currentRow.currentStock =
-          selectedProd.quantity ?? selectedProd.currentStock ?? 0;
-        currentRow.transitStock =
-          selectedProd.inTransit ?? selectedProd.transitStock ?? 0;
-        currentRow.unitPrice =
-          selectedProd.purchasePrice ?? selectedProd.unitPrice ?? 0;
-        currentRow.unitWeight =
-          selectedProd.unitWeight ?? selectedProd.weight ?? 1;
+        currentRow.productName = selectedProd.productName || selectedProd.name || "";
+        currentRow.currentStock = selectedProd.quantity ?? selectedProd.currentStock ?? 0;
+        currentRow.transitStock = selectedProd.inTransit ?? selectedProd.transitStock ?? 0;
+        currentRow.unitPrice = selectedProd.purchasePrice ?? selectedProd.unitPrice ?? 0;
+        currentRow.unitWeight = selectedProd.unitWeight ?? selectedProd.weight ?? 1;
       }
     } else if (["orderQty", "unitPrice", "unitWeight"].includes(field)) {
       currentRow[field] = value === "" ? "" : Number(value);
@@ -269,40 +248,29 @@ const EditPurchaseOrderModal = ({
   const calculations = useMemo(() => {
     const activeItems = items.filter((item) => item.productId !== "");
 
-    const totalCurrentStock = activeItems.reduce(
-      (acc, item) => acc + (Number(item.currentStock) || 0),
-      0,
-    );
-    const totalTransitStock = activeItems.reduce(
-      (acc, item) => acc + (Number(item.transitStock) || 0),
-      0,
-    );
-    const totalOrderQty = activeItems.reduce(
-      (acc, item) => acc + (Number(item.orderQty) || 0),
-      0,
-    );
-
     const rawSubtotal = activeItems.reduce(
       (acc, item) =>
         acc + (Number(item.orderQty) || 0) * (Number(item.unitPrice) || 0),
-      0,
+      0
     );
 
     const totalBatchWeight = activeItems.reduce(
       (acc, item) =>
         acc + (Number(item.orderQty) || 0) * (Number(item.unitWeight) || 0),
-      0,
+      0
     );
 
     const shippingCostNum = Number(expenses.shippingCost) || 0;
     const shippingCostPerKg =
       totalBatchWeight > 0 ? shippingCostNum / totalBatchWeight : 0;
 
-    const vatValNum = Number(expenses.vatValue) || 0;
-    const calculatedVatAmount =
-      expenses.vatType === "percent"
-        ? (rawSubtotal * vatValNum) / 100
-        : vatValNum;
+    const vatStr = String(expenses.vatInput || "0").trim();
+    const isPercent = vatStr.includes("%");
+    const vatValNum = Number(vatStr.replace("%", "")) || 0;
+
+    const calculatedVatAmount = isPercent
+      ? (rawSubtotal * vatValNum) / 100
+      : vatValNum;
 
     const calculatedItems = items.map((item) => {
       if (!item.productId) return item;
@@ -321,7 +289,7 @@ const EditPurchaseOrderModal = ({
 
       const totalWithShippingAndVat =
         rawLinePrice + allocatedShipping + allocatedVat;
-      const unitCostAfterCalc = qty > 0 ? totalWithShippingAndVat / qty : 0;
+      const unitCostAfterCalc = qty > 0 ? totalWithShippingAndVat / qty : uPrice;
 
       return {
         ...item,
@@ -340,21 +308,16 @@ const EditPurchaseOrderModal = ({
 
     const transitCostNum = Number(expenses.transitCost) || 0;
     const otherCostNum = Number(expenses.otherCost) || 0;
-    const totalExtraExpenses = transitCostNum + otherCostNum;
-    const grandTotal = totalItemsWithShipping + totalExtraExpenses;
+    const grandTotal = totalItemsWithShipping + transitCostNum + otherCostNum;
 
     return {
-      totalCurrentStock,
-      totalTransitStock,
-      totalOrderQty,
       rawSubtotal,
-      totalItemsWithShipping,
-      totalBatchWeight,
       shippingCostPerKg,
-      calculatedVatAmount,
-      totalExtraExpenses,
       grandTotal,
       calculatedItems,
+      totalBatchWeight,
+      vatValNum,
+      isPercent,
     };
   }, [items, expenses]);
 
@@ -362,7 +325,7 @@ const EditPurchaseOrderModal = ({
     e.preventDefault();
 
     const validItems = calculations.calculatedItems.filter(
-      (item) => item.productId !== "",
+      (item) => item.productId !== ""
     );
 
     if (validItems.length === 0) {
@@ -386,23 +349,24 @@ const EditPurchaseOrderModal = ({
       cancelButtonColor: "#64748b",
       confirmButtonText: editData ? "Update Batch" : "Confirm Batch",
       cancelButtonText: "Cancel",
+      heightAuto: false,
       customClass: {
-        popup: "rounded-2xl",
-        confirmButton: "btn btn-sm text-white px-4 border-0",
+        container: "z-[99999]",
+        popup: "rounded-2xl p-6 shadow-2xl border border-base-200",
+        confirmButton: "btn btn-sm text-white px-4 border-0 bg-teal-600 hover:bg-teal-700",
         cancelButton: "btn btn-sm btn-ghost px-4",
       },
     }).then((result) => {
       if (result.isConfirmed) {
-        // Map payload matching backend schema requirements
         const payloadData = {
           ...(editData || {}),
           supplierName: selectedSupplier,
-          purchaseDate: orderDate,
-          expectedDeliveryDate: expectedReceiveDate,
+          purchaseDate: orderDate ? new Date(orderDate).toISOString() : new Date().toISOString(),
+          expectedDeliveryDate: expectedReceiveDate ? new Date(expectedReceiveDate).toISOString() : new Date().toISOString(),
           shippingCost: Number(expenses.shippingCost) || 0,
           transitCost: Number(expenses.transitCost) || 0,
-          vatType: expenses.vatType === "amount" ? "flat" : expenses.vatType,
-          vatValue: Number(expenses.vatValue) || 0,
+          vatType: calculations.isPercent ? "%" : "flat",
+          vatValue: calculations.vatValNum,
           otherCost: Number(expenses.otherCost) || 0,
           totalWeight: calculations.totalBatchWeight,
           baseSubtotal: calculations.rawSubtotal,
@@ -448,7 +412,7 @@ const EditPurchaseOrderModal = ({
             initial={{ scale: 0.96, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0, y: 15 }}
-            className="relative w-full h-full max-w-none max-h-none bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden text-sm"
+            className="relative w-full h-[90vh] max-w-6xl bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden text-sm"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300 shrink-0">
@@ -487,14 +451,15 @@ const EditPurchaseOrderModal = ({
                     required
                   >
                     <option value="">Select Supplier...</option>
-                    {suppliers.map((sup) => (
-                      <option
-                        key={sup.supplierID || sup._id}
-                        value={sup.supplierName}
-                      >
-                        {sup.supplierName}
-                      </option>
-                    ))}
+                    {suppliers.map((sup) => {
+                      const supId = sup._id || sup.supplierId;
+                      const supName = sup.supplierName || sup.name;
+                      return (
+                        <option key={supId} value={supId}>
+                          {supName}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -539,9 +504,9 @@ const EditPurchaseOrderModal = ({
                 </div>
 
                 <div className="hidden lg:flex items-center gap-3 px-4 py-2 bg-base-300/40 rounded-lg text-xs font-bold text-base-content/80 text-center">
-                  <div className="w-40 text-left">Group</div>
-                  <div className="w-40 text-left">Sub-Group</div>
-                  <div className="flex-1 text-left">Product</div>
+                  <div className="w-32 text-left">Group</div>
+                  <div className="w-32 text-left">Sub-Group</div>
+                  <div className="flex-1 min-w-[220px] text-left">Product</div>
                   <div className="w-20">Cur. Stock</div>
                   <div className="w-20">In Transit</div>
                   <div className="w-20">Order Qty</div>
@@ -553,30 +518,26 @@ const EditPurchaseOrderModal = ({
                 </div>
 
                 {items.map((item, idx) => {
-                  const matchedGroupObj = Array.isArray(productsGroupSubgroup)
-                    ? productsGroupSubgroup.find(
-                        (g) =>
-                          (g.group || g.groupName || g.name) ===
-                          item.selectedGroup,
-                      )
-                    : null;
+                  const calcItem = calculations.calculatedItems[idx] || item;
 
-                  const availableSubGroups = matchedGroupObj
-                    ? matchedGroupObj.subGroup ||
-                      matchedGroupObj.subGroups ||
-                      []
-                    : [];
+                  const availableSubGroups = subGroups.filter((sg) => {
+                    const parentGroupId = sg.group?._id || sg.group;
+                    return String(parentGroupId) === String(item.selectedGroup);
+                  });
 
                   const filteredProducts = products.filter((p) => {
+                    const pGroup = p.group?._id || p.group || p.productGroup;
+                    const pSubGroup = p.subGroup?._id || p.subGroup || p.productSubGroup;
+
                     const matchGroup =
                       !item.selectedGroup ||
-                      p.productGroup === item.selectedGroup ||
-                      p.group === item.selectedGroup;
+                      String(pGroup) === String(item.selectedGroup) ||
+                      String(p.productGroup || "").trim().toLowerCase() === String(item.selectedGroup || "").trim().toLowerCase();
 
                     const matchSubGroup =
                       !item.selectedSubGroup ||
-                      p.productSubGroup === item.selectedSubGroup ||
-                      p.subGroup === item.selectedSubGroup;
+                      String(pSubGroup) === String(item.selectedSubGroup) ||
+                      String(p.productSubGroup || "").trim().toLowerCase() === String(item.selectedSubGroup || "").trim().toLowerCase();
 
                     return matchGroup && matchSubGroup;
                   });
@@ -587,7 +548,7 @@ const EditPurchaseOrderModal = ({
                       className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 p-3 lg:p-0 bg-base-200/40 lg:bg-transparent rounded-xl border lg:border-0 border-base-300"
                     >
                       {/* Group Select */}
-                      <div className="w-full lg:w-40">
+                      <div className="w-full lg:w-32">
                         <select
                           value={item.selectedGroup}
                           onChange={(e) =>
@@ -596,16 +557,20 @@ const EditPurchaseOrderModal = ({
                           className="select select-bordered select-sm w-full text-xs"
                         >
                           <option value="">Select Group...</option>
-                          {availableGroups.map((grpName, gIdx) => (
-                            <option key={gIdx} value={grpName}>
-                              {grpName}
-                            </option>
-                          ))}
+                          {productsGroupSubgroup.map((grp) => {
+                            const gId = grp._id || grp.id;
+                            const gName = grp.group || grp.groupName || grp.name;
+                            return (
+                              <option key={gId} value={gId}>
+                                {gName}
+                              </option>
+                            );
+                          })}
                         </select>
                       </div>
 
                       {/* Sub-Group Select */}
-                      <div className="w-full lg:w-40">
+                      <div className="w-full lg:w-32">
                         <select
                           value={item.selectedSubGroup}
                           onChange={(e) =>
@@ -615,10 +580,11 @@ const EditPurchaseOrderModal = ({
                           disabled={!item.selectedGroup}
                         >
                           <option value="">Select Sub-Group...</option>
-                          {availableSubGroups.map((sg, sgIdx) => {
-                            const sgName = typeof sg === "object" ? (sg.name || sg.subGroupName) : sg;
+                          {availableSubGroups.map((sg) => {
+                            const sgId = sg._id || sg.id;
+                            const sgName = sg.subGroupName || sg.name;
                             return (
-                              <option key={sgIdx} value={sgName}>
+                              <option key={sgId} value={sgId}>
                                 {sgName}
                               </option>
                             );
@@ -627,7 +593,7 @@ const EditPurchaseOrderModal = ({
                       </div>
 
                       {/* Product Select */}
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-[220px]">
                         <select
                           value={item.productId}
                           onChange={(e) =>
@@ -637,7 +603,7 @@ const EditPurchaseOrderModal = ({
                         >
                           <option value="">Select Product...</option>
                           {filteredProducts.map((prod) => {
-                            const pId = prod.productId || prod._id || prod.id;
+                            const pId = prod._id || prod.productId || prod.id;
                             const pName = prod.productName || prod.name;
                             return (
                               <option key={pId} value={pId}>
@@ -711,12 +677,12 @@ const EditPurchaseOrderModal = ({
 
                       {/* Unit Cost */}
                       <div className="w-full lg:w-28 text-right font-semibold text-xs py-1">
-                        ৳ {(item.unitCostAfterCalc || 0).toFixed(2)}
+                        ৳ {(calcItem.unitCostAfterCalc || item.unitPrice || 0).toFixed(2)}
                       </div>
 
                       {/* Total + Ship */}
                       <div className="w-full lg:w-28 text-right font-semibold text-xs py-1 text-teal-600">
-                        ৳ {(item.totalWithShipping || 0).toFixed(2)}
+                        ৳ {(calcItem.totalWithShipping || (item.orderQty * item.unitPrice) || 0).toFixed(2)}
                       </div>
 
                       {/* Remove Row */}
@@ -735,7 +701,7 @@ const EditPurchaseOrderModal = ({
                 })}
               </div>
 
-              {/* Expenses / Shipping Costs Section */}
+              {/* Expenses / Shipping Costs Section without dropdown */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 bg-base-200/50 p-4 rounded-xl border border-base-300">
                 <div>
                   <label className="label py-1 text-xs font-semibold text-base-content/80">
@@ -767,28 +733,16 @@ const EditPurchaseOrderModal = ({
                 </div>
                 <div>
                   <label className="label py-1 text-xs font-semibold text-base-content/80">
-                    VAT Value
+                    VAT (e.g. 5% or 50)
                   </label>
-                  <div className="flex gap-1">
-                    <input
-                      type="number"
-                      name="vatValue"
-                      min="0"
-                      step="0.01"
-                      value={expenses.vatValue}
-                      onChange={handleExpenseChange}
-                      className="input input-bordered input-sm w-full text-xs font-medium"
-                    />
-                    <select
-                      name="vatType"
-                      value={expenses.vatType}
-                      onChange={handleExpenseChange}
-                      className="select select-bordered select-sm text-xs px-2"
-                    >
-                      <option value="percent">%</option>
-                      <option value="flat">Flat</option>
-                    </select>
-                  </div>
+                  <input
+                    type="text"
+                    name="vatInput"
+                    placeholder="e.g. 5% or 50"
+                    value={expenses.vatInput}
+                    onChange={handleExpenseChange}
+                    className="input input-bordered input-sm w-full text-xs font-medium"
+                  />
                 </div>
                 <div>
                   <label className="label py-1 text-xs font-semibold text-base-content/80">
