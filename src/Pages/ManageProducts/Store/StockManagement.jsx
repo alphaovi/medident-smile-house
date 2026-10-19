@@ -1,18 +1,17 @@
 import { useState, useEffect } from "react";
-import StockTable from "./StockTable"; // Apnar table component
-import { useInventoryManagementService } from "../../../services/useInventoryManagementService"; // Path thik rakhen
+import StockTable from "./StockTable"; 
+import { useInventoryManagementService } from "../../../services/useInventoryManagementService"; 
 import { toast } from "react-toastify";
 
 const StockManagement = () => {
   const [stockData, setStockData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { getAllInventories } = useInventoryManagementService();
+  const { getAllInventories, updateInventoryPrice } = useInventoryManagementService();
 
   const fetchInventory = async () => {
     try {
       setLoading(true);
       const data = await getAllInventories();
-      console.log("Fetched Inventory Data:", data); // Browser console-e check korar jonno
       setStockData(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Error fetching inventory:", error);
@@ -26,14 +25,38 @@ const StockManagement = () => {
     fetchInventory();
   }, []);
 
-  const handlePriceChange = (id, newPrice) => {
-    setStockData((prev) =>
-      prev.map((item) =>
-        item.id === id || item._id === id
-          ? { ...item, avgBuyingPrice: Number(newPrice) }
-          : item,
-      ),
-    );
+  const handlePriceChange = async (id, newPrice) => {
+    const numericPrice = Number(newPrice);
+    
+    try {
+      // Find the specific item in stockData using any ID variations
+      const targetItem = stockData.find(
+        (item) => item._id === id || item.id === id || item.product?._id === id || item.product === id
+      );
+
+      // Prioritize inventory document _id, if not found use product reference id, finally fallback to passed id
+      const inventoryId = targetItem?._id || targetItem?.id || targetItem?.product?._id || targetItem?.product || id;
+
+      if (inventoryId) {
+        await updateInventoryPrice(inventoryId, { avgBuyingPrice: numericPrice });
+        toast.success("Average buying price updated successfully!");
+        
+        // Update local state immediately
+        setStockData((prev) =>
+          prev.map((item) =>
+            (item._id === inventoryId || item.id === inventoryId || item.product?._id === inventoryId || item.product === inventoryId)
+              ? { ...item, avgBuyingPrice: numericPrice }
+              : item
+          )
+        );
+      } else {
+        toast.error("Inventory ID not found for update");
+      }
+    } catch (error) {
+      console.error("Update price error:", error);
+      toast.error(error.message || "Failed to update price in database");
+      fetchInventory(); // Rollback/refetch on error
+    }
   };
 
   return (

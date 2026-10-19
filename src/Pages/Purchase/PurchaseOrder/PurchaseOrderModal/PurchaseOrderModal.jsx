@@ -283,7 +283,7 @@ const PurchaseOrderModal = ({
 
     Swal.fire({
       title: "Confirm Purchase Order?",
-      text: "This will create a new batch order in the system.",
+      text: "This will create a new batch order and calculate average buying price in inventory.",
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#0d9488",

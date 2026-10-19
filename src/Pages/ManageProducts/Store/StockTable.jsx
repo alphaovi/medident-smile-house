@@ -1,40 +1,68 @@
+import { useState } from "react";
+
 const StockTable = ({ stockData, onPriceChange }) => {
+  const [localPrices, setLocalPrices] = useState({});
+
   const calculateCurrentStock = (item) => {
     const totalStock = Number(item.totalStock) || 0;
     const purchaseReturn = Number(item.purchaseReturn) || 0;
     const sellReturn = Number(item.sellReturn) || 0;
-    const lostDamage = Number(item.lostDamage || item.lost || item.damaged) || 0;
+    const lostDamage =
+      Number(item.lostDamage || item.lost || item.damaged) || 0;
     const totalSell = Number(item.totalSell) || 0;
     return totalStock - purchaseReturn + sellReturn - lostDamage - totalSell;
   };
 
   const totalBuyingValue = stockData.reduce((total, item) => {
     const currentStock = calculateCurrentStock(item);
-    const averageBuyingPrice = Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
-    
-    const stockVal = Number(item.totalStockValue) > 0 && currentStock === 0 
-      ? Number(item.totalStockValue) 
-      : currentStock * averageBuyingPrice;
+    const averageBuyingPrice =
+      Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
+
+    const stockVal =
+      Number(item.totalStockValue) > 0 && currentStock === 0
+        ? Number(item.totalStockValue)
+        : currentStock * averageBuyingPrice;
 
     return total + stockVal;
   }, 0);
 
   const totalSaleValue = stockData.reduce((total, item) => {
     const currentStock = calculateCurrentStock(item);
-    // Product ba inventory theke selling price ba total sale value resolve kora
-    const sellingPrice = Number(
-      item.sellingPrice ?? 
-      item.product?.sellingPrice ?? 
-      item.product?.price ?? 
-      item.totalSaleValue / (currentStock || 1)
-    ) || 0;
+    const sellingPrice =
+      Number(
+        item.sellingPrice ??
+          item.product?.sellingPrice ??
+          item.product?.price ??
+          item.totalSaleValue / (currentStock || 1),
+      ) || 0;
 
-    const rowSaleVal = Number(item.totalSaleValue) > 0 && currentStock === 0
-      ? Number(item.totalSaleValue)
-      : currentStock * sellingPrice;
+    const rowSaleVal =
+      Number(item.totalSaleValue) > 0 && currentStock === 0
+        ? Number(item.totalSaleValue)
+        : currentStock * sellingPrice;
 
     return total + rowSaleVal;
   }, 0);
+
+  const handleInputChange = (itemId, value) => {
+    setLocalPrices((prev) => ({
+      ...prev,
+      [itemId]: value,
+    }));
+  };
+
+  const handleUpdateClick = (item) => {
+    const itemId = item.id || item._id;
+    const val = localPrices[itemId];
+    if (val !== undefined) {
+      onPriceChange(itemId, val);
+      setLocalPrices((prev) => {
+        const copy = { ...prev };
+        delete copy[itemId];
+        return copy;
+      });
+    }
+  };
 
   return (
     <div className="w-full flex flex-col">
@@ -59,46 +87,60 @@ const StockTable = ({ stockData, onPriceChange }) => {
           <tbody className="divide-y divide-slate-100 text-sm">
             {stockData.length === 0 ? (
               <tr>
-                <td colSpan="12" className="text-center py-8 text-slate-400 font-medium">
+                <td
+                  colSpan="12"
+                  className="text-center py-8 text-slate-400 font-medium"
+                >
                   No stock items found.
                 </td>
               </tr>
             ) : (
               stockData.map((item, idx) => {
+                const itemId = item.id || item._id;
                 const currentStock = calculateCurrentStock(item);
-                const averageBuyingPrice = Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
                 
-                // Resolve selling price properly from item or product reference
-                const sellingPrice = Number(
-                  item.sellingPrice ?? 
-                  item.product?.sellingPrice ?? 
-                  item.product?.price ?? 
-                  0
-                );
+                const originalPrice =
+                  Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
                 
-                // Row stock value calculation
-                const rowBuyingValue = Number(item.totalStockValue) > 0 && currentStock === 0
-                  ? Number(item.totalStockValue)
-                  : currentStock * averageBuyingPrice;
-                
-                // Row sale value calculation
-                const rowSaleValue = Number(item.totalSaleValue) > 0 && currentStock === 0
-                  ? Number(item.totalSaleValue)
-                  : currentStock * sellingPrice;
+                const isEdited = localPrices[itemId] !== undefined;
+                const displayPrice = isEdited ? localPrices[itemId] : originalPrice;
 
-                const onTransitVal = Number(item.onTransit ?? item.transitStock ?? item.inTransit) || 0;
-                
+                const sellingPrice = Number(
+                  item.sellingPrice ??
+                    item.product?.sellingPrice ??
+                    item.product?.price ??
+                    0,
+                );
+
+                const rowBuyingValue =
+                  Number(item.totalStockValue) > 0 && currentStock === 0
+                    ? Number(item.totalStockValue)
+                    : currentStock * Number(displayPrice || 0);
+
+                const rowSaleValue =
+                  Number(item.totalSaleValue) > 0 && currentStock === 0
+                    ? Number(item.totalSaleValue)
+                    : currentStock * sellingPrice;
+
+                const onTransitVal =
+                  Number(
+                    item.onTransit ?? item.transitStock ?? item.inTransit,
+                  ) || 0;
+
                 return (
-                  <tr 
-                    key={item.id || item._id} 
-                    className={`transition-colors hover:bg-slate-50/50 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/30'}`}
+                  <tr
+                    key={itemId}
+                    className={`transition-colors hover:bg-slate-50/50 ${idx % 2 === 0 ? "bg-white" : "bg-slate-50/30"}`}
                   >
                     <td className="py-3.5 px-3 text-center font-semibold text-slate-400">
                       {idx + 1}
                     </td>
                     <td className="py-3.5 px-4">
                       <div className="font-semibold text-slate-800">
-                        {item.product?.productName || item.product?.name || item.productName || "N/A"}
+                        {item.product?.productName ||
+                          item.product?.name ||
+                          item.productName ||
+                          "N/A"}
                       </div>
                     </td>
                     <td className="py-3.5 px-3 text-center text-slate-600 font-medium">
@@ -111,7 +153,8 @@ const StockTable = ({ stockData, onPriceChange }) => {
                       {Number(item.sellReturn) || 0}
                     </td>
                     <td className="py-3.5 px-3 text-center text-red-500 font-medium">
-                      {Number(item.lostDamage ?? item.damaged ?? item.lost) || 0}
+                      {Number(item.lostDamage ?? item.damaged ?? item.lost) ||
+                        0}
                     </td>
                     <td className="py-3.5 px-3 text-center text-emerald-600 font-medium">
                       {Number(item.totalSell) || 0}
@@ -120,26 +163,49 @@ const StockTable = ({ stockData, onPriceChange }) => {
                       {onTransitVal}
                     </td>
                     <td className="py-3.5 px-3 text-center">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
-                        currentStock > 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-700'
-                      }`}>
+                      <span
+                        className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold ${
+                          currentStock > 0
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-red-50 text-red-700"
+                        }`}
+                      >
                         {currentStock}
                       </span>
                     </td>
                     <td className="py-3.5 px-3 text-center">
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={averageBuyingPrice.toFixed(2)}
-                        onChange={(e) => onPriceChange(item.id || item._id, e.target.value)}
-                        className="w-24 px-2.5 py-1.5 text-center text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
-                      />
+                      <div className="flex items-center justify-center gap-2">
+                        <input
+                          type="number"
+                          step="0.01"
+                          value={displayPrice}
+                          onChange={(e) => handleInputChange(itemId, e.target.value)}
+                          className="w-24 px-2.5 py-1.5 text-center text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
+                        />
+                        {isEdited && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateClick(item)}
+                            className="btn btn-xs bg-teal-600 hover:bg-teal-700 text-white border-0 px-2 py-1 shadow-sm cursor-pointer"
+                          >
+                            Update
+                          </button>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3.5 px-3 text-right font-medium text-slate-700">
-                      ৳ {rowBuyingValue.toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ৳{" "}
+                      {rowBuyingValue.toLocaleString("en-BD", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </td>
                     <td className="py-3.5 px-4 text-right font-semibold text-slate-900">
-                      ৳ {rowSaleValue.toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      ৳{" "}
+                      {rowSaleValue.toLocaleString("en-BD", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
                     </td>
                   </tr>
                 );
@@ -152,13 +218,29 @@ const StockTable = ({ stockData, onPriceChange }) => {
       {/* Table Footer Grand Totals */}
       <div className="bg-slate-50/75 border-t border-slate-100 p-4 px-6 flex flex-col sm:flex-row justify-end items-end sm:items-center gap-6">
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Grand Total Purchase:</span>
-          <span className="text-lg font-bold text-slate-800">৳ {totalBuyingValue.toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Grand Total Purchase:
+          </span>
+          <span className="text-lg font-bold text-slate-800">
+            ৳{" "}
+            {totalBuyingValue.toLocaleString("en-BD", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
         </div>
         <div className="h-4 w-px bg-slate-200 hidden sm:block"></div>
         <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Grand Total Selling:</span>
-          <span className="text-lg font-bold text-blue-600">৳ {totalSaleValue.toLocaleString("en-BD", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+            Grand Total Selling:
+          </span>
+          <span className="text-lg font-bold text-blue-600">
+            ৳{" "}
+            {totalSaleValue.toLocaleString("en-BD", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}
+          </span>
         </div>
       </div>
     </div>

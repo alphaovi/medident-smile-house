@@ -5,6 +5,7 @@ import PurchaseOrderModal from "./PurchaseOrderModal/PurchaseOrderModal";
 import { toast } from "react-toastify";
 import PurchaseOrderList from "./PurchaseOrderList/PurchaseOrderList";
 import { purchaseOrderService } from "../../../services/purchaseOrderService/purchaseOrderService";
+import { useInventoryManagementService } from "../../../services/useInventoryManagementService";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 const API_URL = import.meta.env.VITE_API_URL || "https://alphaovi-medident-backend.vercel.app/api/v1";
@@ -12,6 +13,7 @@ const API_URL = import.meta.env.VITE_API_URL || "https://alphaovi-medident-backe
 const PurchaseOrder = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { updateInventoryPrice } = useInventoryManagementService();
 
   // 1. Fetch Purchase Orders
   const { data: rawOrders = [], isLoading: ordersLoading } = useQuery({
@@ -65,23 +67,57 @@ const PurchaseOrder = () => {
     };
   });
 
+  // Helper function to update inventory avgBuyingPrice with weighted average
+  const syncInventoryBuyingPrices = async (items) => {
+    try {
+      if (!Array.isArray(items)) return;
+      for (const item of items) {
+        const productId = item.product?._id || item.product;
+        const incomingQty = Number(item.orderQuantity || item.orderQty || 0);
+        const incomingUnitCost = Number(item.unitCost || item.unitCostAfterCalc || item.price || 0);
+        
+        if (productId && !isNaN(incomingUnitCost)) {
+          await updateInventoryPrice(productId, { 
+            incomingQty, 
+            incomingUnitCost 
+          });
+        }
+      }
+    } catch (err) {
+      console.error("Failed to sync inventory avgBuyingPrice from purchase order:", err);
+    }
+  };
+
   // Mutation for Creating Order
   const createMutation = useMutation({
     mutationFn: purchaseOrderService.createOrder,
-    onSuccess: () => {
+    onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
-      toast.success("Purchase order created successfully!");
+      queryClient.invalidateQueries({ queryKey: ["inventories"] });
+      
+      if (variables?.items) {
+        await syncInventoryBuyingPrices(variables.items);
+      }
+
+      toast.success("Purchase order created and inventory prices updated successfully!");
     },
     onError: (error) => {
       toast.error(error.message || "Failed to create purchase order.");
     },
   });
 
-  // Mutation for Updating Order (Main invalidate queries, Toast handle dynamic hobe)
+  // Mutation for Updating Order
   const updateMutation = useMutation({
     mutationFn: ({ id, orderData }) => purchaseOrderService.updateOrder({ id, orderData }),
-    onSuccess: () => {
+    onSuccess: async (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
+      queryClient.invalidateQueries({ queryKey: ["inventories"] });
+
+      if (variables?.orderData?.items) {
+        await syncInventoryBuyingPrices(variables.orderData.items);
+      }
+
+      toast.success("Purchase order and inventory prices updated successfully!");
     },
     onError: (error) => {
       toast.error(error.message || "Failed to update purchase order.");
@@ -93,14 +129,10 @@ const PurchaseOrder = () => {
     const isExisting = normalizedOrders.some(ord => ord._id === id || ord.purchaseId === id || ord.orderID === id);
 
     if (isExisting) {
-      updateMutation.mutate(
-        { id: purchaseBatchData.purchaseId || id, orderData: purchaseBatchData },
-        {
-          onSuccess: () => {
-            toast.success("Purchase order updated successfully!");
-          }
-        }
-      );
+      updateMutation.mutate({
+        id: purchaseBatchData.purchaseId || id, 
+        orderData: purchaseBatchData 
+      });
     } else {
       const newOrderPayload = {
         purchaseId: `PO-${Date.now().toString().slice(-6)}`,

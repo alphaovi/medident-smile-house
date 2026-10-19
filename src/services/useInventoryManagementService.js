@@ -8,7 +8,6 @@ export const useInventoryManagementService = () => {
   const getAllInventories = async () => {
     try {
       const response = await axios.get(`${API_URL}/inventory`);
-      // Return the array directly whether wrapped in .data or not
       const rawData = response.data;
       return Array.isArray(rawData) ? rawData : (rawData?.data || rawData?.result || []);
     } catch (error) {
@@ -26,8 +25,19 @@ export const useInventoryManagementService = () => {
     }
   };
 
+  // Update Inventory Price / Details API Call
+  const updateInventoryPrice = async (productId, updateData) => {
+    try {
+      const response = await axios.put(`${API_URL}/inventory/${productId}`, updateData);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: error.message };
+    }
+  };
+
   return {
     getAllInventories,
     getSingleInventory,
+    updateInventoryPrice,
   };
 };
