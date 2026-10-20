@@ -15,13 +15,16 @@ const StockTable = ({ stockData, onPriceChange }) => {
 
   const totalBuyingValue = stockData.reduce((total, item) => {
     const currentStock = calculateCurrentStock(item);
-    const averageBuyingPrice =
-      Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
+    const itemId = item.id || item._id;
+    
+    // Use localPrice if edited, otherwise fallback to original average buying price
+    const originalPrice = Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
+    const activePrice = localPrices[itemId] !== undefined ? Number(localPrices[itemId]) || 0 : originalPrice;
 
     const stockVal =
       Number(item.totalStockValue) > 0 && currentStock === 0
         ? Number(item.totalStockValue)
-        : currentStock * averageBuyingPrice;
+        : currentStock * activePrice;
 
     return total + stockVal;
   }, 0);
@@ -102,8 +105,13 @@ const StockTable = ({ stockData, onPriceChange }) => {
                 const originalPrice =
                   Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
                 
+                // Format default view to 2 decimal places if not actively being typed into
                 const isEdited = localPrices[itemId] !== undefined;
-                const displayPrice = isEdited ? localPrices[itemId] : originalPrice;
+                const displayPrice = isEdited 
+                  ? localPrices[itemId] 
+                  : originalPrice.toFixed(2);
+
+                const activePriceNum = isEdited ? Number(localPrices[itemId]) || 0 : originalPrice;
 
                 const sellingPrice = Number(
                   item.sellingPrice ??
@@ -115,7 +123,7 @@ const StockTable = ({ stockData, onPriceChange }) => {
                 const rowBuyingValue =
                   Number(item.totalStockValue) > 0 && currentStock === 0
                     ? Number(item.totalStockValue)
-                    : currentStock * Number(displayPrice || 0);
+                    : currentStock * activePriceNum;
 
                 const rowSaleValue =
                   Number(item.totalSaleValue) > 0 && currentStock === 0
