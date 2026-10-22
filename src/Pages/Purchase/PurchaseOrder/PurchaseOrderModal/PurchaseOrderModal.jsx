@@ -227,7 +227,15 @@ const PurchaseOrderModal = ({
 
       const totalWithShippingAndVat =
         rawLinePrice + allocatedShipping + allocatedTransit + allocatedOther + allocatedVat;
-      const unitCostAfterCalc = qty > 0 ? totalWithShippingAndVat / qty : 0;
+
+      // Ceiling if fractional part >= 0.50, otherwise flooring
+      const fractionalPart = totalWithShippingAndVat % 1;
+      const totalWithShipping =
+        fractionalPart >= 0.5
+          ? Math.ceil(totalWithShippingAndVat)
+          : Math.floor(totalWithShippingAndVat);
+
+      const unitCostAfterCalc = qty > 0 ? totalWithShipping / qty : 0;
 
       return {
         ...item,
@@ -237,7 +245,7 @@ const PurchaseOrderModal = ({
         allocatedOther,
         allocatedVat,
         rawLinePrice,
-        totalWithShipping: totalWithShippingAndVat,
+        totalWithShipping,
         unitCostAfterCalc,
       };
     });
@@ -593,7 +601,7 @@ const PurchaseOrderModal = ({
 
                         <div className="text-right">
                           <span className="font-bold text-sm text-teal-600 block px-1 truncate">
-                            ৳ {calcItem?.totalWithShipping ? calcItem.totalWithShipping.toFixed(2) : "0.00"}
+                            ৳ {calcItem?.totalWithShipping !== undefined ? calcItem.totalWithShipping.toFixed(2) : "0.00"}
                           </span>
                         </div>
 
