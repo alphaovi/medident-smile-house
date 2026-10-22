@@ -198,10 +198,6 @@ const PurchaseOrderModal = ({
     const transitCostNum = Number(expenses.transitCost) || 0;
     const otherCostNum = Number(expenses.otherCost) || 0;
 
-    const shippingCostPerKg = totalBatchWeight > 0 ? shippingCostNum / totalBatchWeight : 0;
-    const transitCostPerKg = totalBatchWeight > 0 ? transitCostNum / totalBatchWeight : 0;
-    const otherCostPerKg = totalBatchWeight > 0 ? otherCostNum / totalBatchWeight : 0;
-
     const vatStr = String(expenses.vatInput || "0").trim();
     const isPercent = vatStr.includes("%");
     const vatValNum = Number(vatStr.replace("%", "")) || 0;
@@ -218,15 +214,16 @@ const PurchaseOrderModal = ({
       const uPrice = Number(item.unitPrice) || 0;
 
       const lineWeight = qty * unitWt;
-      const allocatedShipping = lineWeight * shippingCostPerKg;
-      const allocatedTransit = lineWeight * transitCostPerKg;
-      const allocatedOther = lineWeight * otherCostPerKg;
-
       const rawLinePrice = qty * uPrice;
+
+      const allocatedShipping =
+        rawSubtotal > 0 ? (rawLinePrice / rawSubtotal) * shippingCostNum : 0;
+      const allocatedTransit =
+        rawSubtotal > 0 ? (rawLinePrice / rawSubtotal) * transitCostNum : 0;
+      const allocatedOther =
+        rawSubtotal > 0 ? (rawLinePrice / rawSubtotal) * otherCostNum : 0;
       const allocatedVat =
-        rawSubtotal > 0
-          ? (rawLinePrice / rawSubtotal) * calculatedVatAmount
-          : 0;
+        rawSubtotal > 0 ? (rawLinePrice / rawSubtotal) * calculatedVatAmount : 0;
 
       const totalWithShippingAndVat =
         rawLinePrice + allocatedShipping + allocatedTransit + allocatedOther + allocatedVat;
@@ -253,9 +250,7 @@ const PurchaseOrderModal = ({
 
     return {
       rawSubtotal,
-      shippingCostPerKg,
-      transitCostPerKg,
-      otherCostPerKg,
+      shippingCostPerKg: totalBatchWeight > 0 ? shippingCostNum / totalBatchWeight : 0,
       grandTotal,
       calculatedItems,
       totalBatchWeight,
@@ -345,7 +340,7 @@ const PurchaseOrderModal = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-40 flex items-center justify-center p-3 sm:p-5">
+        <div className="fixed inset-0 z-40 flex items-center justify-center p-1 sm:p-2">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -358,7 +353,7 @@ const PurchaseOrderModal = ({
             initial={{ scale: 0.96, opacity: 0, y: 15 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.96, opacity: 0, y: 15 }}
-            className="relative w-full max-w-6xl h-[90vh] bg-base-100 rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden text-sm"
+            className="relative w-[99vw] h-[98vh] max-w-none bg-base-100 rounded-xl sm:rounded-2xl shadow-2xl border border-base-300 z-10 flex flex-col overflow-hidden text-sm"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 bg-base-200 border-b border-base-300 shrink-0">
@@ -378,7 +373,7 @@ const PurchaseOrderModal = ({
             {/* Form Content */}
             <form
               onSubmit={handleSubmit}
-              className="p-5 overflow-y-auto space-y-5 grow"
+              className="p-3 sm:p-6 overflow-y-auto space-y-5 grow"
             >
               {/* Supplier & Dates Selection */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 bg-base-200/50 p-4 rounded-xl border border-base-300">
@@ -389,7 +384,7 @@ const PurchaseOrderModal = ({
                   <select
                     value={selectedSupplier}
                     onChange={(e) => setSelectedSupplier(e.target.value)}
-                    className="select select-bordered select-sm w-full font-medium text-sm"
+                    className="select select-bordered select-sm w-full font-medium text-sm truncate"
                     required
                     disabled={loadingSuppliers}
                   >
@@ -449,171 +444,173 @@ const PurchaseOrderModal = ({
                   </span>
                 </div>
 
-                <div className="hidden lg:flex items-center gap-3 px-4 py-2 bg-base-300/40 rounded-lg text-xs font-bold text-base-content/80 text-center">
-                  <div className="w-40 text-left">Group</div>
-                  <div className="w-40 text-left">Sub-Group</div>
-                  <div className="flex-1 text-left">Product</div>
-                  <div className="w-20">Cur. Stock</div>
-                  <div className="w-20">In Transit</div>
-                  <div className="w-20">Order Qty</div>
-                  <div className="w-24">Price (৳)</div>
-                  <div className="w-20">Wt (kg)</div>
-                  <div className="w-28 text-right">Unit Cost</div>
-                  <div className="w-28 text-right">Total + Ship</div>
-                  <div className="w-10"></div>
+                <div className="w-full space-y-3">
+                  <div className="grid grid-cols-[minmax(110px,1fr)_minmax(110px,1fr)_minmax(180px,1.8fr)_65px_65px_70px_80px_70px_90px_90px_36px] gap-2 items-center px-4 py-2 bg-base-300/40 rounded-lg text-xs font-bold text-base-content/80 text-center">
+                    <div className="text-left">Group</div>
+                    <div className="text-left">Sub-Group</div>
+                    <div className="text-left">Product</div>
+                    <div>Cur. Stock</div>
+                    <div>In Transit</div>
+                    <div>Order Qty</div>
+                    <div>Price (৳)</div>
+                    <div>Wt (kg)</div>
+                    <div className="text-right">Unit Cost</div>
+                    <div className="text-right">Total + Ship</div>
+                    <div></div>
+                  </div>
+
+                  {items.map((item, idx) => {
+                    const availableSubGroups = subGroups.filter((sg) => {
+                      const parentGroupId = sg.group?._id || sg.group;
+                      return String(parentGroupId) === String(item.selectedGroup);
+                    });
+
+                    const filteredProducts = products.filter((p) => {
+                      const pGroup = p.group?._id || p.group || p.productGroup;
+                      const pSubGroup = p.subGroup?._id || p.subGroup || p.productSubGroup;
+
+                      const matchGroup = !item.selectedGroup || String(pGroup) === String(item.selectedGroup);
+                      const matchSubGroup = !item.selectedSubGroup || String(pSubGroup) === String(item.selectedSubGroup);
+
+                      return matchGroup && matchSubGroup;
+                    });
+
+                    const calcItem = calculations.calculatedItems[idx];
+
+                    return (
+                      <motion.div
+                        key={idx}
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className="grid grid-cols-[minmax(110px,1fr)_minmax(110px,1fr)_minmax(180px,1.8fr)_65px_65px_70px_80px_70px_90px_90px_36px] gap-2 items-center bg-base-200/50 p-3 rounded-xl border border-base-300 text-sm"
+                      >
+                        <div>
+                          <select
+                            value={item.selectedGroup}
+                            onChange={(e) => handleItemChange(idx, "selectedGroup", e.target.value)}
+                            className="select select-bordered select-sm w-full text-sm truncate"
+                          >
+                            <option value="">Group...</option>
+                            {productGroups.map((g) => {
+                              const gId = g._id || g.id;
+                              const gName = g.groupName || g.name;
+                              return (
+                                <option key={gId} value={gId}>
+                                  {gName}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        <div>
+                          <select
+                            value={item.selectedSubGroup}
+                            disabled={!item.selectedGroup}
+                            onChange={(e) => handleItemChange(idx, "selectedSubGroup", e.target.value)}
+                            className="select select-bordered select-sm w-full disabled:opacity-50 text-sm truncate"
+                          >
+                            <option value="">Sub-Group...</option>
+                            {availableSubGroups.map((sg) => {
+                              const sgId = sg._id || sg.id;
+                              const sgName = sg.subGroupName || sg.name;
+                              return (
+                                <option key={sgId} value={sgId}>
+                                  {sgName}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        <div>
+                          <select
+                            value={item.productId}
+                            onChange={(e) => handleItemChange(idx, "productId", e.target.value)}
+                            className="select select-bordered select-sm w-full font-medium text-sm truncate"
+                          >
+                            <option value="">Select Product...</option>
+                            {filteredProducts.map((p) => {
+                              const pId = p._id || p.productId || p.id;
+                              const pName = p.productName || p.name;
+                              return (
+                                <option key={pId} value={pId}>
+                                  {pName}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        <div className="text-center">
+                          <span className="badge badge-ghost badge-md w-full font-medium text-xs py-2">
+                            {item.currentStock}
+                          </span>
+                        </div>
+
+                        <div className="text-center">
+                          <span className="badge badge-warning/20 text-warning-content badge-md w-full font-medium text-xs py-2">
+                            {item.transitStock}
+                          </span>
+                        </div>
+
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.orderQty}
+                            onChange={(e) => handleItemChange(idx, "orderQty", e.target.value)}
+                            className="input input-bordered input-sm w-full text-center font-bold text-sm"
+                          />
+                        </div>
+
+                        <div>
+                          <input
+                            type="number"
+                            min="0"
+                            value={item.unitPrice}
+                            onChange={(e) => handleItemChange(idx, "unitPrice", e.target.value)}
+                            className="input input-bordered input-sm w-full text-right text-sm"
+                          />
+                        </div>
+
+                        <div>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={item.unitWeight}
+                            onChange={(e) => handleItemChange(idx, "unitWeight", e.target.value)}
+                            className="input input-bordered input-sm w-full text-center text-sm"
+                          />
+                        </div>
+
+                        <div className="text-right">
+                          <span className="font-bold text-sm text-info block px-1 truncate">
+                            ৳ {calcItem?.unitCostAfterCalc ? calcItem.unitCostAfterCalc.toFixed(2) : "0.00"}
+                          </span>
+                        </div>
+
+                        <div className="text-right">
+                          <span className="font-bold text-sm text-teal-600 block px-1 truncate">
+                            ৳ {calcItem?.totalWithShipping ? calcItem.totalWithShipping.toFixed(2) : "0.00"}
+                          </span>
+                        </div>
+
+                        <div className="flex justify-center">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItemRow(idx)}
+                            disabled={items.length === 1}
+                            className="btn btn-square btn-ghost btn-sm text-error hover:bg-error/10 disabled:opacity-20"
+                          >
+                            <Trash2 className="size-5" />
+                          </button>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
                 </div>
-
-                {items.map((item, idx) => {
-                  const availableSubGroups = subGroups.filter((sg) => {
-                    const parentGroupId = sg.group?._id || sg.group;
-                    return String(parentGroupId) === String(item.selectedGroup);
-                  });
-
-                  const filteredProducts = products.filter((p) => {
-                    const pGroup = p.group?._id || p.group || p.productGroup;
-                    const pSubGroup = p.subGroup?._id || p.subGroup || p.productSubGroup;
-
-                    const matchGroup = !item.selectedGroup || String(pGroup) === String(item.selectedGroup);
-                    const matchSubGroup = !item.selectedSubGroup || String(pSubGroup) === String(item.selectedSubGroup);
-
-                    return matchGroup && matchSubGroup;
-                  });
-
-                  const calcItem = calculations.calculatedItems[idx];
-
-                  return (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      className="flex flex-wrap lg:flex-nowrap items-center gap-3 bg-base-200/50 p-3 rounded-xl border border-base-300 text-sm"
-                    >
-                      <div className="w-full sm:w-40">
-                        <select
-                          value={item.selectedGroup}
-                          onChange={(e) => handleItemChange(idx, "selectedGroup", e.target.value)}
-                          className="select select-bordered select-sm w-full text-sm"
-                        >
-                          <option value="">Group...</option>
-                          {productGroups.map((g) => {
-                            const gId = g._id || g.id;
-                            const gName = g.groupName || g.name;
-                            return (
-                              <option key={gId} value={gId}>
-                                {gName}
-                              </option>
-                            );
-                          })}
-                        </select>
-                      </div>
-
-                      <div className="w-full sm:w-40">
-                        <select
-                          value={item.selectedSubGroup}
-                          disabled={!item.selectedGroup}
-                          onChange={(e) => handleItemChange(idx, "selectedSubGroup", e.target.value)}
-                          className="select select-bordered select-sm w-full disabled:opacity-50 text-sm"
-                        >
-                          <option value="">Sub-Group...</option>
-                          {availableSubGroups.map((sg) => {
-                            const sgId = sg._id || sg.id;
-                            const sgName = sg.subGroupName || sg.name;
-                            return (
-                              <option key={sgId} value={sgId}>
-                                {sgName}
-                              </option>
-                            );
-                          })}
-                        </select>
-                      </div>
-
-                      <div className="flex-1 min-w-[120px]">
-                        <select
-                          value={item.productId}
-                          onChange={(e) => handleItemChange(idx, "productId", e.target.value)}
-                          className="select select-bordered select-sm w-full font-medium text-sm"
-                        >
-                          <option value="">Select Product...</option>
-                          {filteredProducts.map((p) => {
-                            const pId = p._id || p.productId || p.id;
-                            const pName = p.productName || p.name;
-                            return (
-                              <option key={pId} value={pId}>
-                                {pName}
-                              </option>
-                            );
-                          })}
-                        </select>
-                      </div>
-
-                      <div className="w-20 text-center">
-                        <span className="badge badge-ghost badge-md w-full font-medium text-xs py-2">
-                          {item.currentStock}
-                        </span>
-                      </div>
-
-                      <div className="w-20 text-center">
-                        <span className="badge badge-warning/20 text-warning-content badge-md w-full font-medium text-xs py-2">
-                          {item.transitStock}
-                        </span>
-                      </div>
-
-                      <div className="w-20">
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.orderQty}
-                          onChange={(e) => handleItemChange(idx, "orderQty", e.target.value)}
-                          className="input input-bordered input-sm w-full text-center font-bold text-sm"
-                        />
-                      </div>
-
-                      <div className="w-24">
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.unitPrice}
-                          onChange={(e) => handleItemChange(idx, "unitPrice", e.target.value)}
-                          className="input input-bordered input-sm w-full text-right text-sm"
-                        />
-                      </div>
-
-                      <div className="w-20">
-                        <input
-                          type="number"
-                          step="0.01"
-                          min="0"
-                          value={item.unitWeight}
-                          onChange={(e) => handleItemChange(idx, "unitWeight", e.target.value)}
-                          className="input input-bordered input-sm w-full text-center text-sm"
-                        />
-                      </div>
-
-                      <div className="w-28 text-right">
-                        <span className="font-bold text-sm text-info block px-1">
-                          ৳ {calcItem?.unitCostAfterCalc ? calcItem.unitCostAfterCalc.toFixed(2) : "0.00"}
-                        </span>
-                      </div>
-
-                      <div className="w-28 text-right">
-                        <span className="font-bold text-sm text-teal-600 block px-1">
-                          ৳ {calcItem?.totalWithShipping ? calcItem.totalWithShipping.toFixed(2) : "0.00"}
-                        </span>
-                      </div>
-
-                      <div className="w-10 flex justify-center">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItemRow(idx)}
-                          disabled={items.length === 1}
-                          className="btn btn-square btn-ghost btn-sm text-error hover:bg-error/10 disabled:opacity-20"
-                        >
-                          <Trash2 className="size-5" />
-                        </button>
-                      </div>
-                    </motion.div>
-                  );
-                })}
               </div>
 
               {/* Summary & Expenses */}
