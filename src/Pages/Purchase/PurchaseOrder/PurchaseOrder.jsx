@@ -15,11 +15,15 @@ const PurchaseOrder = () => {
   const queryClient = useQueryClient();
   const { updateInventoryPrice } = useInventoryManagementService();
 
-  // 1. Fetch Purchase Orders
-  const { data: rawOrders = [], isLoading: ordersLoading } = useQuery({
+  // 1. Fetch Purchase Orders (Fixed response parsing)
+  const { data: rawOrdersResponse = [], isLoading: ordersLoading } = useQuery({
     queryKey: ["purchase-orders"],
     queryFn: purchaseOrderService.getAllOrders,
   });
+
+  const rawOrders = Array.isArray(rawOrdersResponse) 
+    ? rawOrdersResponse 
+    : (rawOrdersResponse?.data || rawOrdersResponse?.result || []);
 
   // 2. Fetch Products
   const { data: products = [] } = useQuery({
