@@ -8,7 +8,7 @@ import SaleHeader from "./SaleHeader";
 import SaleItemRow from "./SaleItemRow";
 import SaleSummaryBar from "./SaleSummaryBar";
 import SaleCalculation from "./SaleCalculation";
-import { fetchSaleDependencies, createSaleOrder } from "../../../services/saleOrderService/useSaleOrderServices";
+import { fetchSaleDependencies, createSaleOrder, updateSaleOrder } from "../../../services/saleOrderService/useSaleOrderServices";
 
 const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   const [states, setStates] = useState([]);
@@ -53,7 +53,6 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
   const [paidAmount, setPaidAmount] = useState(0);
 
-  // Dependency data load and editData mapping logic
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -72,12 +71,11 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
         setProductsGroupSubgroup(loadedGroups);
         setSubgroupsList(loadedSubgroups);
 
-        // If editing an existing order, populate the form fields
         if (editData) {
-          setSelectedState(editData.customerState || null);
+          setSelectedState(editData.customerState || "");
           
           const foundCust = loadedCustomers.find(
-            (c) => c.name === editData.customerName || c.customerName === editData.customerName || c._id === editData.customerId
+            (c) => c.name === editData.customerName || c.customerName === editData.customerName || c._id === editData.customer?._id || c.id === editData.customer?._id
           );
           if (foundCust) {
             setSelectedCustomer({
@@ -102,17 +100,17 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
             const mappedRows = editData.soldItems.map((item) => {
               const targetId = item.productId;
               const matchedProd = loadedProducts.find(
-                (p) => p._id === targetId || p.id === targetId || p.product === targetId || p.productId === targetId || p.product?._id === targetId
+                (p) => p._id === targetId || p.id === targetId || p.product === targetId || p.product?._id === targetId
               );
 
               return {
-                selectedGroup: item.selectedGroup || null,
-                selectedSubGroup: item.selectedSubGroup || null,
-                productId: item.productId || null,
-                productName: item.productName || "",
+                selectedGroup: item.selectedGroup || matchedProd?.group || null,
+                selectedSubGroup: item.selectedSubGroup || matchedProd?.subGroup || null,
+                productId: targetId || null,
+                productName: item.productName || matchedProd?.name || "",
                 currentStock: matchedProd?.currentStock ?? matchedProd?.totalStock ?? matchedProd?.quantity ?? 0,
                 orderQty: item.orderQty || 1,
-                unitPrice: item.unitPrice || 0,
+                unitPrice: item.unitPrice || matchedProd?.sellingPrice || 0,
                 discountType: "percent",
                 discountValue: item.discount || 0,
               };
@@ -189,26 +187,15 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
           p._id === targetId || 
           p.id === targetId || 
           p.product === targetId || 
-          p.productId === targetId ||
           p.product?._id === targetId
       );
 
       if (selectedProd) {
         currentRow.productName = selectedProd.name || selectedProd.productName || selectedProd.product?.name || "";
-        
-        currentRow.currentStock = 
-          selectedProd.currentStock ?? 
-          selectedProd.totalStock ?? 
-          selectedProd.quantity ?? 
-          selectedProd.stock ?? 
-          0;
-
-        currentRow.unitPrice = 
-          selectedProd.sellingPrice ?? 
-          selectedProd.unitPrice ?? 
-          selectedProd.price ?? 
-          selectedProd.avgBuyingPrice ?? 
-          0;
+        currentRow.currentStock = selectedProd.currentStock ?? selectedProd.totalStock ?? selectedProd.quantity ?? 0;
+        currentRow.unitPrice = selectedProd.sellingPrice ?? selectedProd.unitPrice ?? selectedProd.price ?? 0;
+        currentRow.selectedGroup = selectedProd.group?._id || selectedProd.group || currentRow.selectedGroup;
+        currentRow.selectedSubGroup = selectedProd.subGroup?._id || selectedProd.subGroup || currentRow.selectedSubGroup;
       }
     } else if (["orderQty", "unitPrice", "discountValue"].includes(field)) {
       currentRow[field] = value === "" ? "" : Number(value);
@@ -262,24 +249,15 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
           p._id === targetProdId || 
           p.id === targetProdId || 
           p.product === targetProdId || 
-          p.productId === targetProdId ||
           p.product?._id === targetProdId
       );
-
-      const matchedStock = 
-        matchedProd?.currentStock ?? 
-        matchedProd?.totalStock ?? 
-        matchedProd?.quantity ?? 
-        matchedProd?.stock ?? 
-        item.currentStock ?? 
-        0;
 
       return {
         ...item,
         groupId: matchedProd?.group?._id || matchedProd?.group || item.selectedGroup?.value || item.selectedGroup,
         subGroupId: matchedProd?.subGroup?._id || matchedProd?.subGroup || item.selectedSubGroup?.value || item.selectedSubGroup,
         productObjId: matchedProd?.product?._id || matchedProd?.product || matchedProd?._id || targetProdId,
-        currentStock: matchedStock,
+        currentStock: matchedProd?.currentStock ?? item.currentStock ?? 0,
         totalPrice,
         discountAmount,
         afterDiscountPrice,
@@ -312,7 +290,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     };
   }, [items, globalDiscount, paidAmount, products]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
     const validItems = calculations.calculatedItems.filter(
@@ -336,14 +314,21 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
       return;
     }
 
+    for (const [idx, item] of validItems.entries()) {
+      if (!item.groupId || !item.subGroupId || !item.productObjId) {
+        toast.error(`Row ${idx + 1}: Group, Sub-Group, and Product are required!`, { autoClose: 3000 });
+        return;
+      }
+    }
+
     Swal.fire({
-      title: "Confirm Sale Order?",
-      text: "This will create a new sales transaction with 'pending' status.",
+      title: editData ? "Update Sale Order?" : "Confirm Sale Order?",
+      text: editData ? "This will update the sales transaction." : "This will create a new sales transaction with 'pending' status.",
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#0d9488",
       cancelButtonColor: "#64748b",
-      confirmButtonText: "Confirm Sale",
+      confirmButtonText: editData ? "Update Sale" : "Confirm Sale",
       cancelButtonText: "Cancel",
       customClass: {
         popup: "rounded-2xl",
@@ -363,16 +348,21 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
               product: item.productObjId,
               quantity: Number(item.orderQty),
               price: Number(item.unitPrice),
-              discount: Number(item.discountValue || 0),
+              discount: Number(item.discountAmount || 0),
             })),
             generalDiscountType: globalDiscount.value > 0 ? (globalDiscount.type === "percent" ? "%" : "flat") : undefined,
             generalDiscountValue: Number(globalDiscount.value || 0),
             paidAmount: Number(paidAmount || 0),
-            status: "pending",
+            status: editData?.status ? editData.status.toLowerCase() : "pending",
           };
 
-          await createSaleOrder(saleOrderPayload);
-          toast.success("Sell order created successfully!", { autoClose: 2000 });
+          if (editData && editData.orderNo) {
+            await updateSaleOrder(editData.orderNo, saleOrderPayload);
+          } else {
+            await createSaleOrder(saleOrderPayload);
+          }
+
+          toast.success(editData ? "Sell order updated successfully!" : "Sell order created successfully!", { autoClose: 2000 });
           
           setItems([{ ...initialRow }]);
           setSelectedState(null);

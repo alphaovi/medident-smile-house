@@ -1,4 +1,3 @@
-// src/services/saleOrderService/useSaleOrderServices.js
 import { customerService } from "../useCustomerService/useCustomerService";
 import { stateService } from "../useStateService/useStateService";
 
@@ -6,14 +5,13 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002/api/v1";
 
 export const fetchSaleDependencies = async () => {
   try {
-    // Inventory api o sathe fetch korar jonno call add kora holo
     const [statesData, customersData, prodRes, groupRes, subgroupRes, inventoryRes] = await Promise.all([
       stateService.getAllStates().catch(() => []),
       customerService.getAllCustomers().catch(() => []),
       fetch(`${API_URL}/products`).catch(() => ({ ok: false })),
       fetch(`${API_URL}/product-groups`).catch(() => ({ ok: false })),
       fetch(`${API_URL}/product-subgroups`).catch(() => ({ ok: false })),
-      fetch(`${API_URL}/inventory`).catch(() => ({ ok: false })), // Inventory endpoint check
+      fetch(`${API_URL}/inventory`).catch(() => ({ ok: false })),
     ]);
 
     const states = Array.isArray(statesData) ? statesData : (statesData?.data || statesData?.result || []);
@@ -25,10 +23,8 @@ export const fetchSaleDependencies = async () => {
     const invJson = inventoryRes.ok ? await inventoryRes.json() : [];
     const inventories = Array.isArray(invJson) ? invJson : (invJson?.data || invJson?.result || []);
 
-    // Product er sathe inventory stock data merge kore dewa holo
     const products = rawProducts.map((prod) => {
       const prodId = prod._id || prod.id;
-      // Inventory khuje ber kora jar sathe product id match kore
       const matchedInv = inventories.find(
         (inv) => 
           String(inv.product?._id || inv.product) === String(prodId) || 
@@ -78,6 +74,23 @@ export const createSaleOrder = async (saleData) => {
   return data;
 };
 
+export const updateSaleOrder = async (orderId, saleData) => {
+  const response = await fetch(`${API_URL}/sale-orders/${orderId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ saleOrder: saleData }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to update sale order");
+  }
+
+  return data;
+};
+
 export const getAllSaleOrders = async () => {
   const response = await fetch(`${API_URL}/sale-orders`);
   const data = await response.json();
@@ -120,6 +133,7 @@ export const deleteSaleOrder = async (orderId) => {
 export const useSaleOrderServices = {
   fetchSaleDependencies,
   createSaleOrder,
+  updateSaleOrder,
   getAllSaleOrders,
   updateOrderStatus,
   deleteSaleOrder,
