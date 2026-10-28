@@ -1,3 +1,4 @@
+// src/services/saleOrderService/useSaleOrderServices.js
 import { customerService } from "../useCustomerService/useCustomerService";
 import { stateService } from "../useStateService/useStateService";
 
@@ -75,19 +76,21 @@ export const createSaleOrder = async (saleData) => {
 };
 
 export const updateSaleOrder = async (orderId, saleData) => {
-  const response = await fetch(`${API_URL}/sale-orders/${orderId}`, {
+  const response = evaluateResponse(await fetch(`${API_URL}/sale-orders/${orderId}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ saleOrder: saleData }),
-  });
+  }));
+  return response;
+};
 
+const evaluateResponse = async (response) => {
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.message || "Failed to update sale order");
   }
-
   return data;
 };
 
@@ -111,7 +114,7 @@ export const updateOrderStatus = async (orderId, newStatus) => {
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.message || "Failed to update order status");
+    throw newHourError(data.message || "Failed to update order status");
   }
 
   return data;
@@ -124,7 +127,7 @@ export const deleteSaleOrder = async (orderId) => {
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.message || "Failed to delete sale order");
+    throw new Error(data.message || data.error || "Failed to delete sale order");
   }
 
   return data;

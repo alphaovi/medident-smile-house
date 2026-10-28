@@ -1,5 +1,6 @@
+// src/components/sale/CreateSale.jsx
 import { useState, useEffect, useMemo, useRef } from "react";
-import { ShoppingCart, Box } from "lucide-react";
+import { ShoppingCart, Box, History } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Swal from "sweetalert2";
@@ -38,7 +39,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     productId: null,
     productName: "",
     currentStock: 0,
-    orderQty: 1,
+    orderQty: 0,
     unitPrice: 0,
     discountType: "percent",
     discountValue: 0,
@@ -52,6 +53,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   });
 
   const [paidAmount, setPaidAmount] = useState(0);
+  const [paymentHistory, setPaymentHistory] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -94,7 +96,18 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
             value: editData.generalDiscountValue || 0,
           });
 
-          setPaidAmount(editData.paidAmount || 0);
+          setPaidAmount(0);
+
+          // Backend theke আসা payments ba paymentHistory load kora
+          if (Array.isArray(editData.payments) && editData.payments.length > 0) {
+            setPaymentHistory(editData.payments);
+          } else if (Array.isArray(editData.paymentHistory) && editData.paymentHistory.length > 0) {
+            setPaymentHistory(editData.paymentHistory);
+          } else if (editData.paidAmount > 0) {
+            setPaymentHistory([
+              { date: editData.orderDate || getTodayISO(), amount: editData.paidAmount }
+            ]);
+          }
 
           if (Array.isArray(editData.soldItems) && editData.soldItems.length > 0) {
             const mappedRows = editData.soldItems.map((item) => {
@@ -103,16 +116,29 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
                 (p) => p._id === targetId || p.id === targetId || p.product === targetId || p.product?._id === targetId
               );
 
+              const unitP = item.unitPrice || matchedProd?.sellingPrice || 0;
+              const lineDiscAmount = item.discount || 0;
+              let discVal = lineDiscAmount;
+              let discType = "flat";
+              if (unitP > 0 && item.orderQty > 0) {
+                const totalP = unitP * item.orderQty;
+                const calculatedPercent = (lineDiscAmount / totalP) * 100;
+                if (Math.abs(calculatedPercent - Math.round(calculatedPercent)) < 0.1 && calculatedPercent <= 100) {
+                  discVal = Math.round(calculatedPercent);
+                  discType = "percent";
+                }
+              }
+
               return {
                 selectedGroup: item.selectedGroup || matchedProd?.group || null,
                 selectedSubGroup: item.selectedSubGroup || matchedProd?.subGroup || null,
                 productId: targetId || null,
                 productName: item.productName || matchedProd?.name || "",
                 currentStock: matchedProd?.currentStock ?? matchedProd?.totalStock ?? matchedProd?.quantity ?? 0,
-                orderQty: item.orderQty || 1,
-                unitPrice: item.unitPrice || matchedProd?.sellingPrice || 0,
-                discountType: "percent",
-                discountValue: item.discount || 0,
+                orderQty: item.orderQty || 0,
+                unitPrice: unitP,
+                discountType: discType,
+                discountValue: discVal,
               };
             });
             setItems([...mappedRows, { ...initialRow }]);
@@ -243,20 +269,23 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
       const afterDiscountPrice = Math.max(0, totalPrice - discountAmount);
 
-      const targetProdId = item.productId?.value || item.productId;
+      const targetId = typeof item.productId === "object" && item.productId !== null
+        ? (item.productId.value || item.productId._id || item.productId.id)
+        : item.productId;
+
       const matchedProd = products.find(
         (p) => 
-          p._id === targetProdId || 
-          p.id === targetProdId || 
-          p.product === targetProdId || 
-          p.product?._id === targetProdId
+          p._id === targetId || 
+          p.id === targetId || 
+          p.product === targetId || 
+          p.product?._id === targetId
       );
 
       return {
         ...item,
-        groupId: matchedProd?.group?._id || matchedProd?.group || item.selectedGroup?.value || item.selectedGroup,
-        subGroupId: matchedProd?.subGroup?._id || matchedProd?.subGroup || item.selectedSubGroup?.value || item.selectedSubGroup,
-        productObjId: matchedProd?.product?._id || matchedProd?.product || matchedProd?._id || targetProdId,
+        groupId: matchedProd?.group?._id || matchedProd?.group || (typeof item.selectedGroup === "object" ? item.selectedGroup?.value : item.selectedGroup),
+        subGroupId: matchedProd?.subGroup?._id || matchedProd?.subGroup || (typeof item.selectedSubGroup === "object" ? item.selectedSubGroup?.value : item.selectedSubGroup),
+        productObjId: matchedProd?.product?._id || matchedProd?.product || matchedProd?._id || targetId,
         currentStock: matchedProd?.currentStock ?? item.currentStock ?? 0,
         totalPrice,
         discountAmount,
@@ -277,8 +306,12 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     }
 
     const grandTotal = Math.max(0, rawSubtotal - globalDiscountAmount);
-    const paidNum = Number(paidAmount) || 0;
-    const dueAmount = Math.max(0, grandTotal - paidNum);
+    
+    const prevTotalPaid = paymentHistory.reduce((acc, p) => acc + Number(p.amount || 0), 0);
+    const newPaidNum = Number(paidAmount) || 0;
+    const totalPaidCalculated = prevTotalPaid + newPaidNum;
+
+    const dueAmount = Math.max(0, grandTotal - totalPaidCalculated);
 
     return {
       totalOrderQty,
@@ -286,19 +319,20 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
       rawSubtotal,
       globalDiscountAmount,
       grandTotal,
+      totalPaidCalculated,
       dueAmount,
     };
-  }, [items, globalDiscount, paidAmount, products]);
+  }, [items, globalDiscount, paidAmount, paymentHistory, products]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     const validItems = calculations.calculatedItems.filter(
-      (item) => item.productId !== null && item.productId !== ""
+      (item) => item.productId !== null && item.productId !== "" && Number(item.orderQty) > 0
     );
 
     if (validItems.length === 0) {
-      toast.error("Please select at least one product!", { autoClose: 2500 });
+      toast.error("Please select at least one product with valid quantity!", { autoClose: 2500 });
       return;
     }
 
@@ -338,6 +372,11 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
+          // Notun paid amount thakle seta current date/orderDate soho payments array-te add kora hocche
+          const updatedPayments = Number(paidAmount) > 0 
+            ? [...paymentHistory, { date: orderDate, amount: Number(paidAmount) }]
+            : paymentHistory;
+
           const saleOrderPayload = {
             stateOrRegion: stateVal,
             customer: customerId,
@@ -352,7 +391,8 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
             })),
             generalDiscountType: globalDiscount.value > 0 ? (globalDiscount.type === "percent" ? "%" : "flat") : undefined,
             generalDiscountValue: Number(globalDiscount.value || 0),
-            paidAmount: Number(paidAmount || 0),
+            paidAmount: calculations.totalPaidCalculated,
+            payments: updatedPayments.filter(p => p.amount > 0), // Backend-er payments array field match koranor jonno
             status: editData?.status ? editData.status.toLowerCase() : "pending",
           };
 
@@ -447,13 +487,32 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
           rawSubtotal={calculations.rawSubtotal}
         />
 
-       <SaleCalculation
+        <SaleCalculation
           globalDiscount={globalDiscount}
           setGlobalDiscount={setGlobalDiscount} 
           paidAmount={paidAmount}
           setPaidAmount={setPaidAmount}
           calculations={calculations}
         />
+
+        {/* PAYMENT HISTORY */}
+        <div className="w-full bg-base-100 rounded-2xl border border-base-300 p-5 shadow-sm">
+          <h4 className="font-bold text-sm tracking-wide text-base-content flex items-center gap-2 mb-3">
+            <History className="size-4 text-teal-600" /> Payment History (Date & Amount)
+          </h4>
+          <div className="bg-base-200/50 border border-base-300 rounded-xl p-3 space-y-2 max-h-40 overflow-y-auto text-xs w-full">
+            {paymentHistory.length === 0 ? (
+              <div className="text-gray-400 text-center py-4">No previous payments recorded.</div>
+            ) : (
+              paymentHistory.map((pay, i) => (
+                <div key={i} className="flex justify-between items-center text-gray-700 border-b border-base-300 pb-1.5 last:border-0">
+                  <span className="font-medium">{pay.date ? new Date(pay.date).toLocaleDateString() : "N/A"}</span>
+                  <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">৳{pay.amount}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
 
         <div className="pt-2 flex justify-end">
           <button

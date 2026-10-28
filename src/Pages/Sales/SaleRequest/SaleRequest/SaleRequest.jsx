@@ -1,58 +1,40 @@
 // src/components/sale/SaleRequest.jsx
-import { useState, useEffect } from "react";
-import { Eye, Edit, Trash2, X } from "lucide-react";
+import { useState } from "react";
+import { Eye, Edit, Trash2, X, History } from "lucide-react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Swal from "sweetalert2";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import CreateSale from "../../CreateSale/CreateSale";
 import { useSaleOrderServices } from "../../../../services/saleOrderService/useSaleOrderServices";
 
 const SaleRequest = () => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedOrderToEdit, setSelectedOrderToEdit] = useState(null);
   const [selectedOrderToView, setSelectedOrderToView] = useState(null);
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
-
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
+  // TanStack React Query diye data instant load and caching
+  const { data: orders = [], isLoading: loading } = useQuery({
+    queryKey: ["saleOrders"],
+    queryFn: async () => {
       const res = await useSaleOrderServices.getAllSaleOrders();
       const orderList = Array.isArray(res) ? res : (res?.data || res?.result || []);
       
-      const initializedData = orderList.map((order) => ({
+      return orderList.map((order) => ({
         ...order,
         status: order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : "Pending",
-        isMovedToTrash: false,
       }));
-      setOrders(initializedData);
-    } catch (err) {
-      console.error("Failed to load sale orders:", err);
-      toast.error("Failed to load sale orders from server.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+  });
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {
       await useSaleOrderServices.updateOrderStatus(orderId, newStatus);
-
-      setOrders((prevOrders) =>
-        prevOrders.map((order) => {
-          if (order._id === orderId && order.status !== newStatus) {
-            toast.success(`Order status updated to ${newStatus}!`);
-            return { ...order, status: newStatus };
-          }
-          return order;
-        })
-      );
+      queryClient.invalidateQueries(["saleOrders"]); // Instant refetch
+      toast.success(`Order status updated to ${newStatus}!`);
     } catch (error) {
       toast.error("Failed to update status on server.");
     }
@@ -71,7 +53,7 @@ const SaleRequest = () => {
       if (result.isConfirmed) {
         try {
           await useSaleOrderServices.deleteSaleOrder(order._id);
-          setOrders((prevOrders) => prevOrders.filter((ord) => ord._id !== order._id));
+          queryClient.invalidateQueries(["saleOrders"]); // Instant refetch
           toast.warn(`Order deleted successfully.`, { autoClose: 2000 });
         } catch (error) {
           toast.error("Failed to delete order from server.");
@@ -80,7 +62,7 @@ const SaleRequest = () => {
     });
   };
 
-  // --- View Modal Mapping Fix ---
+  // --- View Modal Mapping Fix (Payments history soho) ---
   const handleOpenViewModal = (currentOrder) => {
     const formattedViewData = {
       orderNo: currentOrder._id,
@@ -91,6 +73,7 @@ const SaleRequest = () => {
       subtotal: currentOrder.grandTotal || 0,
       paidAmount: currentOrder.paidAmount || 0,
       dueAmount: currentOrder.dueAmount || 0,
+      payments: currentOrder.payments || currentOrder.paymentHistory || [], // Payment history array
       soldItems: Array.isArray(currentOrder.products) ? currentOrder.products.map((item) => ({
         selectedGroup: item.group?.groupName || item.group?.name || "",
         selectedSubGroup: item.subGroup?.subGroupName || item.subGroup?.name || "",
@@ -117,6 +100,7 @@ const SaleRequest = () => {
       dueAmount: currentOrder.dueAmount || 0,
       generalDiscountType: currentOrder.generalDiscountType || "%",
       generalDiscountValue: currentOrder.generalDiscountValue || 0,
+      payments: currentOrder.payments || currentOrder.paymentHistory || [],
       soldItems: Array.isArray(currentOrder.products) ? currentOrder.products.map((item) => ({
         productId: item.product?._id || item.product,
         selectedGroup: item.group?._id || item.group,
@@ -134,8 +118,8 @@ const SaleRequest = () => {
   const handleUpdateSuccess = () => {
     setIsEditModalOpen(false);
     setSelectedOrderToEdit(null);
-    toast.success("Sell order updated successfully!"); // Toast added here
-    fetchOrders();
+    queryClient.invalidateQueries(["saleOrders"]); // Instant refetch
+    toast.success("Sell order updated successfully!");
   };
 
   const activeOrders = orders.filter(
@@ -208,7 +192,7 @@ const SaleRequest = () => {
       {/* VIEW MODAL */}
       {isViewModalOpen && selectedOrderToView && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto p-6">
+          <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto p-6 space-y-4">
             <button
               onClick={() => setIsViewModalOpen(false)}
               className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
@@ -216,11 +200,11 @@ const SaleRequest = () => {
               <X className="size-5" />
             </button>
 
-            <h2 className="text-xl font-bold text-gray-800 mb-4">
+            <h2 className="text-xl font-bold text-gray-800">
               View Sale Order: <span className="text-blue-600">{selectedOrderToView.orderNo}</span>
             </h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 border rounded-xl mb-4 text-xs">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 border rounded-xl text-xs">
               <div>
                 <span className="font-semibold text-gray-500 block">State / Region</span>
                 <span className="font-medium text-gray-800">{selectedOrderToView.customerState || "N/A"}</span>
@@ -235,7 +219,7 @@ const SaleRequest = () => {
               </div>
             </div>
 
-            <div className="mb-4">
+            <div>
               <h3 className="text-xs font-bold text-gray-700 uppercase mb-2">Products Ordered</h3>
               <div className="border rounded-xl overflow-hidden">
                 <table className="w-full text-left text-xs">
@@ -258,6 +242,25 @@ const SaleRequest = () => {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+
+            {/* PAYMENT HISTORY SECTION INSIDE VIEW MODAL */}
+            <div className="bg-gray-50 border rounded-xl p-4">
+              <h4 className="font-bold text-xs uppercase tracking-wide text-gray-700 flex items-center gap-1.5 mb-2">
+                <History className="size-4 text-teal-600" /> Payment History
+              </h4>
+              <div className="space-y-1.5 max-h-32 overflow-y-auto text-xs">
+                {selectedOrderToView.payments.length === 0 ? (
+                  <div className="text-gray-400 text-center py-2">No payment history recorded.</div>
+                ) : (
+                  selectedOrderToView.payments.map((pay, i) => (
+                    <div key={i} className="flex justify-between items-center text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg">
+                      <span className="font-medium">{pay.date ? new Date(pay.date).toLocaleDateString() : "N/A"}</span>
+                      <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">৳{pay.amount}</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
