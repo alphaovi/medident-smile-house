@@ -98,7 +98,6 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
           setPaidAmount(0);
 
-          // Backend theke আসা payments ba paymentHistory load kora
           if (Array.isArray(editData.payments) && editData.payments.length > 0) {
             setPaymentHistory(editData.payments);
           } else if (Array.isArray(editData.paymentHistory) && editData.paymentHistory.length > 0) {
@@ -134,7 +133,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
                 selectedSubGroup: item.selectedSubGroup || matchedProd?.subGroup || null,
                 productId: targetId || null,
                 productName: item.productName || matchedProd?.name || "",
-                currentStock: matchedProd?.currentStock ?? matchedProd?.totalStock ?? matchedProd?.quantity ?? 0,
+                currentStock: matchedProd?.currentStock ?? 0, // Exact currentStock mapping
                 orderQty: item.orderQty || 0,
                 unitPrice: unitP,
                 discountType: discType,
@@ -218,7 +217,8 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
       if (selectedProd) {
         currentRow.productName = selectedProd.name || selectedProd.productName || selectedProd.product?.name || "";
-        currentRow.currentStock = selectedProd.currentStock ?? selectedProd.totalStock ?? selectedProd.quantity ?? 0;
+        // Strict assignment of currentStock from fetch dependency product list
+        currentRow.currentStock = selectedProd.currentStock ?? 0;
         currentRow.unitPrice = selectedProd.sellingPrice ?? selectedProd.unitPrice ?? selectedProd.price ?? 0;
         currentRow.selectedGroup = selectedProd.group?._id || selectedProd.group || currentRow.selectedGroup;
         currentRow.selectedSubGroup = selectedProd.subGroup?._id || selectedProd.subGroup || currentRow.selectedSubGroup;
@@ -372,7 +372,6 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          // Notun paid amount thakle seta current date/orderDate soho payments array-te add kora hocche
           const updatedPayments = Number(paidAmount) > 0 
             ? [...paymentHistory, { date: orderDate, amount: Number(paidAmount) }]
             : paymentHistory;
@@ -392,7 +391,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
             generalDiscountType: globalDiscount.value > 0 ? (globalDiscount.type === "percent" ? "%" : "flat") : undefined,
             generalDiscountValue: Number(globalDiscount.value || 0),
             paidAmount: calculations.totalPaidCalculated,
-            payments: updatedPayments.filter(p => p.amount > 0), // Backend-er payments array field match koranor jonno
+            payments: updatedPayments.filter(p => p.amount > 0),
             status: editData?.status ? editData.status.toLowerCase() : "pending",
           };
 

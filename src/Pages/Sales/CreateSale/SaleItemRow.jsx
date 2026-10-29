@@ -53,23 +53,23 @@ const SaleItemRow = ({
           prod.product?.productName || 
           "Unnamed Product";
 
+        // Ekhane strictly inventory/fetch dependency theke asha currentStock ke priority dewa holo
         const stockVal = 
           prod.currentStock ?? 
-          prod.totalStock ?? 
-          prod.quantity ?? 
+          (prod.totalStock !== undefined && prod.totalSell !== undefined ? prod.totalStock - prod.totalSell : null) ?? 
           prod.stock ?? 
           0;
 
         const priceVal = 
-          prod.sellingPrice ?? 
-          prod.unitPrice ?? 
-          prod.price ?? 
-          prod.avgBuyingPrice ?? 
+          prod.sellingPrice || 
+          prod.unitPrice || 
+          prod.price || 
+          prod.avgBuyingPrice || 
           0;
 
         return {
           value: prod._id || prod.id,
-          label: `${productName} (Stock: ${stockVal})`,
+          label: `${productName} (Stock: ${stockVal})`, // Dropdown-e sothik stock dekhabe
           productName,
           currentStock: stockVal,
           sellingPrice: priceVal,

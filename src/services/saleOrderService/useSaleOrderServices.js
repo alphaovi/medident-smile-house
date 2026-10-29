@@ -32,9 +32,22 @@ export const fetchSaleDependencies = async () => {
           String(inv.productId) === String(prodId)
       );
 
+      // Current stock-ke 100% accurate rakhar jonno dynamic calculation (Inventory table er moto)
+      const totalStk = matchedInv?.totalStock ?? prod.totalStock ?? 0;
+      const totSell = matchedInv?.totalSell ?? 0;
+      const lostDmg = matchedInv?.lostDamage ?? 0;
+      const dmg = matchedInv?.damaged ?? 0;
+      const lst = matchedInv?.lost ?? 0;
+      const freeSmp = matchedInv?.freeSample ?? 0;
+
+      const exactCurrentStock = matchedInv 
+        ? Math.max(0, totalStk - totSell - lostDmg - dmg - lst - freeSmp)
+        : (prod.currentStock ?? 0);
+
       return {
         ...prod,
-        currentStock: matchedInv?.currentStock ?? matchedInv?.totalStock ?? prod.currentStock ?? 0,
+        currentStock: exactCurrentStock, // Ebar sothik current stock (60) ashbe
+        totalStock: totalStk,
         sellingPrice: prod.sellingPrice || prod.price || matchedInv?.avgBuyingPrice || 0,
       };
     });
@@ -76,21 +89,19 @@ export const createSaleOrder = async (saleData) => {
 };
 
 export const updateSaleOrder = async (orderId, saleData) => {
-  const response = evaluateResponse(await fetch(`${API_URL}/sale-orders/${orderId}`, {
+  const response = await fetch(`${API_URL}/sale-orders/${orderId}`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ saleOrder: saleData }),
-  }));
-  return response;
-};
+  });
 
-const evaluateResponse = async (response) => {
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.message || "Failed to update sale order");
   }
+
   return data;
 };
 
@@ -114,7 +125,7 @@ export const updateOrderStatus = async (orderId, newStatus) => {
 
   const data = await response.json();
   if (!response.ok) {
-    throw newHourError(data.message || "Failed to update order status");
+    throw new Error(data.message || "Failed to update order status");
   }
 
   return data;
