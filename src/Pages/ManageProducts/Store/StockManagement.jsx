@@ -29,19 +29,16 @@ const StockManagement = () => {
     const numericPrice = Number(newPrice);
     
     try {
-      // Find the specific item in stockData using any ID variations
       const targetItem = stockData.find(
         (item) => item._id === id || item.id === id || item.product?._id === id || item.product === id
       );
 
-      // Prioritize inventory document _id, if not found use product reference id, finally fallback to passed id
       const inventoryId = targetItem?._id || targetItem?.id || targetItem?.product?._id || targetItem?.product || id;
 
       if (inventoryId) {
         await updateInventoryPrice(inventoryId, { avgBuyingPrice: numericPrice });
         toast.success("Average buying price updated successfully!");
         
-        // Update local state immediately
         setStockData((prev) =>
           prev.map((item) =>
             (item._id === inventoryId || item.id === inventoryId || item.product?._id === inventoryId || item.product === inventoryId)
@@ -55,12 +52,13 @@ const StockManagement = () => {
     } catch (error) {
       console.error("Update price error:", error);
       toast.error(error.message || "Failed to update price in database");
-      fetchInventory(); // Rollback/refetch on error
+      fetchInventory();
     }
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
+    // w-full r max-w-full use kora hoyeche jate choto/boro je kono display-te full width nibe
+    <div className="w-full px-2 sm:px-4 lg:px-6 py-6 space-y-6">
       <div className="flex items-center justify-between bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
@@ -72,7 +70,7 @@ const StockManagement = () => {
         </div>
       </div>
 
-      <div className="bg-base-100 rounded-2xl border border-base-300 shadow-sm overflow-hidden p-6">
+      <div className="bg-base-100 rounded-2xl border border-base-300 shadow-sm overflow-hidden p-2 sm:p-6 w-full">
         {loading ? (
           <div className="text-center py-12">
             <span className="loading loading-spinner loading-lg text-teal-600"></span>

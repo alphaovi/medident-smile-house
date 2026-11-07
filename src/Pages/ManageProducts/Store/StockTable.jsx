@@ -9,15 +9,17 @@ const StockTable = ({ stockData, onPriceChange }) => {
     const sellReturn = Number(item.sellReturn) || 0;
     const lostDamage =
       Number(item.lostDamage || item.lost || item.damaged) || 0;
+    const freeSample = Number(item.freeSample) || 0;
     const totalSell = Number(item.totalSell) || 0;
-    return totalStock - purchaseReturn + sellReturn - lostDamage - totalSell;
+    
+    // Current stock formula including freeSample subtraction
+    return totalStock - purchaseReturn + sellReturn - lostDamage - freeSample - totalSell;
   };
 
   const totalBuyingValue = stockData.reduce((total, item) => {
     const currentStock = calculateCurrentStock(item);
     const itemId = item.id || item._id;
     
-    // Use localPrice if edited, otherwise fallback to original average buying price
     const originalPrice = Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
     const activePrice = localPrices[itemId] !== undefined ? Number(localPrices[itemId]) || 0 : originalPrice;
 
@@ -69,7 +71,7 @@ const StockTable = ({ stockData, onPriceChange }) => {
 
   return (
     <div className="w-full flex flex-col">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto w-full">
         <table className="w-full text-left border-collapse">
           <thead>
             <tr className="bg-slate-50/75 border-b border-slate-100 text-slate-600 text-xs font-semibold uppercase tracking-wider">
@@ -79,6 +81,7 @@ const StockTable = ({ stockData, onPriceChange }) => {
               <th className="py-4 px-3 text-center">Purchase Return</th>
               <th className="py-4 px-3 text-center">Sell Return</th>
               <th className="py-4 px-3 text-center">Lost/Damage</th>
+              <th className="py-4 px-3 text-center">Free Sample</th>
               <th className="py-4 px-3 text-center">Total Sell</th>
               <th className="py-4 px-3 text-center">In Transit</th>
               <th className="py-4 px-3 text-center">Current Stock</th>
@@ -91,7 +94,7 @@ const StockTable = ({ stockData, onPriceChange }) => {
             {stockData.length === 0 ? (
               <tr>
                 <td
-                  colSpan="12"
+                  colSpan="13"
                   className="text-center py-8 text-slate-400 font-medium"
                 >
                   No stock items found.
@@ -105,7 +108,6 @@ const StockTable = ({ stockData, onPriceChange }) => {
                 const originalPrice =
                   Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
                 
-                // Format default view to 2 decimal places if not actively being typed into
                 const isEdited = localPrices[itemId] !== undefined;
                 const displayPrice = isEdited 
                   ? localPrices[itemId] 
@@ -164,6 +166,10 @@ const StockTable = ({ stockData, onPriceChange }) => {
                       {Number(item.lostDamage ?? item.damaged ?? item.lost) ||
                         0}
                     </td>
+                    {/* Free Sample Value Display */}
+                    <td className="py-3.5 px-3 text-center text-purple-600 font-medium">
+                      {Number(item.freeSample) || 0}
+                    </td>
                     <td className="py-3.5 px-3 text-center text-emerald-600 font-medium">
                       {Number(item.totalSell) || 0}
                     </td>
@@ -188,7 +194,7 @@ const StockTable = ({ stockData, onPriceChange }) => {
                           step="0.01"
                           value={displayPrice}
                           onChange={(e) => handleInputChange(itemId, e.target.value)}
-                          className="w-24 px-2.5 py-1.5 text-center text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-slate-700"
+                          className="w-24 px-2.5 py-1.5 text-center text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/25 focus:border-blue-500 transition-all font-medium text-slate-700"
                         />
                         {isEdited && (
                           <button
