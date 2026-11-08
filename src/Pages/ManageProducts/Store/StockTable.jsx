@@ -7,13 +7,13 @@ const StockTable = ({ stockData, onPriceChange }) => {
     const totalStock = Number(item.totalStock) || 0;
     const purchaseReturn = Number(item.purchaseReturn) || 0;
     const sellReturn = Number(item.sellReturn) || 0;
-    const lostDamage =
-      Number(item.lostDamage || item.lost || item.damaged) || 0;
+    const damaged = Number(item.damaged) || 0;
+    const lost = Number(item.lost) || 0;
     const freeSample = Number(item.freeSample) || 0;
     const totalSell = Number(item.totalSell) || 0;
     
-    // Current stock formula including freeSample subtraction
-    return totalStock - purchaseReturn + sellReturn - lostDamage - freeSample - totalSell;
+    // সঠিক কারেন্ট স্টক ফর্মুলা
+    return totalStock - purchaseReturn + sellReturn - totalSell - damaged - lost - freeSample;
   };
 
   const totalBuyingValue = stockData.reduce((total, item) => {
@@ -80,7 +80,8 @@ const StockTable = ({ stockData, onPriceChange }) => {
               <th className="py-4 px-3 text-center">Total Stock</th>
               <th className="py-4 px-3 text-center">Purchase Return</th>
               <th className="py-4 px-3 text-center">Sell Return</th>
-              <th className="py-4 px-3 text-center">Lost/Damage</th>
+              <th className="py-4 px-3 text-center">Damaged</th>
+              <th className="py-4 px-3 text-center">Lost</th>
               <th className="py-4 px-3 text-center">Free Sample</th>
               <th className="py-4 px-3 text-center">Total Sell</th>
               <th className="py-4 px-3 text-center">In Transit</th>
@@ -94,7 +95,7 @@ const StockTable = ({ stockData, onPriceChange }) => {
             {stockData.length === 0 ? (
               <tr>
                 <td
-                  colSpan="13"
+                  colSpan="14"
                   className="text-center py-8 text-slate-400 font-medium"
                 >
                   No stock items found.
@@ -162,11 +163,15 @@ const StockTable = ({ stockData, onPriceChange }) => {
                     <td className="py-3.5 px-3 text-center text-blue-600 font-medium">
                       {Number(item.sellReturn) || 0}
                     </td>
+                    {/* আলাদা Damaged কলাম */}
                     <td className="py-3.5 px-3 text-center text-red-500 font-medium">
-                      {Number(item.lostDamage ?? item.damaged ?? item.lost) ||
-                        0}
+                      {Number(item.damaged) || 0}
                     </td>
-                    {/* Free Sample Value Display */}
+                    {/* আলাদা Lost কলাম */}
+                    <td className="py-3.5 px-3 text-center text-rose-700 font-medium">
+                      {Number(item.lost) || 0}
+                    </td>
+                    {/* Free Sample কলাম */}
                     <td className="py-3.5 px-3 text-center text-purple-600 font-medium">
                       {Number(item.freeSample) || 0}
                     </td>
