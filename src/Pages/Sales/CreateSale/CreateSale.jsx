@@ -1,6 +1,6 @@
 // src/components/sale/CreateSale.jsx
 import { useState, useEffect, useMemo, useRef } from "react";
-import { ShoppingCart, Box, History } from "lucide-react";
+import { ShoppingCart, Box } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Swal from "sweetalert2";
@@ -9,9 +9,9 @@ import SaleHeader from "./SaleHeader";
 import SaleItemRow from "./SaleItemRow";
 import SaleSummaryBar from "./SaleSummaryBar";
 import SaleCalculation from "./SaleCalculation";
-import { fetchSaleDependencies, createSaleOrder, updateSaleOrder } from "../../../services/saleOrderService/useSaleOrderServices";
+import { fetchSaleDependencies, createSaleOrder } from "../../../services/saleOrderService/useSaleOrderServices";
 
-const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
+const CreateSale = ({ onSuccess = () => {} }) => {
   const [states, setStates] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -53,7 +53,6 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   });
 
   const [paidAmount, setPaidAmount] = useState(0);
-  const [paymentHistory, setPaymentHistory] = useState([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -61,88 +60,11 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
         setIsLoading(true);
         const data = await fetchSaleDependencies();
 
-        const loadedStates = Array.isArray(data.states) ? data.states : [];
-        const loadedCustomers = Array.isArray(data.customers) ? data.customers : [];
-        const loadedProducts = Array.isArray(data.products) ? data.products : [];
-        const loadedGroups = Array.isArray(data.productsGroupSubgroup) ? data.productsGroupSubgroup : [];
-        const loadedSubgroups = Array.isArray(data.subgroups) ? data.subgroups : [];
-
-        setStates(loadedStates);
-        setCustomers(loadedCustomers);
-        setProducts(loadedProducts);
-        setProductsGroupSubgroup(loadedGroups);
-        setSubgroupsList(loadedSubgroups);
-
-        if (editData) {
-          setSelectedState(editData.customerState || "");
-          
-          const foundCust = loadedCustomers.find(
-            (c) => c.name === editData.customerName || c.customerName === editData.customerName || c._id === editData.customer?._id || c.id === editData.customer?._id
-          );
-          if (foundCust) {
-            setSelectedCustomer({
-              value: foundCust.id || foundCust._id,
-              label: foundCust.customerName || foundCust.name,
-            });
-          }
-
-          if (editData.orderDate) {
-            const formattedDate = new Date(editData.orderDate).toISOString().split("T")[0];
-            setOrderDate(formattedDate);
-          }
-
-          setGlobalDiscount({
-            type: editData.generalDiscountType === "%" ? "percent" : "amount",
-            value: editData.generalDiscountValue || 0,
-          });
-
-          setPaidAmount(0);
-
-          if (Array.isArray(editData.payments) && editData.payments.length > 0) {
-            setPaymentHistory(editData.payments);
-          } else if (Array.isArray(editData.paymentHistory) && editData.paymentHistory.length > 0) {
-            setPaymentHistory(editData.paymentHistory);
-          } else if (editData.paidAmount > 0) {
-            setPaymentHistory([
-              { date: editData.orderDate || getTodayISO(), amount: editData.paidAmount }
-            ]);
-          }
-
-          if (Array.isArray(editData.soldItems) && editData.soldItems.length > 0) {
-            const mappedRows = editData.soldItems.map((item) => {
-              const targetId = item.productId;
-              const matchedProd = loadedProducts.find(
-                (p) => p._id === targetId || p.id === targetId || p.product === targetId || p.product?._id === targetId
-              );
-
-              const unitP = item.unitPrice || matchedProd?.sellingPrice || 0;
-              const lineDiscAmount = item.discount || 0;
-              let discVal = lineDiscAmount;
-              let discType = "flat";
-              if (unitP > 0 && item.orderQty > 0) {
-                const totalP = unitP * item.orderQty;
-                const calculatedPercent = (lineDiscAmount / totalP) * 100;
-                if (Math.abs(calculatedPercent - Math.round(calculatedPercent)) < 0.1 && calculatedPercent <= 100) {
-                  discVal = Math.round(calculatedPercent);
-                  discType = "percent";
-                }
-              }
-
-              return {
-                selectedGroup: item.selectedGroup || matchedProd?.group || null,
-                selectedSubGroup: item.selectedSubGroup || matchedProd?.subGroup || null,
-                productId: targetId || null,
-                productName: item.productName || matchedProd?.name || "",
-                currentStock: matchedProd?.currentStock ?? 0, // Exact currentStock mapping
-                orderQty: item.orderQty || 0,
-                unitPrice: unitP,
-                discountType: discType,
-                discountValue: discVal,
-              };
-            });
-            setItems([...mappedRows, { ...initialRow }]);
-          }
-        }
+        setStates(Array.isArray(data.states) ? data.states : []);
+        setCustomers(Array.isArray(data.customers) ? data.customers : []);
+        setProducts(Array.isArray(data.products) ? data.products : []);
+        setProductsGroupSubgroup(Array.isArray(data.productsGroupSubgroup) ? data.productsGroupSubgroup : []);
+        setSubgroupsList(Array.isArray(data.subgroups) ? data.subgroups : []);
       } catch (err) {
         console.error("Error loading dependency data:", err);
         toast.error("Failed to load initial data for sales.");
@@ -152,7 +74,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     };
 
     fetchData();
-  }, [editData]);
+  }, []);
 
   const availableGroups = useMemo(() => {
     if (!Array.isArray(productsGroupSubgroup)) return [];
@@ -178,7 +100,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   const customerOptions = useMemo(() => {
     return Array.isArray(filteredCustomers)
       ? filteredCustomers.map((c) => ({
-          value: c?.id || c?._id,
+          value: c?._id || c?.id, // Real MongoDB ObjectId priority dewa holo
           label: c?.customerName || c?.name,
         }))
       : [];
@@ -217,7 +139,6 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
       if (selectedProd) {
         currentRow.productName = selectedProd.name || selectedProd.productName || selectedProd.product?.name || "";
-        // Strict assignment of currentStock from fetch dependency product list
         currentRow.currentStock = selectedProd.currentStock ?? 0;
         currentRow.unitPrice = selectedProd.sellingPrice ?? selectedProd.unitPrice ?? selectedProd.price ?? 0;
         currentRow.selectedGroup = selectedProd.group?._id || selectedProd.group || currentRow.selectedGroup;
@@ -226,7 +147,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     } else if (["orderQty", "unitPrice", "discountValue"].includes(field)) {
       currentRow[field] = value === "" ? "" : Number(value);
     } else if (field === "discountType") {
-      currentRow.discountType = value;
+      currentRow.discountType = (value === "flat" || value === "৳") ? "flat" : "percent";
     }
 
     updatedItems[index] = currentRow;
@@ -261,7 +182,9 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
       let discountAmount = 0;
       const dVal = Number(item.discountValue) || 0;
-      if (item.discountType === "percent") {
+      const dType = item.discountType === "flat" ? "flat" : "percent";
+
+      if (dType === "percent") {
         discountAmount = (totalPrice * dVal) / 100;
       } else {
         discountAmount = dVal;
@@ -283,6 +206,8 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
 
       return {
         ...item,
+        discountType: dType,
+        discountValue: dVal,
         groupId: matchedProd?.group?._id || matchedProd?.group || (typeof item.selectedGroup === "object" ? item.selectedGroup?.value : item.selectedGroup),
         subGroupId: matchedProd?.subGroup?._id || matchedProd?.subGroup || (typeof item.selectedSubGroup === "object" ? item.selectedSubGroup?.value : item.selectedSubGroup),
         productObjId: matchedProd?.product?._id || matchedProd?.product || matchedProd?._id || targetId,
@@ -306,11 +231,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     }
 
     const grandTotal = Math.max(0, rawSubtotal - globalDiscountAmount);
-    
-    const prevTotalPaid = paymentHistory.reduce((acc, p) => acc + Number(p.amount || 0), 0);
-    const newPaidNum = Number(paidAmount) || 0;
-    const totalPaidCalculated = prevTotalPaid + newPaidNum;
-
+    const totalPaidCalculated = Number(paidAmount) || 0;
     const dueAmount = Math.max(0, grandTotal - totalPaidCalculated);
 
     return {
@@ -322,7 +243,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
       totalPaidCalculated,
       dueAmount,
     };
-  }, [items, globalDiscount, paidAmount, paymentHistory, products]);
+  }, [items, globalDiscount, paidAmount, products]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -356,52 +277,49 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     }
 
     Swal.fire({
-      title: editData ? "Update Sale Order?" : "Confirm Sale Order?",
-      text: editData ? "This will update the sales transaction." : "This will create a new sales transaction with 'pending' status.",
+      title: "Confirm Sale Order?",
+      text: "This will create a new sales transaction with 'pending' status.",
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#0d9488",
       cancelButtonColor: "#64748b",
-      confirmButtonText: editData ? "Update Sale" : "Confirm Sale",
+      confirmButtonText: "Confirm Sale",
       cancelButtonText: "Cancel",
-      customClass: {
-        popup: "rounded-2xl",
-        confirmButton: "btn btn-sm text-white px-4 border-0",
-        cancelButton: "btn btn-sm btn-ghost px-4",
-      },
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          const updatedPayments = Number(paidAmount) > 0 
-            ? [...paymentHistory, { date: orderDate, amount: Number(paidAmount) }]
-            : paymentHistory;
+          const paymentsArray = Number(paidAmount) > 0 
+            ? [{ date: new Date(orderDate).toISOString(), amount: Number(paidAmount), paymentMethod: "Cash" }]
+            : [];
 
           const saleOrderPayload = {
             stateOrRegion: stateVal,
             customer: customerId,
             orderDate: new Date(orderDate).toISOString(),
             products: validItems.map((item) => ({
+              state: stateVal,
+              customer: customerId,
               group: item.groupId,
               subGroup: item.subGroupId,
               product: item.productObjId,
               quantity: Number(item.orderQty),
-              price: Number(item.unitPrice),
-              discount: Number(item.discountAmount || 0),
+              unitPrice: Number(item.unitPrice),
+              discountType: item.discountType === "flat" ? "fixed" : "percentage",
+              discountValue: Number(item.discountValue || 0),
+              discountAmount: Number(item.discountAmount || 0),
+              totalPrice: Number(item.totalPrice || 0),
+              afterDiscount: Number(item.afterDiscountPrice || 0),
             })),
-            generalDiscountType: globalDiscount.value > 0 ? (globalDiscount.type === "percent" ? "%" : "flat") : undefined,
+            generalDiscountType: globalDiscount.type === "percent" ? "percentage" : "fixed",
             generalDiscountValue: Number(globalDiscount.value || 0),
             paidAmount: calculations.totalPaidCalculated,
-            payments: updatedPayments.filter(p => p.amount > 0),
-            status: editData?.status ? editData.status.toLowerCase() : "pending",
+            payments: paymentsArray,
+            status: "pending",
           };
 
-          if (editData && editData.orderNo) {
-            await updateSaleOrder(editData.orderNo, saleOrderPayload);
-          } else {
-            await createSaleOrder(saleOrderPayload);
-          }
+          await createSaleOrder(saleOrderPayload);
 
-          toast.success(editData ? "Sell order updated successfully!" : "Sell order created successfully!", { autoClose: 2000 });
+          toast.success("Sell order created successfully!", { autoClose: 2000 });
           
           setItems([{ ...initialRow }]);
           setSelectedState(null);
@@ -409,7 +327,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
           setOrderDate(getTodayISO());
           setGlobalDiscount({ type: "percent", value: 0 });
           setPaidAmount(0);
-          onUpdateSuccess();
+          onSuccess();
         } catch (error) {
           console.error("Submission error:", error);
           toast.error(error.message || "Failed to save sale order.");
@@ -418,7 +336,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
     });
   };
 
-  if (isLoading) return <div className="p-6">Loading sale form data...</div>;
+  if (isLoading) return <div className="p-6">Loading create sale form...</div>;
 
   return (
     <div className="w-full min-h-[calc(100vh-20px)] mt-[10px] px-[20px] pb-10 bg-base-100 box-border">
@@ -426,7 +344,7 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
       
       <div className="flex items-center gap-2 mb-4 pb-3 border-b border-base-300">
         <ShoppingCart className="size-6 text-teal-600" />
-        <h1 className="text-xl font-bold">{editData ? "Edit Sale Order" : "Create Sale Order"}</h1>
+        <h1 className="text-xl font-bold">Create Sale Order</h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -494,31 +412,12 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
           calculations={calculations}
         />
 
-        {/* PAYMENT HISTORY */}
-        <div className="w-full bg-base-100 rounded-2xl border border-base-300 p-5 shadow-sm">
-          <h4 className="font-bold text-sm tracking-wide text-base-content flex items-center gap-2 mb-3">
-            <History className="size-4 text-teal-600" /> Payment History (Date & Amount)
-          </h4>
-          <div className="bg-base-200/50 border border-base-300 rounded-xl p-3 space-y-2 max-h-40 overflow-y-auto text-xs w-full">
-            {paymentHistory.length === 0 ? (
-              <div className="text-gray-400 text-center py-4">No previous payments recorded.</div>
-            ) : (
-              paymentHistory.map((pay, i) => (
-                <div key={i} className="flex justify-between items-center text-gray-700 border-b border-base-300 pb-1.5 last:border-0">
-                  <span className="font-medium">{pay.date ? new Date(pay.date).toLocaleDateString() : "N/A"}</span>
-                  <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">৳{pay.amount}</span>
-                </div>
-              ))
-            )}
-          </div>
-        </div>
-
         <div className="pt-2 flex justify-end">
           <button
             type="submit"
             className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white px-8"
           >
-            {editData ? "Update Sale Order" : "Create Sale Order"}
+            Create Sale Order
           </button>
         </div>
       </form>
@@ -526,4 +425,5 @@ const CreateSale = ({ editData = null, onUpdateSuccess = () => {} }) => {
   );
 };
 
+CreateSale.displayName = "CreateSale";
 export default CreateSale;

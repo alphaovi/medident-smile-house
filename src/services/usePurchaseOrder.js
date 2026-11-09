@@ -1,56 +1,59 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+
+// আপনার ব্যাকএন্ড সার্ভারের বেস URL (অন্যান্য সার্ভিসের মতো)
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002/api/v1";
 
 export const usePurchaseOrder = (orderId, products = []) => {
   const [orderData, setOrderData] = useState(null);
   const [items, setItems] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  useEffect(() => {
-    const fetchOrderData = async () => {
-      setLoading(true);
-      try {
-        // পাবলিক ফোল্ডার থেকে fetch দিয়ে json ফাইল লোড করা হচ্ছে
-        const response = await fetch("/purchaseOrderList.json"); // আপনার ফাইলের সঠিক নাম ও পাথ এখানে দিন
-        if (!response.ok) {
-          throw new Error("Failed to fetch purchase order list");
-        }
-        const purchaseOrderList = await response.json();
+  // ব্যাকএন্ড থেকে নির্দিষ্ট পারচেজ অর্ডার ফেচ করার ফাংশন
+  const fetchOrderData = useCallback(async () => {
+    if (!orderId) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${API_URL}/purchase-orders/${orderId}`); // আপনার ব্যাকএন্ড রাউট অনুযায়ী পাথ দিন
+      const data = await response.json();
 
-        const foundOrder = purchaseOrderList.find(
-          (order) => order.id === orderId || order.orderId === orderId
-        );
-
-        if (foundOrder) {
-          setOrderData(foundOrder);
-
-          if (foundOrder.purchasedItems && foundOrder.purchasedItems.length > 0) {
-            const mappedItems = foundOrder.purchasedItems.map((item) => {
-              const itemId = item.productId || item._id;
-              const matchedProd = products.find(
-                (p) => (p.productId || p._id) === itemId
-              );
-
-              return {
-                productId: itemId || "",
-                productName: item.productName || matchedProd?.productName || "",
-                orderQty: item.orderQty ?? 1,
-                unitPrice: item.unitPrice || matchedProd?.purchasePrice || 0,
-              };
-            });
-            setItems(mappedItems);
-          }
-        }
-      } catch (error) {
-        console.error("Error loading order data:", error);
-      } finally {
-        setLoading(false);
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to fetch purchase order");
       }
-    };
 
-    if (orderId) {
-      fetchOrderData();
+      const foundOrder = data.data || data;
+      setOrderData(foundOrder);
+
+      // আইটেমগুলো ম্যাপ করা
+      if (foundOrder.purchasedItems && foundOrder.purchasedItems.length > 0) {
+        const mappedItems = foundOrder.purchasedItems.map((item) => {
+          const itemId = item.productId?._id || item.productId || item._id;
+          const matchedProd = products.find(
+            (p) => String(p._id || p.id) === String(itemId)
+          );
+
+          return {
+            productId: itemId || "",
+            productName: item.productName || matchedProd?.productName || matchedProd?.name || "",
+            orderQty: item.orderQty ?? 1,
+            unitPrice: item.unitPrice || matchedProd?.purchasePrice || 0,
+          };
+        });
+        setItems(mappedItems);
+      }
+    } catch (err) {
+      console.error("Error loading order data:", err);
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   }, [orderId, products]);
+
+  useEffect(() => {
+    fetchOrderData();
+  }, [fetchOrderData]);
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...items];
@@ -67,7 +70,9 @@ export const usePurchaseOrder = (orderId, products = []) => {
     orderData,
     items,
     loading,
+    error,
     handleItemChange,
     handleRemoveItem,
+    refetchOrder: fetchOrderData,
   };
 };

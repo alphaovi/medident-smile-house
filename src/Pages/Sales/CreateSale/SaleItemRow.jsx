@@ -53,7 +53,6 @@ const SaleItemRow = ({
           prod.product?.productName || 
           "Unnamed Product";
 
-        // Ekhane strictly inventory/fetch dependency theke asha currentStock ke priority dewa holo
         const stockVal = 
           prod.currentStock ?? 
           (prod.totalStock !== undefined && prod.totalSell !== undefined ? prod.totalStock - prod.totalSell : null) ?? 
@@ -69,7 +68,7 @@ const SaleItemRow = ({
 
         return {
           value: prod._id || prod.id,
-          label: `${productName} (Stock: ${stockVal})`, // Dropdown-e sothik stock dekhabe
+          label: `${productName} (Stock: ${stockVal})`,
           productName,
           currentStock: stockVal,
           sellingPrice: priceVal,
@@ -189,21 +188,27 @@ const SaleItemRow = ({
         />
       </div>
 
-      {/* Discount */}
+      {/* Discount Value & Type (STRICT BINDING) */}
       <div className="w-full lg:w-32 flex gap-1">
         <input
           type="number"
+          min="0"
           readOnly={isOutOfStock}
           className={`input input-bordered input-sm w-16 text-center ${isOutOfStock ? "bg-gray-100 cursor-not-allowed" : ""}`}
           placeholder="Val"
-          value={item.discountValue}
+          value={item.discountValue ?? 0}
           onChange={(e) => handleItemChange(idx, "discountValue", e.target.value)}
         />
         <select
           className="select select-bordered select-sm w-16 px-1"
           disabled={isOutOfStock}
-          value={item.discountType}
-          onChange={(e) => handleItemChange(idx, "discountType", e.target.value)}
+          value={item.discountType === "flat" ? "flat" : "percent"}
+          onChange={(e) => {
+            const val = e.target.value;
+            // Explicitly saving "percent" or "flat"
+            const normalized = (val === "flat" || val === "৳") ? "flat" : "percent";
+            handleItemChange(idx, "discountType", normalized);
+          }}
         >
           <option value="percent">%</option>
           <option value="flat">৳</option>

@@ -2,14 +2,19 @@ import { useState, useEffect } from "react";
 import { Eye, Edit } from "lucide-react";
 import { useLostDamageSampleItem } from "../../../services/useLostDamageSampleItem";
 import LostItemsModal from "./LostItemsModal";
+import LostItemReportModal from "./LostItemReportModal"; // নতুন ইমপোর্ট
 
 const LostItems = () => {
   const { getAllLostDamageSamples } = useLostDamageSampleItem();
   const [adjustments, setAdjustments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  // Modals state
+  const [isAddEditModalOpen, setIsAddEditModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  
   const [editingItem, setEditingItem] = useState(null);
-  const [isViewMode, setIsViewMode] = useState(false); // ভিউ মোড ট্র্যাক করার জন্য স্টেট
+  const [viewItem, setViewItem] = useState(null);
 
   const fetchAdjustments = async () => {
     try {
@@ -29,20 +34,17 @@ const LostItems = () => {
 
   const handleOpenAddModal = () => {
     setEditingItem(null);
-    setIsViewMode(false);
-    setIsModalOpen(true);
+    setIsAddEditModalOpen(true);
   };
 
   const handleOpenEditModal = (item) => {
     setEditingItem(item);
-    setIsViewMode(false); // এডিট মোড
-    setIsModalOpen(true);
+    setIsAddEditModalOpen(true);
   };
 
   const handleOpenViewModal = (item) => {
-    setEditingItem(item);
-    setIsViewMode(true); // ভিউ মোড (এডিট করা যাবে না)
-    setIsModalOpen(true);
+    setViewItem(item);
+    setIsReportModalOpen(true); // আইকনে ক্লিক করলে সুন্দর রিপোর্ট মডাল ওপেন হবে
   };
 
   return (
@@ -114,10 +116,10 @@ const LostItems = () => {
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {/* View Button (Eye Icon) */}
+                          {/* View Report Button (Eye Icon) */}
                           <button
                             onClick={() => handleOpenViewModal(item)}
-                            title="View Details"
+                            title="View Report"
                             className="p-1.5 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition-colors cursor-pointer"
                           >
                             <Eye className="size-4" />
@@ -141,16 +143,25 @@ const LostItems = () => {
         </div>
       </div>
 
+      {/* Add / Edit Form Modal */}
       <LostItemsModal
-        isOpen={isModalOpen}
+        isOpen={isAddEditModalOpen}
         onClose={() => {
-          setIsModalOpen(false);
+          setIsAddEditModalOpen(false);
           setEditingItem(null);
-          setIsViewMode(false);
         }}
         onSuccess={fetchAdjustments}
         editData={editingItem}
-        isViewMode={isViewMode} // প্রপ হিসেবে পাস করা হলো
+      />
+
+      {/* Modern Report / Print View Modal (Eye Icon Click) */}
+      <LostItemReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => {
+          setIsReportModalOpen(false);
+          setViewItem(null);
+        }}
+        data={viewItem}
       />
     </div>
   );
