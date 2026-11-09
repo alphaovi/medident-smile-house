@@ -68,20 +68,10 @@ const SideNavbar = () => {
       link: "/manage-customers",
     },
     {
-      name: "Purchase",
+      name: "Purchase Order",
       icon: <ShoppingCart className="size-5 shrink-0" />,
-      children: [
-        {
-          name: "Purchase Order",
-          icon: <FilePlus className="size-4 shrink-0" />,
-          link: "/purchase/purchase-order",
-        },
-        {
-          name: "Purchase Return",
-          icon: <RotateCcw className="size-4 shrink-0" />,
-          link: "/purchase/purchase-return",
-        },
-      ],
+      link: "/purchase/purchase-order",
+      
     },
     {
       name: "Sell",

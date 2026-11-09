@@ -16,6 +16,7 @@ import SaleRequest from "../Sales/SaleRequest/SaleRequest/SaleRequest";
 import SellLists from "../Sales/SellList/SellLists";
 import State from "../Settings/State/State";
 import EmployeeManagement from "../Settings/EmployeeManagement/EmployeeManagement"
+import SellReturn from "../Sales/SaleReturn/SellReturn";
 
 const router = createBrowserRouter([
   {
@@ -69,6 +70,10 @@ const router = createBrowserRouter([
       {
         path: "/sell/sell-list",
         element: <SellLists></SellLists>,
+      },
+      {
+        path: "/sell/sell-return",
+        element: <SellReturn></SellReturn>,
       },
       {
         path: "/settings",
