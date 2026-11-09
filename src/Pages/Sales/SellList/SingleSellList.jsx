@@ -1,16 +1,37 @@
+// src/components/sale/SingleSellList.jsx
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
+import { History } from "lucide-react";
 
 const SingleSellList = ({ order, onSendBack }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const orderDate = order.orderDate ? new Date(order.orderDate).toLocaleDateString() : "N/A";
-  const totalAmount = order.subtotal || 0;
-  const uniqueId = order.realId; // Backend update er jonno real _id use hobe
+  const uniqueId = order.realId;
 
   const firstProductName = order.products?.[0]?.productName || "N/A";
   const totalProductsCount = order.products?.length || 0;
+
+  // Items subtotal calculate kora
+  const itemsSubtotal = Array.isArray(order.products)
+    ? order.products.reduce((acc, item) => acc + (Number(item.total) || 0), 0)
+    : 0;
+
+  // General discount calculation
+  let generalDiscountAmount = 0;
+  const genDiscVal = Number(order.generalDiscountValue) || 0;
+  const genDiscType = order.generalDiscountType || "percentage";
+
+  if (genDiscVal > 0) {
+    if (genDiscType === "percentage" || genDiscType === "percent" || genDiscType === "%") {
+      generalDiscountAmount = (itemsSubtotal * genDiscVal) / 100;
+    } else {
+      generalDiscountAmount = genDiscVal;
+    }
+  }
+
+  const calculatedGrandTotal = Math.max(0, itemsSubtotal - generalDiscountAmount);
 
   const handleSendBackClick = () => {
     Swal.fire({
@@ -55,7 +76,7 @@ const SingleSellList = ({ order, onSendBack }) => {
           )}
         </td>
         <td className="p-3 text-right text-gray-800 font-medium">
-          ৳{totalAmount}
+          ৳{order.subtotal || calculatedGrandTotal}
         </td>
         <td className="p-3 text-right text-emerald-600 font-medium">
           ৳{order.paidAmount || 0}
@@ -81,112 +102,168 @@ const SingleSellList = ({ order, onSendBack }) => {
       {/* Modal using Portal */}
       {isModalOpen &&
         createPortal(
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-gray-100">
-              <div className="bg-gray-50 px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-xs flex justify-center items-center z-50 p-4 overflow-y-auto">
+            <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl relative max-h-[90vh] overflow-y-auto p-6 space-y-4">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 text-gray-500 cursor-pointer"
+              >
+                &times;
+              </button>
+
+              <h2 className="text-xl font-bold text-gray-800">
+                View Sale Order:{" "}
+                <span className="text-blue-600">
+                  {order.orderNo}
+                </span>
+              </h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50 border rounded-xl text-xs">
                 <div>
-                  <h2 className="text-lg font-bold text-gray-800">
-                    Order Information
-                  </h2>
-                  <span className="text-xs font-semibold text-blue-600">
-                    Order No: {order.orderNo}
+                  <span className="font-semibold text-gray-500 block">
+                    State / Region
+                  </span>
+                  <span className="font-medium text-gray-800">
+                    {order.customerState || "N/A"}
                   </span>
                 </div>
-                <button
-                  onClick={() => setIsModalOpen(false)}
-                  className="text-gray-400 hover:text-gray-600 font-bold text-xl p-1 cursor-pointer"
-                >
-                  &times;
-                </button>
+                <div>
+                  <span className="font-semibold text-gray-500 block">
+                    Customer Name
+                  </span>
+                  <span className="font-medium text-gray-800">
+                    {order.customerName}
+                  </span>
+                </div>
+                <div>
+                  <span className="font-semibold text-gray-500 block">
+                    Order Date
+                  </span>
+                  <span className="font-medium text-gray-800">
+                    {orderDate}
+                  </span>
+                </div>
               </div>
 
-              <div className="p-6 space-y-4 text-sm text-gray-700 max-h-[70vh] overflow-y-auto">
-                <div className="grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium">
-                      Customer Name
-                    </p>
-                    <p className="font-semibold text-gray-800">
-                      {order.customerName}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium">
-                      Location
-                    </p>
-                    <p className="font-semibold text-gray-800">
-                      {order.customerOffice}, {order.customerState}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium">
-                      Order Date
-                    </p>
-                    <p className="font-semibold text-gray-800">{orderDate}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium">Status</p>
-                    <p className="font-semibold text-emerald-600">
-                      {order.status}
-                    </p>
-                  </div>
-                </div>
+              <div>
+                <h3 className="text-xs font-bold text-gray-700 uppercase mb-2">
+                  Products Ordered & Detailed Discounts
+                </h3>
+                <div className="border rounded-xl overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-100 uppercase">
+                      <tr>
+                        <th className="p-2.5">Product</th>
+                        <th className="p-2.5 text-center">Qty</th>
+                        <th className="p-2.5 text-right">Unit Price</th>
+                        <th className="p-2.5 text-right">Discount Details</th>
+                        <th className="p-2.5 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {order.products?.map((item, idx) => {
+                        const unitPrice = item.unitPrice || 0;
+                        const quantity = item.orderQuantity || 0;
+                        
+                        let discVal = item.discountValue !== undefined ? Number(item.discountValue) : 0;
+                        let discAmount = item.discountAmount !== undefined ? Number(item.discountAmount) : 0;
 
-                <div className="space-y-2">
-                  <p className="text-xs font-bold text-gray-500 uppercase">
-                    Products Ordered:
-                  </p>
-                  {order.products?.map((prod, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-gray-50 p-3 rounded-xl border border-gray-100 text-xs flex justify-between items-center"
-                    >
-                      <div>
-                        <p className="font-semibold text-gray-800">
-                          {prod.productName}
-                        </p>
-                        <p className="text-gray-500">
-                          Qty: {prod.orderQuantity} | Unit Price: ৳
-                          {prod.unitPrice}
-                        </p>
-                      </div>
-                      <p className="font-bold text-gray-900">৳{prod.total}</p>
+                        return (
+                          <tr key={idx}>
+                            <td className="p-2.5 font-medium">
+                              {item.productName}
+                            </td>
+                            <td className="p-2.5 text-center">{quantity}</td>
+                            <td className="p-2.5 text-right">৳{unitPrice}</td>
+                            <td className="p-2.5 text-right text-orange-600 font-medium">
+                              {discAmount > 0 ? (
+                                <span>
+                                  {discVal}
+                                  {item.discountType === "fixed" ? "৳" : "%"} (-৳{discAmount})
+                                </span>
+                              ) : (
+                                "৳0"
+                              )}
+                            </td>
+                            <td className="p-2.5 text-right font-semibold text-emerald-600">
+                              ৳{item.total}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* PAYMENT HISTORY */}
+              <div className="bg-gray-50 border rounded-xl p-4">
+                <h4 className="font-bold text-xs uppercase tracking-wide text-gray-700 flex items-center gap-1.5 mb-2">
+                  <History className="size-4 text-teal-600" /> Payment History
+                </h4>
+                <div className="space-y-1.5 max-h-32 overflow-y-auto text-xs">
+                  {(!order.payments || order.payments.length === 0) && (!order.paymentHistory || order.paymentHistory.length === 0) ? (
+                    <div className="text-gray-400 text-center py-2">
+                      No payment history recorded.
                     </div>
-                  ))}
+                  ) : (
+                    (order.payments || order.paymentHistory).map((pay, i) => (
+                      <div
+                        key={i}
+                        className="flex justify-between items-center text-gray-700 bg-white border border-gray-200 px-3 py-1.5 rounded-lg"
+                      >
+                        <span className="font-medium">
+                          {pay.date
+                            ? new Date(pay.date).toLocaleDateString()
+                            : "N/A"}
+                        </span>
+                        <span className="font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">
+                          ৳{pay.amount}
+                        </span>
+                      </div>
+                    ))
+                  )}
                 </div>
+              </div>
 
-                <div className="space-y-2 bg-white p-2 rounded-xl border border-gray-100">
-                  <div className="flex justify-between py-1.5 border-b border-dashed border-gray-100 px-2">
-                    <span className="text-gray-500 font-medium">Subtotal:</span>
-                    <span className="font-bold text-gray-800">
-                      ৳{totalAmount}
+              {/* CALCULATION SUMMARY (Grand Total, General Discount, Paid, Due) */}
+              <div className="flex justify-end">
+                <div className="w-full md:w-80 bg-gray-50 border rounded-xl p-3 space-y-1.5 text-xs">
+                  {genDiscVal > 0 && (
+                    <div className="flex justify-between text-teal-700 font-medium border-b border-dashed pb-1">
+                      <span>
+                        General Discount (
+                        {genDiscType === "percentage" || genDiscType === "percent" || genDiscType === "%"
+                          ? `${genDiscVal}%`
+                          : `৳${genDiscVal}`}
+                        ):
+                      </span>
+                      <span>- ৳{generalDiscountAmount.toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between font-bold text-sm">
+                    <span>Grand Total:</span>
+                    <span className="text-blue-600">
+                      ৳{order.subtotal || calculatedGrandTotal.toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between py-1.5 border-b border-dashed border-gray-100 px-2">
-                    <span className="text-gray-500 font-medium">
-                      Paid Amount:
-                    </span>
-                    <span className="font-bold text-emerald-600">
-                      ৳{order.paidAmount || 0}
-                    </span>
+                  <div className="flex justify-between text-emerald-600 font-medium">
+                    <span>Paid:</span>
+                    <span>৳{order.paidAmount || 0}</span>
                   </div>
-                  <div className="flex justify-between py-1.5 px-2">
-                    <span className="text-gray-500 font-medium">
-                      Due Amount:
-                    </span>
-                    <span className="font-bold text-rose-600">
-                      ৳{order.dueAmount || 0}
-                    </span>
+                  <div className="flex justify-between text-rose-600 font-medium">
+                    <span>Due:</span>
+                    <span>৳{order.dueAmount || 0}</span>
                   </div>
                 </div>
               </div>
 
-              <div className="bg-gray-50 px-6 py-3.5 border-t border-gray-100 flex justify-between items-center">
+              <div className="bg-gray-50 px-2 py-3 border-t border-gray-100 flex justify-between items-center">
                 <button
                   onClick={handleSendBackClick}
                   className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-xs font-semibold transition shadow-sm cursor-pointer"
                 >
-                  Send Back
+                  Send Back to Pending
                 </button>
                 <button
                   onClick={() => setIsModalOpen(false)}

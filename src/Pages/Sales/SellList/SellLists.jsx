@@ -1,3 +1,4 @@
+// src/components/sale/SellLists.jsx
 import { useEffect, useState } from "react";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -20,18 +21,25 @@ const SellLists = () => {
             
             const formattedData = orderList.map((order) => ({
                 ...order,
-                // Custom readable ID or fallback to last 6 chars of _id
                 orderNo: order.id || order._id?.slice(-6).toUpperCase(),
                 realId: order._id,
                 customerName: order.customer?.name || order.customer?.customerName || "N/A",
                 customerState: order.customer?.state || order.stateOrRegion || "N/A",
                 customerOffice: order.customer?.address || order.customer?.office || "",
                 subtotal: order.grandTotal || 0,
+                paidAmount: order.paidAmount || 0,
+                dueAmount: order.dueAmount || 0,
+                generalDiscountType: order.generalDiscountType || "percentage",
+                generalDiscountValue: order.generalDiscountValue || 0,
+                payments: order.payments || order.paymentHistory || [],
                 status: order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1) : "Pending",
                 products: Array.isArray(order.products) ? order.products.map(p => ({
                     productName: p.product?.name || p.product?.productName || "Product",
                     orderQuantity: p.quantity || 1,
-                    unitPrice: p.price || 0,
+                    unitPrice: p.unitPrice || p.price || 0,
+                    discountType: p.discountType || "percentage",
+                    discountValue: p.discountValue || 0,
+                    discountAmount: p.discountAmount || 0,
                     total: p.afterDiscount || p.totalPrice || 0
                 })) : []
             }));
