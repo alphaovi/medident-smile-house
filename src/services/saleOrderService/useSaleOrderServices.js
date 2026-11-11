@@ -25,7 +25,7 @@ export const createSaleOrder = async (saleData) => {
 
   // console.log("📦 [FRONTEND] Final Payload sent to backend:", JSON.stringify(payload, null, 2));
 
-  const response = await fetch(`${API_URL}/sale-orders/create-sale-order`, {
+  const response = await fetch(`${API_URL}/sales-orders/create-sale-order`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
