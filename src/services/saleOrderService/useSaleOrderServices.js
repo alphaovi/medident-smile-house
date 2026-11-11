@@ -1,86 +1,41 @@
-// src/services/saleOrderService/useSaleOrderServices.js
-import { customerService } from "../useCustomerService/useCustomerService";
-import { stateService } from "../useStateService/useStateService";
-
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002/api/v1";
+// const API_URL = "http://localhost:5002/api/v1";
 
-export const fetchSaleDependencies = async () => {
-  try {
-    const [statesData, customersData, prodRes, groupRes, subgroupRes, inventoryRes] = await Promise.all([
-      stateService.getAllStates().catch(() => []),
-      customerService.getAllCustomers().catch(() => []),
-      fetch(`${API_URL}/products`).catch(() => ({ ok: false })),
-      fetch(`${API_URL}/product-groups`).catch(() => ({ ok: false })),
-      fetch(`${API_URL}/product-subgroups`).catch(() => ({ ok: false })),
-      fetch(`${API_URL}/inventory`).catch(() => ({ ok: false })),
-    ]);
-
-    const states = Array.isArray(statesData) ? statesData : (statesData?.data || statesData?.result || []);
-    const customers = Array.isArray(customersData) ? customersData : (customersData?.data || customersData?.result || []);
-    
-    const prodJson = prodRes.ok ? await prodRes.json() : [];
-    const rawProducts = Array.isArray(prodJson) ? prodJson : (prodJson?.data || prodJson?.result || []);
-
-    const invJson = inventoryRes.ok ? await inventoryRes.json() : [];
-    const inventories = Array.isArray(invJson) ? invJson : (invJson?.data || invJson?.result || []);
-
-    const products = rawProducts.map((prod) => {
-      const prodId = prod._id || prod.id;
-      const matchedInv = inventories.find(
-        (inv) => 
-          String(inv.product?._id || inv.product) === String(prodId) || 
-          String(inv.productId) === String(prodId)
-      );
-
-      // Current stock-ke 100% accurate rakhar jonno dynamic calculation (Inventory table er moto)
-      const totalStk = matchedInv?.totalStock ?? prod.totalStock ?? 0;
-      const totSell = matchedInv?.totalSell ?? 0;
-      const lostDmg = matchedInv?.lostDamage ?? 0;
-      const dmg = matchedInv?.damaged ?? 0;
-      const lst = matchedInv?.lost ?? 0;
-      const freeSmp = matchedInv?.freeSample ?? 0;
-
-      const exactCurrentStock = matchedInv 
-        ? Math.max(0, totalStk - totSell - lostDmg - dmg - lst - freeSmp)
-        : (prod.currentStock ?? 0);
-
-      return {
-        ...prod,
-        currentStock: exactCurrentStock, // Ebar sothik current stock (60) ashbe
-        totalStock: totalStk,
-        sellingPrice: prod.sellingPrice || prod.price || matchedInv?.avgBuyingPrice || 0,
-      };
-    });
-
-    const groupJson = groupRes.ok ? await groupRes.json() : [];
-    const groups = Array.isArray(groupJson) ? groupJson : (groupJson?.data || groupJson?.result || []);
-
-    const subgroupJson = subgroupRes.ok ? await subgroupRes.json() : [];
-    const subgroups = Array.isArray(subgroupJson) ? subgroupJson : (subgroupJson?.data || subgroupJson?.result || []);
-
-    return { 
-      states, 
-      customers, 
-      products, 
-      productsGroupSubgroup: groups, 
-      subgroups 
-    };
-  } catch (error) {
-    console.error("Error fetching sale dependencies:", error);
-    throw error;
-  }
-};
-
+// 🟢 1. Create Sale Order with Direct Local Backend URL & Console Logs
 export const createSaleOrder = async (saleData) => {
+  // console.log("🚀 [FRONTEND] createSaleOrder called with raw saleData:", saleData);
+
+  const formattedProducts = saleData.products?.map((item) => {
+    const productId = item.product?._id || item.product?.id || item.product;
+    const groupId = item.group?._id || item.group?.id || item.group;
+    const subGroupId = item.subGroup?._id || item.subGroup?.id || item.subGroup;
+
+    return {
+      ...item,
+      product: productId,
+      group: groupId,
+      subGroup: subGroupId,
+    };
+  });
+
+  const payload = {
+    ...saleData,
+    products: formattedProducts,
+  };
+
+  // console.log("📦 [FRONTEND] Final Payload sent to backend:", JSON.stringify(payload, null, 2));
+
   const response = await fetch(`${API_URL}/sale-orders/create-sale-order`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ saleOrder: saleData }),
+    body: JSON.stringify({ saleOrder: payload }),
   });
 
   const data = await response.json();
+  console.log("📥 [FRONTEND] Response received from backend:", data);
+
   if (!response.ok) {
     throw new Error(data.message || "Failed to create sale order");
   }
@@ -88,39 +43,24 @@ export const createSaleOrder = async (saleData) => {
   return data;
 };
 
-export const updateSaleOrder = async (orderId, saleData) => {
-  const response = await fetch(`${API_URL}/sale-orders/${orderId}`, {
-    method: "PATCH",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ saleOrder: saleData }),
-  });
-
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.message || "Failed to update sale order");
-  }
-
-  return data;
-};
-
-export const getAllSaleOrders = async () => {
+// 🟢 2. Fetch All Sale Orders
+export const fetchSaleOrders = async () => {
   const response = await fetch(`${API_URL}/sale-orders`);
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.message || "Failed to fetch sale orders");
   }
-  return data.data || data;
+  return Array.isArray(data) ? data : (data?.data || data?.result || []);
 };
 
-export const updateOrderStatus = async (orderId, newStatus) => {
-  const response = await fetch(`${API_URL}/sale-orders/${orderId}/status`, {
+// 🟢 3. Update Order Status
+export const updateOrderStatus = async (id, status) => {
+  const response = await fetch(`${API_URL}/sale-orders/${id}/status`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ status: newStatus.toLowerCase() }),
+    body: JSON.stringify({ status }),
   });
 
   const data = await response.json();
@@ -131,24 +71,108 @@ export const updateOrderStatus = async (orderId, newStatus) => {
   return data;
 };
 
-export const deleteSaleOrder = async (orderId) => {
-  const response = await fetch(`${API_URL}/sale-orders/${orderId}`, {
-    method: "DELETE",
+// 🟢 4. Update Sale Order Details (Using PATCH)
+export const updateSaleOrder = async (id, saleData) => {
+  const formattedProducts = saleData.products?.map((item) => ({
+    ...item,
+    product: item.product?._id || item.product?.id || item.product,
+    group: item.group?._id || item.group?.id || item.group,
+    subGroup: item.subGroup?._id || item.subGroup?.id || item.subGroup,
+  }));
+
+  const payload = {
+    ...saleData,
+    products: formattedProducts,
+  };
+
+  const response = await fetch(`${API_URL}/sale-orders/${id}`, {
+    method: "PATCH", // 🟢 PUT থেকে PATCH করা হলো
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ saleOrder: payload }),
   });
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.message || data.error || "Failed to delete sale order");
+    throw new Error(data.message || "Failed to update sale order");
   }
 
   return data;
 };
 
+// 🟢 5. Delete Sale Order
+export const deleteSaleOrder = async (id) => {
+  const response = await fetch(`${API_URL}/sale-orders/${id}`, {
+    method: "DELETE",
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to delete sale order");
+  }
+
+  return data;
+};
+
+// 🟢 6. Fetch Sale Dependencies & Inventory Sync
+export const fetchSaleDependencies = async () => {
+  try {
+    const [statesRes, custRes, prodRes, groupRes, subGroupRes, invRes] = await Promise.all([
+      fetch(`${API_URL}/states`).catch(() => null),
+      fetch(`${API_URL}/customers`).catch(() => null),
+      fetch(`${API_URL}/products`).catch(() => null),
+      fetch(`${API_URL}/product-groups`).catch(() => null),
+      fetch(`${API_URL}/product-subgroups`).catch(() => null),
+      fetch(`${API_URL}/inventory`).catch(() => null),
+    ]);
+
+    const states = statesRes && statesRes.ok ? await statesRes.json() : [];
+    const customers = custRes && custRes.ok ? await custRes.json() : [];
+    const productsRaw = prodRes && prodRes.ok ? await prodRes.json() : [];
+    const groups = groupRes && groupRes.ok ? await groupRes.json() : [];
+    const subgroups = subGroupRes && subGroupRes.ok ? await subGroupRes.json() : [];
+    const inventoriesRaw = invRes && invRes.ok ? await invRes.json() : [];
+
+    const productsList = Array.isArray(productsRaw) ? productsRaw : (productsRaw?.data || []);
+    const invList = Array.isArray(inventoriesRaw) ? inventoriesRaw : (inventoriesRaw?.data || []);
+
+    const mergedProducts = productsList.map((prod) => {
+      const pId = prod._id || prod.id;
+      const matchedInv = invList.find((inv) => {
+        const invProdId = typeof inv.product === "object" ? (inv.product?._id || inv.product?.id) : inv.product;
+        return String(invProdId) === String(pId) || String(inv._id) === String(pId);
+      });
+
+      const actualStock = matchedInv?.currentStock !== undefined 
+        ? Number(matchedInv.currentStock) 
+        : (prod.currentStock !== undefined ? Number(prod.currentStock) : Number(prod.quantity || 0));
+
+      return {
+        ...prod,
+        currentStock: actualStock,
+      };
+    });
+
+    return {
+      states: Array.isArray(states) ? states : (states?.data || []),
+      customers: Array.isArray(customers) ? customers : (customers?.data || []),
+      products: mergedProducts,
+      productsGroupSubgroup: Array.isArray(groups) ? groups : (groups?.data || []),
+      subgroups: Array.isArray(subgroups) ? subgroups : (subgroups?.data || []),
+    };
+  } catch (error) {
+    console.error("Error fetching sale dependencies:", error);
+    throw error;
+  }
+};
+
 export const useSaleOrderServices = {
-  fetchSaleDependencies,
   createSaleOrder,
-  updateSaleOrder,
-  getAllSaleOrders,
+  getAllSaleOrders: fetchSaleOrders,
+  fetchSaleOrders,
   updateOrderStatus,
+  updateSaleOrder,
   deleteSaleOrder,
+  fetchSaleDependencies,
 };

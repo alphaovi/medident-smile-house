@@ -13,12 +13,10 @@ const SingleSellList = ({ order, onSendBack }) => {
   const firstProductName = order.products?.[0]?.productName || "N/A";
   const totalProductsCount = order.products?.length || 0;
 
-  // Items subtotal calculate kora
   const itemsSubtotal = Array.isArray(order.products)
     ? order.products.reduce((acc, item) => acc + (Number(item.total) || 0), 0)
     : 0;
 
-  // General discount calculation
   let generalDiscountAmount = 0;
   const genDiscVal = Number(order.generalDiscountValue) || 0;
   const genDiscType = order.generalDiscountType || "percentage";
@@ -36,7 +34,7 @@ const SingleSellList = ({ order, onSendBack }) => {
   const handleSendBackClick = () => {
     Swal.fire({
       title: "Are you sure?",
-      text: `Order No: ${order.orderNo} status will be changed to Pending!`,
+      text: `Order No: ${order.orderNo} will be sent back to Pending & stock will be restored!`,
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#d97706",
@@ -44,12 +42,12 @@ const SingleSellList = ({ order, onSendBack }) => {
       confirmButtonText: "Yes, Send Back!",
     }).then((result) => {
       if (result.isConfirmed) {
-        onSendBack(uniqueId);
+        onSendBack(uniqueId, "pending");
         setIsModalOpen(false);
 
         Swal.fire(
           "Sent Back!",
-          "Order status has been changed to Pending.",
+          "Order status changed to Pending and stock has been restored.",
           "success",
         );
       }
@@ -85,7 +83,7 @@ const SingleSellList = ({ order, onSendBack }) => {
           ৳{order.dueAmount || 0}
         </td>
         <td className="p-3 text-center">
-          <span className="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700 border border-emerald-300">
+          <span className="px-2.5 py-1 rounded-full text-xs font-semibold border bg-emerald-100 text-emerald-700 border-emerald-300">
             {order.status || "Delivered"}
           </span>
         </td>
@@ -226,7 +224,7 @@ const SingleSellList = ({ order, onSendBack }) => {
                 </div>
               </div>
 
-              {/* CALCULATION SUMMARY (Grand Total, General Discount, Paid, Due) */}
+              {/* CALCULATION SUMMARY */}
               <div className="flex justify-end">
                 <div className="w-full md:w-80 bg-gray-50 border rounded-xl p-3 space-y-1.5 text-xs">
                   {genDiscVal > 0 && (

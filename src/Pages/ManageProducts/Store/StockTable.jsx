@@ -4,6 +4,12 @@ const StockTable = ({ stockData, onPriceChange }) => {
   const [localPrices, setLocalPrices] = useState({});
 
   const calculateCurrentStock = (item) => {
+    // 🟢 ব্যাকএন্ড থেকে আসা সঠিক currentStock সরাসরি ব্যবহার করা হলো (যাতে ডাটাবেজের মান হুবহু মিলে যায়)
+    if (item.currentStock !== undefined && item.currentStock !== null) {
+      return Number(item.currentStock) || 0;
+    }
+
+    // ব্যাকএন্ডে না থাকলে ফলব্যাক ফর্মুলা
     const totalStock = Number(item.totalStock) || 0;
     const purchaseReturn = Number(item.purchaseReturn) || 0;
     const sellReturn = Number(item.sellReturn) || 0;
@@ -11,15 +17,14 @@ const StockTable = ({ stockData, onPriceChange }) => {
     const lost = Number(item.lost) || 0;
     const freeSample = Number(item.freeSample) || 0;
     const totalSell = Number(item.totalSell) || 0;
-    
-    // সঠিক কারেন্ট স্টক ফর্মুলা
+
     return totalStock - purchaseReturn + sellReturn - totalSell - damaged - lost - freeSample;
   };
 
   const totalBuyingValue = stockData.reduce((total, item) => {
     const currentStock = calculateCurrentStock(item);
     const itemId = item.id || item._id;
-    
+
     const originalPrice = Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
     const activePrice = localPrices[itemId] !== undefined ? Number(localPrices[itemId]) || 0 : originalPrice;
 
@@ -38,7 +43,7 @@ const StockTable = ({ stockData, onPriceChange }) => {
         item.sellingPrice ??
           item.product?.sellingPrice ??
           item.product?.price ??
-          item.totalSaleValue / (currentStock || 1),
+          0,
       ) || 0;
 
     const rowSaleVal =
@@ -105,13 +110,13 @@ const StockTable = ({ stockData, onPriceChange }) => {
               stockData.map((item, idx) => {
                 const itemId = item.id || item._id;
                 const currentStock = calculateCurrentStock(item);
-                
+
                 const originalPrice =
                   Number(item.avgBuyingPrice ?? item.averageBuyingPrice) || 0;
-                
+
                 const isEdited = localPrices[itemId] !== undefined;
-                const displayPrice = isEdited 
-                  ? localPrices[itemId] 
+                const displayPrice = isEdited
+                  ? localPrices[itemId]
                   : originalPrice.toFixed(2);
 
                 const activePriceNum = isEdited ? Number(localPrices[itemId]) || 0 : originalPrice;
@@ -163,21 +168,21 @@ const StockTable = ({ stockData, onPriceChange }) => {
                     <td className="py-3.5 px-3 text-center text-blue-600 font-medium">
                       {Number(item.sellReturn) || 0}
                     </td>
-                    {/* আলাদা Damaged কলাম */}
                     <td className="py-3.5 px-3 text-center text-red-500 font-medium">
                       {Number(item.damaged) || 0}
                     </td>
-                    {/* আলাদা Lost কলাম */}
                     <td className="py-3.5 px-3 text-center text-rose-700 font-medium">
                       {Number(item.lost) || 0}
                     </td>
-                    {/* Free Sample কলাম */}
                     <td className="py-3.5 px-3 text-center text-purple-600 font-medium">
                       {Number(item.freeSample) || 0}
                     </td>
-                    <td className="py-3.5 px-3 text-center text-emerald-600 font-medium">
+
+                    {/* 🟢 Total Sell Column */}
+                    <td className="py-3.5 px-3 text-center text-emerald-600 font-bold">
                       {Number(item.totalSell) || 0}
                     </td>
+
                     <td className="py-3.5 px-3 text-center text-amber-600 font-medium">
                       {onTransitVal}
                     </td>

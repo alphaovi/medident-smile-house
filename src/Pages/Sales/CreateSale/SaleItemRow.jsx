@@ -50,20 +50,15 @@ const SaleItemRow = ({
           prod.name || 
           prod.productName || 
           prod.product?.name || 
-          prod.product?.productName || 
           "Unnamed Product";
 
-        const stockVal = 
-          prod.currentStock ?? 
-          (prod.totalStock !== undefined && prod.totalSell !== undefined ? prod.totalStock - prod.totalSell : null) ?? 
-          prod.stock ?? 
-          0;
+        // 🟢 ইনভেন্টরি ডাটাবেজের আসল currentStock নেওয়া
+        const stockVal = prod.currentStock !== undefined ? Number(prod.currentStock) : (Number(prod.quantity) || 0);
 
         const priceVal = 
           prod.sellingPrice || 
           prod.unitPrice || 
           prod.price || 
-          prod.avgBuyingPrice || 
           0;
 
         return {
@@ -77,8 +72,19 @@ const SaleItemRow = ({
       });
   }, [products, item.selectedGroup, item.selectedSubGroup]);
 
-  const currentStockVal = calcItem?.currentStock ?? item.currentStock ?? 0;
-  const isOutOfStock = currentStockVal <= 0 && item.productId;
+  // 🟢 বর্তমান সিলেক্টেড প্রোডাক্ট বের করা (Safe ID check)
+  const currentProdId = item.productId?.value || item.productId;
+  const selectedProductObj = availableProducts.find(
+    (p) => String(p.value) === String(currentProdId) || String(p._id) === String(currentProdId)
+  );
+
+  // 🟢 স্টকের মান আসল অবজেক্ট থেকে বের করা
+  const currentStockVal = selectedProductObj
+    ? Number(selectedProductObj.currentStock)
+    : (item.currentStock !== undefined ? Number(item.currentStock) : 0);
+
+  // 🟢 শুধুমাত্র প্রোডাক্ট সিলেক্ট করা থাকার পর স্টক 0 বা তার কম হলে Out of stock দেখাবে
+  const isOutOfStock = Boolean(currentProdId) && currentStockVal <= 0;
 
   return (
     <div className={`flex flex-col lg:flex-row items-stretch lg:items-center gap-2 p-3 rounded-xl border transition-colors ${
@@ -90,7 +96,6 @@ const SaleItemRow = ({
         <select
           className="select select-bordered select-sm w-full"
           value={item.selectedGroup?.value || item.selectedGroup || ""}
-          disabled={isOutOfStock}
           onChange={(e) => {
             const val = e.target.value;
             const found = availableGroups.find((g) => String(g.value) === String(val));
@@ -112,7 +117,7 @@ const SaleItemRow = ({
         <select
           className="select select-bordered select-sm w-full"
           value={item.selectedSubGroup?.value || item.selectedSubGroup || ""}
-          disabled={!item.selectedGroup || isOutOfStock}
+          disabled={!item.selectedGroup}
           onChange={(e) => {
             const val = e.target.value;
             const found = availableSubgroups.find((s) => String(s.value) === String(val));
@@ -133,8 +138,8 @@ const SaleItemRow = ({
         <label className="text-[10px] font-bold lg:hidden text-base-content/70">Product</label>
         <select
           className="select select-bordered select-sm w-full"
-          value={item.productId?.value || item.productId || ""}
-          disabled={!item.selectedGroup || isOutOfStock}
+          value={currentProdId || ""}
+          disabled={!item.selectedGroup}
           onChange={(e) => {
             const val = e.target.value;
             const found = availableProducts.find((p) => String(p.value) === String(val));
@@ -150,7 +155,7 @@ const SaleItemRow = ({
         </select>
       </div>
 
-      {/* Stock */}
+      {/* Stock Display Box */}
       <div className="w-full lg:w-16">
         <label className="text-[10px] font-bold lg:hidden text-base-content/70">Stock</label>
         <input
@@ -188,7 +193,7 @@ const SaleItemRow = ({
         />
       </div>
 
-      {/* Discount Value & Type (STRICT BINDING) */}
+      {/* Discount Value & Type */}
       <div className="w-full lg:w-32 flex gap-1">
         <input
           type="number"
@@ -205,7 +210,6 @@ const SaleItemRow = ({
           value={item.discountType === "flat" ? "flat" : "percent"}
           onChange={(e) => {
             const val = e.target.value;
-            // Explicitly saving "percent" or "flat"
             const normalized = (val === "flat" || val === "৳") ? "flat" : "percent";
             handleItemChange(idx, "discountType", normalized);
           }}

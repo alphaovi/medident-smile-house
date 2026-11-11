@@ -100,7 +100,7 @@ const CreateSale = ({ onSuccess = () => {} }) => {
   const customerOptions = useMemo(() => {
     return Array.isArray(filteredCustomers)
       ? filteredCustomers.map((c) => ({
-          value: c?._id || c?.id, // Real MongoDB ObjectId priority dewa holo
+          value: c?._id || c?.id,
           label: c?.customerName || c?.name,
         }))
       : [];
@@ -127,22 +127,22 @@ const CreateSale = ({ onSuccess = () => {} }) => {
       currentRow.discountValue = 0;
     } else if (field === "productId") {
       currentRow.productId = value;
-      const targetId = value?.value || value;
+      const targetId = typeof value === "object" && value !== null ? (value.value || value._id || value.id) : value;
       
       const selectedProd = products.find(
         (p) => 
-          p._id === targetId || 
-          p.id === targetId || 
-          p.product === targetId || 
-          p.product?._id === targetId
+          String(p._id) === String(targetId) || 
+          String(p.id) === String(targetId) || 
+          String(p.product) === String(targetId) || 
+          String(p.product?._id) === String(targetId)
       );
 
       if (selectedProd) {
         currentRow.productName = selectedProd.name || selectedProd.productName || selectedProd.product?.name || "";
-        currentRow.currentStock = selectedProd.currentStock ?? 0;
+        currentRow.currentStock = selectedProd.currentStock !== undefined ? Number(selectedProd.currentStock) : (Number(selectedProd.quantity) || 0);
         currentRow.unitPrice = selectedProd.sellingPrice ?? selectedProd.unitPrice ?? selectedProd.price ?? 0;
-        currentRow.selectedGroup = selectedProd.group?._id || selectedProd.group || currentRow.selectedGroup;
-        currentRow.selectedSubGroup = selectedProd.subGroup?._id || selectedProd.subGroup || currentRow.selectedSubGroup;
+        currentRow.selectedGroup = selectedProd.group?._id || selectedProd.group?._id || selectedProd.group || currentRow.selectedGroup;
+        currentRow.selectedSubGroup = selectedProd.subGroup?._id || selectedProd.subGroup?._id || selectedProd.subGroup || currentRow.selectedSubGroup;
       }
     } else if (["orderQty", "unitPrice", "discountValue"].includes(field)) {
       currentRow[field] = value === "" ? "" : Number(value);
@@ -198,20 +198,25 @@ const CreateSale = ({ onSuccess = () => {} }) => {
 
       const matchedProd = products.find(
         (p) => 
-          p._id === targetId || 
-          p.id === targetId || 
-          p.product === targetId || 
-          p.product?._id === targetId
+          String(p._id) === String(targetId) || 
+          String(p.id) === String(targetId) || 
+          String(p.product) === String(targetId) || 
+          String(p.product?._id) === String(targetId)
       );
+
+      // 🟢 আইডি এক্সট্রাকশন আরও নিখুঁত করা হলো
+      const groupId = matchedProd?.group?._id || matchedProd?.group || (typeof item.selectedGroup === "object" ? (item.selectedGroup?.value || item.selectedGroup?._id) : item.selectedGroup);
+      const subGroupId = matchedProd?.subGroup?._id || matchedProd?.subGroup || (typeof item.selectedSubGroup === "object" ? (item.selectedSubGroup?.value || item.selectedSubGroup?._id) : item.selectedSubGroup);
+      const productObjId = matchedProd?._id || matchedProd?.id || matchedProd?.product?._id || targetId;
 
       return {
         ...item,
         discountType: dType,
         discountValue: dVal,
-        groupId: matchedProd?.group?._id || matchedProd?.group || (typeof item.selectedGroup === "object" ? item.selectedGroup?.value : item.selectedGroup),
-        subGroupId: matchedProd?.subGroup?._id || matchedProd?.subGroup || (typeof item.selectedSubGroup === "object" ? item.selectedSubGroup?.value : item.selectedSubGroup),
-        productObjId: matchedProd?.product?._id || matchedProd?.product || matchedProd?._id || targetId,
-        currentStock: matchedProd?.currentStock ?? item.currentStock ?? 0,
+        groupId,
+        subGroupId,
+        productObjId,
+        currentStock: matchedProd?.currentStock !== undefined ? Number(matchedProd.currentStock) : item.currentStock,
         totalPrice,
         discountAmount,
         afterDiscountPrice,
@@ -271,14 +276,14 @@ const CreateSale = ({ onSuccess = () => {} }) => {
 
     for (const [idx, item] of validItems.entries()) {
       if (!item.groupId || !item.subGroupId || !item.productObjId) {
-        toast.error(`Row ${idx + 1}: Group, Sub-Group, and Product are required!`, { autoClose: 3000 });
+        toast.error(`Row ${idx + 1}: Group, Sub-Group, and Product IDs are missing!`, { autoClose: 3000 });
         return;
       }
     }
 
     Swal.fire({
       title: "Confirm Sale Order?",
-      text: "This will create a new sales transaction with 'pending' status.",
+      text: "This will create a new sales transaction and update stock inventory.",
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#0d9488",
@@ -299,9 +304,9 @@ const CreateSale = ({ onSuccess = () => {} }) => {
             products: validItems.map((item) => ({
               state: stateVal,
               customer: customerId,
-              group: item.groupId,
-              subGroup: item.subGroupId,
-              product: item.productObjId,
+              group: typeof item.groupId === "object" ? item.groupId._id || item.groupId.value : item.groupId,
+              subGroup: typeof item.subGroupId === "object" ? item.subGroupId._id || item.subGroupId.value : item.subGroupId,
+              product: typeof item.productObjId === "object" ? item.productObjId._id || item.productObjId.value : item.productObjId,
               quantity: Number(item.orderQty),
               unitPrice: Number(item.unitPrice),
               discountType: item.discountType === "flat" ? "fixed" : "percentage",
@@ -317,6 +322,9 @@ const CreateSale = ({ onSuccess = () => {} }) => {
             status: "pending",
           };
 
+          // 🟢 সাবমিট করার আগে পেলোড কনসোলে চেক করা
+          console.log("🚀 [FRONTEND SUBMIT] Final Payload:", JSON.stringify(saleOrderPayload, null, 2));
+
           await createSaleOrder(saleOrderPayload);
 
           toast.success("Sell order created successfully!", { autoClose: 2000 });
@@ -327,6 +335,7 @@ const CreateSale = ({ onSuccess = () => {} }) => {
           setOrderDate(getTodayISO());
           setGlobalDiscount({ type: "percent", value: 0 });
           setPaidAmount(0);
+
           onSuccess();
         } catch (error) {
           console.error("Submission error:", error);

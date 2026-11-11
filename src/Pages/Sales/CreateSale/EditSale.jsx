@@ -148,7 +148,7 @@ const EditSale = ({ editData, onUpdateSuccess = () => {} }) => {
                 selectedSubGroup: subGroupId,
                 productId: matchedProd ? { value: matchedProd._id || matchedProd.id, label: matchedProd.name || matchedProd.productName } : targetProdId,
                 productName: item.productName || matchedProd?.name || item.product?.name || "",
-                currentStock: matchedProd?.currentStock ?? 0,
+                currentStock: matchedProd?.currentStock !== undefined ? Number(matchedProd.currentStock) : 0,
                 orderQty: item.orderQty || item.quantity || 0,
                 unitPrice: unitP,
                 discountType: discType,
@@ -232,7 +232,8 @@ const EditSale = ({ editData, onUpdateSuccess = () => {} }) => {
 
       if (selectedProd) {
         currentRow.productName = selectedProd.name || selectedProd.productName || selectedProd.product?.name || "";
-        currentRow.currentStock = selectedProd.currentStock ?? 0;
+        // 🟢 সঠিক currentStock বসানো
+        currentRow.currentStock = selectedProd.currentStock !== undefined ? Number(selectedProd.currentStock) : 0;
         currentRow.unitPrice = selectedProd.sellingPrice ?? selectedProd.unitPrice ?? selectedProd.price ?? 0;
         currentRow.selectedGroup = selectedProd.group?._id || selectedProd.group || currentRow.selectedGroup;
         currentRow.selectedSubGroup = selectedProd.subGroup?._id || selectedProd.subGroup || currentRow.selectedSubGroup;
@@ -304,7 +305,7 @@ const EditSale = ({ editData, onUpdateSuccess = () => {} }) => {
         groupId: matchedProd?.group?._id || matchedProd?.group || (typeof item.selectedGroup === "object" ? item.selectedGroup?.value : item.selectedGroup),
         subGroupId: matchedProd?.subGroup?._id || matchedProd?.subGroup || (typeof item.selectedSubGroup === "object" ? item.selectedSubGroup?.value : item.selectedSubGroup),
         productObjId: matchedProd?.product?._id || matchedProd?.product || matchedProd?._id || targetId,
-        currentStock: matchedProd?.currentStock ?? item.currentStock ?? 0,
+        currentStock: matchedProd?.currentStock !== undefined ? Number(matchedProd.currentStock) : item.currentStock,
         totalPrice,
         discountAmount,
         afterDiscountPrice,
@@ -521,7 +522,6 @@ const EditSale = ({ editData, onUpdateSuccess = () => {} }) => {
                   onChange={(e) => setPaidAmount(e.target.value)}
                   className="input input-bordered input-sm w-full"
                 />
-                {/* 5px niche previous paid value readonly akare show korbe */}
                 <div className="mt-[5px] text-[11px] text-gray-500 font-medium">
                   Previous Paid: <span className="text-emerald-600 font-semibold">৳{previousPaidTotal}</span> (Total Paid so far: ৳{calculations.totalPaidCalculated})
                 </div>

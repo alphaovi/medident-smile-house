@@ -6,7 +6,6 @@ import "react-toastify/dist/ReactToastify.css";
 import Swal from "sweetalert2";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-
 import { useSaleOrderServices } from "../../../../services/saleOrderService/useSaleOrderServices";
 import EditSale from "../../CreateSale/EditSale";
 
@@ -41,14 +40,19 @@ const SaleRequest = () => {
       queryClient.invalidateQueries(["saleOrders"]);
       toast.success(`Order status updated to ${newStatus}!`);
     } catch (error) {
-      toast.error("Failed to update status on server.");
+      toast.error(error.message || "Failed to update status on server.");
     }
   };
 
   const handleDeleteOrder = (order) => {
+    if (order.status?.toLowerCase() === "delivered") {
+      toast.error("Delivered orders cannot be deleted directly! Send back to pending first.");
+      return;
+    }
+
     Swal.fire({
       title: "Are you sure?",
-      text: `Do you want to delete this order?`,
+      text: `Do you want to delete this order? Stock will be restored if approved.`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
@@ -61,7 +65,7 @@ const SaleRequest = () => {
           queryClient.invalidateQueries(["saleOrders"]);
           toast.warn(`Order deleted successfully.`, { autoClose: 2000 });
         } catch (error) {
-          toast.error("Failed to delete order from server.");
+          toast.error(error.message || "Failed to delete order from server.");
         }
       }
     });
@@ -141,8 +145,11 @@ const SaleRequest = () => {
     toast.success("Sell order updated successfully!");
   };
 
+  // 🟢 Pending এবং Approved অর্ডারগুলোই Sell Requests এ থাকবে (Delivered হয়ে গেলে Sell Lists-এ যাবে)
   const activeOrders = orders.filter(
-    (order) => order.status?.toLowerCase() !== "delivered",
+    (order) =>
+      order.status?.toLowerCase() === "pending" ||
+      order.status?.toLowerCase() === "approved"
   );
 
   if (loading) {
@@ -172,7 +179,7 @@ const SaleRequest = () => {
             {activeOrders.length === 0 ? (
               <tr>
                 <td colSpan="8" className="p-8 text-center text-gray-500">
-                  No pending orders.
+                  No pending/approved orders.
                 </td>
               </tr>
             ) : (
@@ -209,7 +216,7 @@ const SaleRequest = () => {
                       onChange={(e) =>
                         handleStatusChange(order._id, e.target.value)
                       }
-                      className="px-2 py-1 rounded text-xs border bg-amber-50 text-amber-700 cursor-pointer"
+                      className="px-2 py-1 rounded text-xs border bg-amber-50 text-amber-700 cursor-pointer font-semibold"
                     >
                       <option value="Pending">Pending</option>
                       <option value="Approved">Approved</option>
@@ -411,21 +418,21 @@ const SaleRequest = () => {
 
       {/* EDIT MODAL */}
       {isEditModalOpen && (
-  <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
-    <div className="bg-white w-full h-full md:w-[98vw] md:h-[96vh] rounded-none md:rounded-2xl shadow-2xl relative overflow-y-auto p-4 md:p-6">
-      <button
-        onClick={() => setIsEditModalOpen(false)}
-        className="absolute top-4 right-4 p-2 text-gray-500 hover:bg-gray-100 rounded-full cursor-pointer z-10"
-      >
-        <X className="size-6" />
-      </button>
-      <EditSale
-        editData={selectedOrderToEdit}
-        onUpdateSuccess={handleUpdateSuccess}
-      />
-    </div>
-  </div>
-)}
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-0 md:p-4 overflow-y-auto">
+          <div className="bg-white w-full h-full md:w-[98vw] md:h-[96vh] rounded-none md:rounded-2xl shadow-2xl relative overflow-y-auto p-4 md:p-6">
+            <button
+              onClick={() => setIsEditModalOpen(false)}
+              className="absolute top-4 right-4 p-2 text-gray-500 hover:bg-gray-100 rounded-full cursor-pointer z-10"
+            >
+              <X className="size-6" />
+            </button>
+            <EditSale
+              editData={selectedOrderToEdit}
+              onUpdateSuccess={handleUpdateSuccess}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

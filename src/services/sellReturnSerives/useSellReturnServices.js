@@ -1,13 +1,10 @@
 // src/services/sellReturnService/useSellReturnServices.js
 import axios from "axios";
 
-// আপনার লোকাল ব্যাকএন্ডের সঠিক পোর্ট এখানে বসাবেন (যেমন 5002 হলে 5002, অন্যথায় 5000)
-const API_BASE_URL = 
-  import.meta.env.DEV 
-    ? "http://localhost:5002/api/v1" 
-    : "https://alphaovi-medident-backend.vercel.app/api/v1";
+// 🟢 এনভায়রনমেন্ট ভেরিয়েবল বা লোকাল পোর্ট সেটআপ
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5002/api/v1";
 
-const SELL_RETURNS_ENDPOINT = `${API_BASE_URL}/sell-returns`;
+const SELL_RETURNS_ENDPOINT = `${API_URL}/sell-returns`;
 
 export const useSellReturnServices = {
   createSellReturn: async (payload) => {

@@ -57,7 +57,6 @@ const StockManagement = () => {
   };
 
   return (
-    // w-full r max-w-full use kora hoyeche jate choto/boro je kono display-te full width nibe
     <div className="w-full px-2 sm:px-4 lg:px-6 py-6 space-y-6">
       <div className="flex items-center justify-between bg-base-100 p-6 rounded-2xl border border-base-300 shadow-sm">
         <div>
@@ -68,6 +67,13 @@ const StockManagement = () => {
             Manage and view your current stock inventory from live backend.
           </p>
         </div>
+        {/* 🟢 রিফ্রেশ বাটন যুক্ত করা হলো যাতে এক ক্লিকেই লেটেস্ট স্টক ডেটা ফেচ করা যায় */}
+        <button
+          onClick={fetchInventory}
+          className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white border-0 shadow-sm"
+        >
+          Refresh Stock
+        </button>
       </div>
 
       <div className="bg-base-100 rounded-2xl border border-base-300 shadow-sm overflow-hidden p-2 sm:p-6 w-full">

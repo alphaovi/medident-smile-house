@@ -15,12 +15,11 @@ import { fetchSaleDependencies } from "../../../services/saleOrderService/useSal
 import { useSellReturnServices } from "../../../services/sellReturnSerives/useSellReturnServices";
 
 const SellReturn = () => {
-  const [activeTab, setActiveTab] = useState("list"); // 'list', 'create', or 'edit'
+  const [activeTab, setActiveTab] = useState("list");
   const [editingId, setEditingId] = useState(null);
   const [returnsList, setReturnsList] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Dependency Data states
   const [states, setStates] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -28,7 +27,6 @@ const SellReturn = () => {
   const [subgroupsList, setSubgroupsList] = useState([]);
   const [isDataLoading, setIsDataLoading] = useState(true);
 
-  // Form Selections
   const [selectedState, setSelectedState] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
@@ -51,17 +49,16 @@ const SellReturn = () => {
     currentStock: 0,
     orderQty: 0,
     unitPrice: 0,
-    discountType: "percent",
+    discountType: "flat",
     discountValue: 0,
   };
 
   const [items, setItems] = useState([initialRow]);
-  const [globalDiscount, setGlobalDiscount] = useState({ type: "percent", value: 0 });
+  const [globalDiscount, setGlobalDiscount] = useState({ type: "flat", value: 0 });
   
-  // Payment Tracking States
-  const [paidAmount, setPaidAmount] = useState(0); // নতুন টাকা
-  const [previousPaidTotal, setPreviousPaidTotal] = useState(0); // আগে দেওয়া মোট টাকা
-  const [paymentHistory, setPaymentHistory] = useState([]); // পুরো পেমেন্ট হিস্ট্রি
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [previousPaidTotal, setPreviousPaidTotal] = useState(0);
+  const [paymentHistory, setPaymentHistory] = useState([]);
 
   useEffect(() => {
     fetchReturns();
@@ -74,28 +71,33 @@ const SellReturn = () => {
       const res = await useSellReturnServices.getAllSellReturns();
       const list = Array.isArray(res) ? res : res?.data || [];
 
-      const formatted = list.map((item) => ({
-        ...item,
-        returnNo: item._id?.slice(-6).toUpperCase(),
-        customerName: item.customer?.name || item.customer?.customerName || "N/A",
-        customerState: item.customer?.state || item.stateOrRegion || "N/A",
-        customerOffice: item.customer?.address || item.customer?.office || "",
-        grandTotal: item.grandTotal || 0,
-        paidAmount: item.paidAmount || 0,
-        payments: Array.isArray(item.payments) ? item.payments : [],
-        products: Array.isArray(item.products)
-          ? item.products.map((p) => ({
-              ...p,
-              productName: p.product?.name || p.product?.productName || "Product",
-              orderQuantity: p.quantity || 1,
-              unitPrice: p.unitPrice || 0,
-              discountType: p.discountType || "percentage",
-              discountValue: p.discountValue || 0,
-              discountAmount: p.discountAmount || 0,
-              total: p.afterDiscount || p.totalPrice || 0,
-            }))
-          : [],
-      }));
+      const formatted = list.map((item) => {
+        const paymentsArr = Array.isArray(item.payments) ? item.payments : [];
+        const totalPaid = paymentsArr.reduce((acc, p) => acc + Number(p.amount || 0), 0) || Number(item.paidAmount || 0);
+
+        return {
+          ...item,
+          returnNo: item._id?.slice(-6).toUpperCase(),
+          customerName: item.customer?.name || item.customer?.customerName || "N/A",
+          customerState: item.customer?.state || item.stateOrRegion || "N/A",
+          customerOffice: item.customer?.address || item.customer?.office || "",
+          grandTotal: item.grandTotal || 0,
+          paidAmount: totalPaid,
+          payments: paymentsArr,
+          products: Array.isArray(item.products)
+            ? item.products.map((p) => ({
+                ...p,
+                productName: p.product?.name || p.product?.productName || "Product",
+                orderQuantity: p.quantity || 1,
+                unitPrice: p.unitPrice || 0,
+                discountType: p.discountType || "fixed",
+                discountValue: p.discountValue || 0,
+                discountAmount: p.discountAmount || 0,
+                total: p.afterDiscount || p.totalPrice || 0,
+              }))
+            : [],
+        };
+      });
 
       setReturnsList(formatted);
     } catch (err) {
@@ -124,11 +126,9 @@ const SellReturn = () => {
     }
   };
 
-  // Edit Trigger Function
   const handleEditReturn = (returnOrder) => {
     setEditingId(returnOrder._id);
 
-    // State & Customer Fill
     const regionStr = returnOrder.customerState || returnOrder.stateOrRegion || "";
     if (regionStr) setSelectedState({ value: regionStr, label: regionStr });
 
@@ -148,19 +148,21 @@ const SellReturn = () => {
       setReturnDate(formattedDate);
     }
 
+    // 🟢 আগের ডিসকাউন্ট ভ্যালু এবং টাইপ সঠিকভাবে এডিট ফর্মে লোড করা হলো যাতে ইউজার ক্লিক করে পরিবর্তন করতে পারে
+    const rawDiscType = returnOrder.generalDiscountType;
+    const isPercent = rawDiscType === "percentage" || rawDiscType === "percent" || rawDiscType === "%";
+    
     setGlobalDiscount({
-      type: returnOrder.generalDiscountType === "percentage" ? "percent" : "flat",
-      value: returnOrder.generalDiscountValue || 0,
+      type: isPercent ? "percent" : "flat",
+      value: returnOrder.generalDiscountValue !== undefined ? Number(returnOrder.generalDiscountValue) : 0,
     });
 
-    // Payments history populate
     const loadedPayments = Array.isArray(returnOrder.payments) ? returnOrder.payments : [];
     setPaymentHistory(loadedPayments);
-    const totalPrevPaid = loadedPayments.reduce((acc, p) => acc + Number(p.amount || 0), Number(returnOrder.paidAmount || 0));
+    const totalPrevPaid = loadedPayments.reduce((acc, p) => acc + Number(p.amount || 0), 0);
     setPreviousPaidTotal(totalPrevPaid);
     setPaidAmount(0);
 
-    // Product rows mapping
     if (Array.isArray(returnOrder.products) && returnOrder.products.length > 0) {
       const mappedRows = returnOrder.products.map((item) => {
         const targetProdId = item.product?._id || item.product;
@@ -176,8 +178,8 @@ const SellReturn = () => {
           currentStock: matchedProd?.currentStock ?? 0,
           orderQty: item.quantity || item.orderQuantity || 0,
           unitPrice: item.unitPrice || 0,
-          discountType: item.discountType === "fixed" ? "flat" : "percent",
-          discountValue: item.discountValue || 0,
+          discountType: item.discountType === "percentage" || item.discountType === "percent" ? "percent" : "flat",
+          discountValue: Number(item.discountValue) || 0,
         };
       });
       setItems([...mappedRows, { ...initialRow }]);
@@ -199,7 +201,7 @@ const SellReturn = () => {
 
   const filteredCustomers = useMemo(() => {
     const currentState = selectedState?.value || selectedState;
-    if (!currentState || currentState === "All") return customers;
+    if (!currentState || currentState === "All" || currentState === "All States") return customers;
     return customers.filter(
       (c) => c.state === currentState || c.customerState === currentState || c.division === currentState
     );
@@ -332,7 +334,8 @@ const SellReturn = () => {
 
     const gVal = Number(globalDiscount.value) || 0;
     let globalDiscountAmount = 0;
-    if (globalDiscount.type === "percent") {
+    
+    if (globalDiscount.type === "percent" || globalDiscount.type === "percentage") {
       globalDiscountAmount = (rawSubtotal * gVal) / 100;
     } else {
       globalDiscountAmount = gVal;
@@ -340,7 +343,6 @@ const SellReturn = () => {
 
     const grandTotal = Math.max(0, rawSubtotal - globalDiscountAmount);
     
-    // Total Paid & Due Calculations
     const newPaidNum = Number(paidAmount) || 0;
     const totalPaidCalculated = previousPaidTotal + newPaidNum;
     const dueAmount = Math.max(0, grandTotal - totalPaidCalculated);
@@ -375,14 +377,14 @@ const SellReturn = () => {
     }
 
     const stateVal = selectedState ? (selectedState?.value || selectedState) : "";
-    if (!stateVal || stateVal === "All") {
+    if (!stateVal || stateVal === "All" || stateVal === "All States") {
       toast.error("Please select a valid State / Region!", { autoClose: 2500 });
       return;
     }
 
     Swal.fire({
       title: editingId ? "Update Sell Return?" : "Confirm Sell Return?",
-      text: editingId ? "This will update the existing sell return details." : "This will add the returned products back to the store stock.",
+      text: editingId ? "This will update the existing sell return details & adjust stock." : "This will add the returned products back to the store stock.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#ea580c",
@@ -391,11 +393,11 @@ const SellReturn = () => {
     }).then(async (result) => {
       if (result.isConfirmed) {
         try {
-          // পেমেন্ট অ্যারে আপডেটিং logic
           const newPaidNum = Number(paidAmount) || 0;
-          const updatedPayments = newPaidNum > 0
-            ? [...paymentHistory, { date: new Date().toISOString(), amount: newPaidNum, paymentMethod: "Cash" }]
-            : paymentHistory;
+          let updatedPayments = [...paymentHistory];
+          if (newPaidNum > 0) {
+            updatedPayments.push({ date: new Date().toISOString(), amount: newPaidNum, paymentMethod: "Cash" });
+          }
 
           const payload = {
             stateOrRegion: stateVal,
@@ -415,12 +417,12 @@ const SellReturn = () => {
               totalPrice: Number(item.totalPrice || 0),
               afterDiscount: Number(item.afterDiscountPrice || 0),
             })),
-            generalDiscountType: globalDiscount.type === "percent" ? "percentage" : "fixed",
+            generalDiscountType: globalDiscount.type === "percent" || globalDiscount.type === "percentage" ? "percentage" : "fixed",
             generalDiscountValue: Number(globalDiscount.value || 0),
             grandTotal: calculations.grandTotal,
             paidAmount: calculations.totalPaidCalculated,
             payments: updatedPayments,
-            status: "completed",
+            status: calculations.dueAmount <= 0 ? "completed" : "pending",
           };
 
           if (editingId) {
@@ -448,6 +450,7 @@ const SellReturn = () => {
     setSelectedState(null);
     setSelectedCustomer(null);
     setReturnDate(getTodayISO());
+    setGlobalDiscount({ type: "flat", value: 0 });
     setPaidAmount(0);
     setPreviousPaidTotal(0);
     setPaymentHistory([]);
@@ -504,6 +507,7 @@ const SellReturn = () => {
                   <th className="p-3">Return No</th>
                   <th className="p-3">Client Info</th>
                   <th className="p-3">Product</th>
+                  <th className="p-3 text-right">Due</th>
                   <th className="p-3 text-right">Grand Total</th>
                   <th className="p-3 text-center">Status</th>
                   <th className="p-3 text-center">Action</th>
@@ -512,13 +516,13 @@ const SellReturn = () => {
               <tbody className="divide-y divide-gray-200 text-sm">
                 {loading ? (
                   <tr>
-                    <td colSpan="7" className="p-12 text-center text-gray-500 font-medium">
+                    <td colSpan="8" className="p-12 text-center text-gray-500 font-medium">
                       Loading sell returns...
                     </td>
                   </tr>
                 ) : returnsList.length === 0 ? (
                   <tr>
-                    <td colSpan="7" className="p-12 text-center text-gray-500 font-medium">
+                    <td colSpan="8" className="p-12 text-center text-gray-500 font-medium">
                       No sell returns recorded yet.
                     </td>
                   </tr>
@@ -601,7 +605,6 @@ const SellReturn = () => {
                 calculations={calculations}
               />
 
-              {/* Payment History Component for Edit view */}
               {editingId && (
                 <div className="w-full bg-gray-50 rounded-xl border border-gray-200 p-4 space-y-2 text-xs">
                   <h4 className="font-bold text-gray-700 flex items-center gap-1.5">
@@ -632,11 +635,11 @@ const SellReturn = () => {
                     resetForm();
                     setActiveTab("list");
                   }}
-                  className="btn bg-gray-200 hover:bg-gray-300 text-gray-700 px-6"
+                  className="btn bg-gray-200 hover:bg-gray-300 text-gray-700 px-6 cursor-pointer"
                 >
                   Cancel
                 </button>
-                <button type="submit" className="btn bg-orange-600 hover:bg-orange-700 text-white px-8">
+                <button type="submit" className="btn bg-orange-600 hover:bg-orange-700 text-white px-8 cursor-pointer">
                   {editingId ? "Update Sell Return" : "Submit Sell Return"}
                 </button>
               </div>
