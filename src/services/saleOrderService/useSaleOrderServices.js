@@ -45,7 +45,7 @@ export const createSaleOrder = async (saleData) => {
 
 // 🟢 2. Fetch All Sale Orders
 export const fetchSaleOrders = async () => {
-  const response = await fetch(`${API_URL}/sale-orders`);
+  const response = await fetch(`${API_URL}/sales-orders`);
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.message || "Failed to fetch sale orders");
@@ -55,7 +55,7 @@ export const fetchSaleOrders = async () => {
 
 // 🟢 3. Update Order Status
 export const updateOrderStatus = async (id, status) => {
-  const response = await fetch(`${API_URL}/sale-orders/${id}/status`, {
+  const response = await fetch(`${API_URL}/sales-orders/${id}/status`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
@@ -85,7 +85,7 @@ export const updateSaleOrder = async (id, saleData) => {
     products: formattedProducts,
   };
 
-  const response = await fetch(`${API_URL}/sale-orders/${id}`, {
+  const response = await fetch(`${API_URL}/sales-orders/${id}`, {
     method: "PATCH", // 🟢 PUT থেকে PATCH করা হলো
     headers: {
       "Content-Type": "application/json",
@@ -103,7 +103,7 @@ export const updateSaleOrder = async (id, saleData) => {
 
 // 🟢 5. Delete Sale Order
 export const deleteSaleOrder = async (id) => {
-  const response = await fetch(`${API_URL}/sale-orders/${id}`, {
+  const response = await fetch(`${API_URL}/sales-orders/${id}`, {
     method: "DELETE",
   });
 
