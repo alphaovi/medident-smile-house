@@ -7,8 +7,8 @@ import { AlertCircle, X, Printer } from 'lucide-react';
 import GlobalStatementPrint from '../../../SharedPages/GlobalStatementPrint/GlobalStatementPrint';
 
 const ClientStatement = () => {
-  const BASE_URL = import.meta.env.VITE_Test_API_URL;
-  // const BASE_URL = import.meta.env.VITE_API_URL;
+  // const BASE_URL = import.meta.env.VITE_Test_API_URL;
+  const BASE_URL = import.meta.env.VITE_API_URL;
 
   const [customersList, setCustomersList] = useState([]);
   const [fromDate, setFromDate] = useState('2026-01-01');
