@@ -17,6 +17,12 @@ import SellLists from "../Sales/SellList/SellLists";
 import State from "../Settings/State/State";
 import EmployeeManagement from "../Settings/EmployeeManagement/EmployeeManagement"
 import SellReturn from "../Sales/SaleReturn/SellReturn";
+import ClientReports from "../Reports/ClientReports/ClientReports/ClientReports";
+import ClientStatement from "../Reports/ClientReports/ClientStatement/ClientStatement";
+import WorkSummary from "../Reports/ClientReports/WorkSummary/WorkSummary";
+
+
+
 
 const router = createBrowserRouter([
   {
@@ -91,6 +97,22 @@ const router = createBrowserRouter([
         path: "/settings/state",
         element: <State></State>,
       },
+      {
+        path: "/reports/client-reports",
+        element: <ClientReports></ClientReports>,
+      },
+      {
+        path: "/reports/client-reports/client-statement",
+        element: <ClientStatement></ClientStatement>,
+      },
+      {
+        path: "/reports/client-reports/work-summary",
+        element: <WorkSummary></WorkSummary>,
+      },
+      // {
+      //   path: "/reports/client-reports/case-summary",
+      //   element: <CaseSummary></CaseSummary>,
+      // },
     ],
   },
 

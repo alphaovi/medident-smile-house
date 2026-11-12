@@ -7,19 +7,16 @@ import {
   PackageX,
   Users,
   ShoppingCart,
-  FilePlus,
-  RotateCcw,
-  BadgeDollarSign,
-  Receipt,
-  FileText,
-  ClipboardCheck,
-  Undo2,
+  
   Landmark,
   BarChart3,
   Settings,
   Menu,
   X,
   Trash2,
+  IdCardLanyard,
+  BotMessageSquare,
+  UsersRound,
 } from "lucide-react";
 import medidentLogo from "../../../assets/logo/medidentLogo.png";
 import { Outlet, NavLink } from "react-router";
@@ -71,34 +68,8 @@ const SideNavbar = () => {
       name: "Purchase Order",
       icon: <ShoppingCart className="size-5 shrink-0" />,
       link: "/purchase/purchase-order",
-      
     },
-    {
-      name: "Sell",
-      icon: <BadgeDollarSign className="size-5 shrink-0" />,
-      children: [
-        {
-          name: "Create Sell",
-          icon: <Receipt className="size-4 shrink-0" />,
-          link: "/sale/create-sell",
-        },
-        {
-          name: "Sell Request",
-          icon: <ClipboardCheck className="size-4 shrink-0" />,
-          link: "/sell/sell-request",
-        },
-        {
-          name: "Sell List",
-          icon: <FileText className="size-4 shrink-0" />,
-          link: "/sell/sell-list",
-        },
-        {
-          name: "Sell Return",
-          icon: <Undo2 className="size-4 shrink-0" />,
-          link: "/sell/sell-return",
-        },
-      ],
-    },
+
     {
       name: "Finance",
       icon: <Landmark className="size-5 shrink-0" />,
@@ -107,7 +78,25 @@ const SideNavbar = () => {
     {
       name: "Reports",
       icon: <BarChart3 className="size-5 shrink-0" />,
-      link: "/reports",
+      children: [
+        {
+          name: "Client Reports",
+          icon: <UsersRound className="size-5 shrink-0" />,
+          link: "/reports/client-reports",
+        },
+        {
+          name: "Financial Reports",
+          icon: <BotMessageSquare  className="size-5 shrink-0" />,
+          
+
+          link: "/reports/client-reports",
+        },
+        {
+          name: "Employee Reports",
+          icon: <IdCardLanyard className="size-5 shrink-0" />,
+          link: "/reports/client-reports",
+        },
+      ],
     },
     {
       name: "Settings",
@@ -216,9 +205,7 @@ const SideNavbar = () => {
 
         {/* Bottom Fixed Bin Item */}
         <div className="w-64 shrink-0 bg-[#4464D8] border-t border-base-300">
-          <ul className="menu w-full p-2">
-            {renderBinItem(binItem, false)}
-          </ul>
+          <ul className="menu w-full p-2">{renderBinItem(binItem, false)}</ul>
         </div>
       </aside>
 
