@@ -7,7 +7,6 @@ import {
   PackageX,
   Users,
   ShoppingCart,
-  
   Landmark,
   BarChart3,
   Settings,
@@ -17,6 +16,11 @@ import {
   IdCardLanyard,
   BotMessageSquare,
   UsersRound,
+  FileText,
+  Undo2,
+  ClipboardCheck,
+  Receipt,
+  BadgeDollarSign,
 } from "lucide-react";
 import medidentLogo from "../../../assets/logo/medidentLogo.png";
 import { Outlet, NavLink } from "react-router";
@@ -69,6 +73,33 @@ const SideNavbar = () => {
       icon: <ShoppingCart className="size-5 shrink-0" />,
       link: "/purchase/purchase-order",
     },
+    {
+      name: "Sell",
+      icon: <BadgeDollarSign className="size-5 shrink-0" />,
+
+      children: [
+        {
+          name: "Create Sell",
+          icon: <Receipt className="size-4 shrink-0" />,
+          link: "/sale/create-sell",
+        },
+        {
+          name: "Sell Request",
+          icon: <ClipboardCheck className="size-4 shrink-0" />,
+          link: "/sell/sell-request",
+        },
+        {
+          name: "Sell List",
+          icon: <FileText className="size-4 shrink-0" />,
+          link: "/sell/sell-list",
+        },
+        {
+          name: "Sell Return",
+          icon: <Undo2 className="size-4 shrink-0" />,
+          link: "/sell/sell-return",
+        },
+      ],
+    },
 
     {
       name: "Finance",
@@ -86,8 +117,7 @@ const SideNavbar = () => {
         },
         {
           name: "Financial Reports",
-          icon: <BotMessageSquare  className="size-5 shrink-0" />,
-          
+          icon: <BotMessageSquare className="size-5 shrink-0" />,
 
           link: "/reports/client-reports",
         },
