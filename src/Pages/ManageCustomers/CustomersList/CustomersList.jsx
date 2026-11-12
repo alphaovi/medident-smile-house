@@ -14,6 +14,7 @@ const CustomersList = ({ customers, employees = [], onToggleStatus, onEditClick 
               <th>Address</th>
               <th>Phone No</th>
               <th>SR Name</th>
+              <th>Opening Balance</th>
               <th>Action (Edit / Status)</th>
             </tr>
           </thead>
@@ -24,8 +25,8 @@ const CustomersList = ({ customers, employees = [], onToggleStatus, onEditClick 
                 const customerName = cust.name || cust.customerName;
                 const state = cust.division || cust.state;
                 const phoneNo = cust.phone || cust.phoneNo;
+                const openingBal = cust.openingBalance !== undefined ? Number(cust.openingBalance) : 0;
                 
-                // SR Name ber korar logic:
                 let srName = "N/A";
                 if (cust.sr) {
                   if (typeof cust.sr === 'object') {
@@ -51,6 +52,7 @@ const CustomersList = ({ customers, employees = [], onToggleStatus, onEditClick 
                     <td>{cust.address}</td>
                     <td>{phoneNo}</td>
                     <td>{srName}</td>
+                    <td>৳{openingBal.toLocaleString()}</td>
                     <td>
                       <div
                         style={{
@@ -116,7 +118,7 @@ const CustomersList = ({ customers, employees = [], onToggleStatus, onEditClick 
               })
             ) : (
               <tr>
-                <td colSpan="7" className="no-data">
+                <td colSpan="8" className="no-data">
                   No customers found.
                 </td>
               </tr>

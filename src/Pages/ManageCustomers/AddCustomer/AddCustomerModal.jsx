@@ -10,13 +10,13 @@ const AddCustomerModal = ({ nextId, states, employees, customerToEdit, onClose, 
     address: "",
     phone: "",
     sr: employees[0]?._id || "", 
+    openingBalance: "0",
   });
 
   useEffect(() => {
     if (customerToEdit && states.length > 0) {
       const targetDivision = customerToEdit.division || customerToEdit.state || "";
       
-      // Case-insensitive vabe states theke matching division khuje ber kora
       const matchedState = states.find(
         (st) => st.stateName?.toLowerCase() === targetDivision.toLowerCase()
       );
@@ -28,6 +28,7 @@ const AddCustomerModal = ({ nextId, states, employees, customerToEdit, onClose, 
         address: customerToEdit.address || "",
         phone: customerToEdit.phone || "",
         sr: customerToEdit.sr?._id || customerToEdit.sr || "",
+        openingBalance: customerToEdit.openingBalance !== undefined ? customerToEdit.openingBalance : 0,
       });
     }
   }, [customerToEdit, states]);
@@ -52,6 +53,7 @@ const AddCustomerModal = ({ nextId, states, employees, customerToEdit, onClose, 
         address: formData.address,
         phone: formData.phone,
         sr: formData.sr,
+        openingBalance: formData.openingBalance !== "" ? Number(formData.openingBalance) : 0,
         status: customerToEdit ? customerToEdit.status : "Active",
       }
     };
@@ -134,6 +136,18 @@ const AddCustomerModal = ({ nextId, states, employees, customerToEdit, onClose, 
                 ))}
               </select>
             </div>
+          </div>
+
+          {/* Opening Balance Field */}
+          <div className="form-group">
+            <label>Opening Balance</label>
+            <input
+              type="number"
+              name="openingBalance"
+              value={formData.openingBalance}
+              onChange={handleChange}
+              placeholder="Enter opening balance"
+            />
           </div>
 
           <div className="modal-actions">

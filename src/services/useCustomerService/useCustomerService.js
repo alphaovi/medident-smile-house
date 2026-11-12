@@ -1,7 +1,6 @@
 // src/services/customerService.js
 
-// .env file theke VITE_API_URL niye kaj korbe, na thakle default local url dhorbe[cite: 2]
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5002/api/v1";
+const API_BASE_URL = import.meta.env.VITE_Test_API_URL || import.meta.env.VITE_API_URL || "http://localhost:5002/api/v1";
 
 export const customerService = {
   getAllCustomers: async (division = "") => {
@@ -16,7 +15,6 @@ export const customerService = {
   },
 
   createCustomer: async (customerPayload) => {
-    // customerPayload ekhane soraSori { customer: { ... } } hisabe asbe
     const response = await fetch(`${API_BASE_URL}/customers/create-customer`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
