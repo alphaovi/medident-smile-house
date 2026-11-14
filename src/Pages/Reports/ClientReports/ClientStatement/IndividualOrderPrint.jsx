@@ -1,9 +1,7 @@
 import React from 'react';
 
 const IndividualOrderPrint = ({
-  companyName = "MEDIDENT",
-  companyAddress = "Mirpur, Dhaka, Bangladesh",
-  companyPhone = "+880 1XXX-XXXXXX",
+  companyInfo = {},
   order = null,
   customerObj = null,
   autoAddress = "",
@@ -12,19 +10,29 @@ const IndividualOrderPrint = ({
 
   const orderDateStr = order.orderDate ? new Date(order.orderDate).toLocaleDateString('en-GB') : '-';
   const grandTotal = Number(order.grandTotal) || 0;
-  const dueAmount = Number(order.dueAmount) || 0;
-  const paidAmount = grandTotal - dueAmount;
+  
+  const paidAmount = order.payments && order.payments.length > 0
+    ? order.payments.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
+    : (Number(order.paidAmount) || 0);
+
+  const dueAmount = Math.max(0, grandTotal - paidAmount);
+
+  const compName = companyInfo?.name || order?.company?.name || "";
+  const compAddress = companyInfo?.address || order?.company?.address || "";
+  const compPhone = companyInfo?.phone || order?.company?.phone || "";
 
   return (
     <div className="hidden print:block print:w-full print:bg-white print:text-black font-sans text-xs">
       {/* Header */}
       <div className="flex justify-between items-start border-b-2 border-slate-800 pb-4 mb-4">
         <div className="space-y-1 max-w-[50%]">
-          <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900">
-            {companyName}
-          </h2>
-          <p className="text-[11px] text-slate-700">{companyAddress}</p>
-          <p className="text-[11px] text-slate-700">Phone: {companyPhone}</p>
+          {compName && (
+            <h2 className="text-base font-extrabold uppercase tracking-wide text-slate-900">
+              {compName}
+            </h2>
+          )}
+          {compAddress && <p className="text-[11px] text-slate-700">{compAddress}</p>}
+          {compPhone && <p className="text-[11px] text-slate-700">Phone: {compPhone}</p>}
         </div>
         <div className="text-right space-y-1 max-w-[45%]">
           <h1 className="text-lg font-black uppercase tracking-wider text-slate-900">
@@ -40,17 +48,17 @@ const IndividualOrderPrint = ({
         <div className="space-y-1.5">
           <div className="flex">
             <span className="w-32 font-bold text-slate-700">Customer Name</span>
-            <span className="font-extrabold uppercase">: {order.customer?.name || customerObj?.name || "N/A"}</span>
+            <span className="font-extrabold uppercase">: {order.customer?.name || customerObj?.name || "-"}</span>
           </div>
           <div className="flex">
             <span className="w-32 font-bold text-slate-700">Customer Address</span>
-            <span>: {autoAddress || order.customer?.address || "N/A"}</span>
+            <span>: {order.customer?.address || autoAddress || "-"}</span>
           </div>
         </div>
         <div className="space-y-1.5">
           <div className="flex">
             <span className="w-32 font-bold text-slate-700">Order Status</span>
-            <span className="uppercase font-bold text-blue-700">: {order.status || 'Pending'}</span>
+            <span className="uppercase font-bold text-blue-700">: {order.status || "-"}</span>
           </div>
           <div className="flex">
             <span className="w-32 font-bold text-slate-700">Print Date</span>
@@ -78,8 +86,8 @@ const IndividualOrderPrint = ({
             {order.products?.map((prod, idx) => (
               <tr key={idx} className="border-b border-slate-300">
                 <td className="p-2 border-r border-slate-300 text-left">{idx + 1}</td>
-                <td className="p-2 border-r border-slate-300 font-medium">{prod.product?.name || prod.product || 'Product Item'}</td>
-                <td className="p-2 border-r border-slate-300 text-center">{prod.quantity || prod.orderQty || 1}</td>
+                <td className="p-2 border-r border-slate-300 font-medium">{prod.product?.name || prod.product || '-'}</td>
+                <td className="p-2 border-r border-slate-300 text-center">{prod.quantity || prod.orderQty || 0}</td>
                 <td className="p-2 border-r border-slate-300 text-right">৳{prod.unitPrice || 0}</td>
                 <td className="p-2 text-right font-bold">৳{prod.afterDiscount || prod.totalPrice || 0}</td>
               </tr>
@@ -88,7 +96,7 @@ const IndividualOrderPrint = ({
         </table>
       </div>
 
-      {/* Payment History Table */}
+      {/* Payment History Table (Status Column Removed) */}
       {order.payments && order.payments.length > 0 && (
         <div className="mb-4">
           <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-2">
@@ -99,7 +107,6 @@ const IndividualOrderPrint = ({
               <tr className="bg-emerald-100 text-emerald-900 font-bold border-b border-slate-400">
                 <th className="p-2 border-r border-slate-400 text-left">Payment Date</th>
                 <th className="p-2 border-r border-slate-400 text-left">Method</th>
-                <th className="p-2 border-r border-slate-400 text-center">Status</th>
                 <th className="p-2 text-right">Amount Paid</th>
               </tr>
             </thead>
@@ -109,10 +116,7 @@ const IndividualOrderPrint = ({
                   <td className="p-2 border-r border-slate-300 font-medium">
                     {pay.date ? new Date(pay.date).toLocaleDateString('en-GB') : '-'}
                   </td>
-                  <td className="p-2 border-r border-slate-300">{pay.paymentMethod || 'Cash'}</td>
-                  <td className="p-2 border-r border-slate-300 text-center uppercase font-bold text-[10px]">
-                    {pay.status || 'pending'}
-                  </td>
+                  <td className="p-2 border-r border-slate-300">{pay.paymentMethod || '-'}</td>
                   <td className="p-2 text-right font-bold text-emerald-700">৳{pay.amount || 0}</td>
                 </tr>
               ))}

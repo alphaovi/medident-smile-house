@@ -1,15 +1,19 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import ClientFilterSection from './ClientFilterSection';
 import ClientStatementTable from './ClientStatementTable';
 import ClientStatementSummary from './ClientStatementSummary';
 
-import { AlertCircle, X, Printer, PrinterCheck } from 'lucide-react';
+import { AlertCircle, X, Printer, PrinterCheck, Loader2 } from 'lucide-react';
 import GlobalStatementPrint from '../../../SharedPages/GlobalStatementPrint/GlobalStatementPrint';
+import IndividualOrderPrint from './IndividualOrderPrint';
 
 const ClientStatement = () => {
   const BASE_URL = import.meta.env.VITE_API_URL;
 
+  const [companyInfo, setCompanyInfo] = useState({});
   const [customersList, setCustomersList] = useState([]);
+  const [isCustomerLoading, setIsCustomerLoading] = useState(true);
+
   const [fromDate, setFromDate] = useState('2026-01-01');
   const [toDate, setToDate] = useState('2026-12-31');
   const [selectedCustomer, setSelectedCustomer] = useState('');
@@ -19,20 +23,45 @@ const ClientStatement = () => {
   const [orderStatus, setOrderStatus] = useState('all'); 
   
   const [isSearched, setIsSearched] = useState(false);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [tableData, setTableData] = useState([]);
 
-  // Modal State
+  // Modal & Print State
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Print Mode State ('statement' | 'order' | null)
-  const [printMode, setPrintMode] = useState(null);
+  const [isPrintingOrder, setIsPrintingOrder] = useState(false);
 
   const [toastMessage, setToastMessage] = useState(null);
-  const OPENING_BALANCE = 0;
 
-  // ১. /customers API থেকে সব কাস্টমার লোড করা
+  // Fetch Company Settings
   useEffect(() => {
+    fetch(`${BASE_URL}/settings`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((resData) => {
+        if (resData) {
+          const info = resData.data || resData;
+          setCompanyInfo({
+            name: info.companyName || info.name || '',
+            address: info.address || info.companyAddress || '',
+            phone: info.phone || info.companyPhone || '',
+          });
+        }
+      })
+      .catch((err) => console.error('Error fetching company info:', err));
+  }, [BASE_URL]);
+
+  // Step 1: Load Customers First (Super Fast with Session Caching)
+  useEffect(() => {
+    const cachedCustomers = sessionStorage.getItem('medident_cached_customers');
+    if (cachedCustomers) {
+      try {
+        setCustomersList(JSON.parse(cachedCustomers));
+        setIsCustomerLoading(false);
+      } catch (e) {
+        console.error('Error parsing cached customers', e);
+      }
+    }
+
     fetch(`${BASE_URL}/customers`)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP error! Status: ${res.status}`);
@@ -48,8 +77,10 @@ const ClientStatement = () => {
           phone: c.phone || '',
         }));
         setCustomersList(formattedCustomers);
+        sessionStorage.setItem('medident_cached_customers', JSON.stringify(formattedCustomers));
       })
-      .catch((err) => console.error('Error fetching all customers:', err));
+      .catch((err) => console.error('Error fetching customers:', err))
+      .finally(() => setIsCustomerLoading(false));
   }, [BASE_URL]);
 
   const triggerToast = (msg) => {
@@ -76,13 +107,15 @@ const ClientStatement = () => {
 
   const autoAddress = selectedCustomerObj?.address || 'Select a Customer to view address';
 
-  // ২. স্টেটমেন্ট ডেটা ফেচ করা
-  const handleSearch = async () => {
+  // Step 2: Fetch orders specifically for the selected customer when selection or filters change
+  const handleFetchCustomerOrders = useCallback(async () => {
     if (!selectedCustomer) {
-      triggerToast('Please Select a Customer to load statement');
+      setTableData([]);
+      setIsSearched(false);
       return;
     }
 
+    setIsLoadingOrders(true);
     try {
       const response = await fetch(
         `${BASE_URL}/sales-orders/statement/${selectedCustomer}?fromDate=${fromDate}&toDate=${toDate}&paymentStatus=${paymentStatus}&orderStatus=${orderStatus}`
@@ -105,18 +138,35 @@ const ClientStatement = () => {
         setIsSearched(true);
       } else {
         triggerToast(result.message || 'Failed to fetch statement data');
+        setTableData([]);
+        setIsSearched(true);
       }
     } catch (error) {
       console.error('Statement fetch error:', error);
       triggerToast('Server error while fetching statement');
+      setTableData([]);
+      setIsSearched(true);
+    } finally {
+      setIsLoadingOrders(false);
     }
-  };
+  }, [BASE_URL, selectedCustomer, fromDate, toDate, paymentStatus, orderStatus]);
 
+  useEffect(() => {
+    if (selectedCustomer) {
+      handleFetchCustomerOrders();
+    }
+  }, [selectedCustomer, fromDate, toDate, paymentStatus, orderStatus, handleFetchCustomerOrders]);
+
+  // Accurate Totals Calculation (Orders only)
   const { totalPaid, totalUnpaid } = useMemo(() => {
     return tableData.reduce(
       (acc, curr) => {
-        const due = Number(curr.dueAmount) || 0;
-        const paid = Number(curr.paidAmount) || 0;
+        const paid = curr.payments && curr.payments.length > 0
+          ? curr.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+          : (Number(curr.paidAmount) || 0);
+        const grandTotal = Number(curr.grandTotal) || (paid + (Number(curr.dueAmount) || 0));
+        const due = Math.max(0, grandTotal - paid);
+        
         acc.totalPaid += paid;
         acc.totalUnpaid += due;
         return acc;
@@ -125,20 +175,19 @@ const ClientStatement = () => {
     );
   }, [tableData]);
 
-  const handlePrintStatement = () => {
-    setPrintMode('statement');
+  const handlePrint = () => {
+    setIsPrintingOrder(false);
     setTimeout(() => {
       window.print();
-      setPrintMode(null);
-    }, 150);
+    }, 100);
   };
 
   const handlePrintIndividualOrder = () => {
-    setPrintMode('order');
+    setIsPrintingOrder(true);
+    setIsModalOpen(false);
     setTimeout(() => {
       window.print();
-      setPrintMode(null);
-    }, 150);
+    }, 100);
   };
 
   const handleViewOrder = (order) => {
@@ -146,7 +195,6 @@ const ClientStatement = () => {
     setIsModalOpen(true);
   };
 
-  // Print Configurations for Global Statement
   const printColumns = [
     { key: 'sl', label: 'SL', align: 'center' },
     { key: 'date', label: 'ORDER DATE', align: 'left' },
@@ -157,9 +205,11 @@ const ClientStatement = () => {
   ];
 
   const printRows = tableData.map((item, idx) => {
-    const due = Number(item.dueAmount) || 0;
-    const paid = Number(item.paidAmount) || 0;
-    const total = Number(item.grandTotal) || paid + due;
+    const paid = item.payments && item.payments.length > 0
+      ? item.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+      : (Number(item.paidAmount) || 0);
+    const total = Number(item.grandTotal) || (paid + (Number(item.dueAmount) || 0));
+    const due = Math.max(0, total - paid);
 
     return {
       sl: idx + 1,
@@ -172,11 +222,15 @@ const ClientStatement = () => {
   });
 
   const printSummary = [
-    { label: 'OPENING BALANCE', value: `৳${OPENING_BALANCE.toLocaleString()}` },
     { label: 'TOTAL BILLED', value: `৳${(totalPaid + totalUnpaid).toLocaleString()}` },
     { label: 'TOTAL PAID', value: `৳${totalPaid.toLocaleString()}` },
     { label: 'TOTAL DUE / UNPAID', value: `৳${totalUnpaid.toLocaleString()}`, isBold: true },
   ];
+
+  const modalPaidAmount = selectedOrder?.payments && selectedOrder.payments.length > 0
+    ? selectedOrder.payments.reduce((s, p) => s + (Number(p.amount) || 0), 0)
+    : (Number(selectedOrder?.paidAmount) || 0);
+  const modalDueAmount = Math.max(0, (selectedOrder?.grandTotal || 0) - modalPaidAmount);
 
   return (
     <div className="min-h-screen w-full bg-slate-100 text-slate-800 p-4 md:p-8 font-sans relative">
@@ -200,9 +254,9 @@ const ClientStatement = () => {
               Detailed delivery statements and account balance breakdown
             </p>
           </div>
-          {isSearched && (
+          {isSearched && !isLoadingOrders && tableData.length > 0 && (
             <button
-              onClick={handlePrintStatement}
+              onClick={handlePrint}
               className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-2xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
             >
               <Printer className="w-4 h-4" /> Print Statement
@@ -226,33 +280,41 @@ const ClientStatement = () => {
             setOrderStatus={setOrderStatus}
             autoAddress={autoAddress}
             filteredCustomers={filteredCustomers}
-            handleSearch={handleSearch}
+            isCustomerLoading={isCustomerLoading}
           />
         </div>
 
-        {isSearched && (
-          <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xl w-full print:hidden">
-            <ClientStatementTable
-              tableData={tableData}
-              paymentStatus={paymentStatus}
-              openingBalance={OPENING_BALANCE}
-              onViewOrder={handleViewOrder}
-            />
-
-            <ClientStatementSummary
-              paymentStatus={paymentStatus}
-              totalPaid={totalPaid}
-              totalUnpaid={totalUnpaid}
-              openingBalance={OPENING_BALANCE}
-            />
+        {/* Loading Spinner for Orders */}
+        {isLoadingOrders ? (
+          <div className="bg-white rounded-3xl border border-slate-200 p-20 flex flex-col items-center justify-center shadow-xl w-full print:hidden">
+            <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+            <p className="text-slate-600 font-semibold text-sm">Loading customer orders, please wait...</p>
           </div>
+        ) : (
+          isSearched && (
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xl w-full print:hidden">
+              <ClientStatementTable
+                tableData={tableData}
+                paymentStatus={paymentStatus}
+                openingBalance={0}
+                onViewOrder={handleViewOrder}
+              />
+
+              <ClientStatementSummary
+                paymentStatus={paymentStatus}
+                totalPaid={totalPaid}
+                totalUnpaid={totalUnpaid}
+                openingBalance={0}
+              />
+            </div>
+          )
         )}
 
-        {/* Global Statement Print Component */}
-        {isSearched && printMode === 'statement' && (
+        {isSearched && !isLoadingOrders && tableData.length > 0 && !isPrintingOrder && (
           <GlobalStatementPrint
-            companyName="MEDIDENT"
-            companyAddress="Mirpur, Dhaka, Bangladesh"
+            companyName={companyInfo.name}
+            companyAddress={companyInfo.address}
+            companyPhone={companyInfo.phone}
             reportTitle="CLIENT ACCOUNT STATEMENT"
             clientInfo={{
               name: selectedCustomerObj?.name || '',
@@ -267,117 +329,17 @@ const ClientStatement = () => {
             }}
             columns={printColumns}
             rows={printRows}
-            openingBalanceRow={{
-              desc: 'STATEMENT OPENING BALANCE',
-              due: `৳${OPENING_BALANCE.toLocaleString()}`,
-            }}
             summaryRows={printSummary}
           />
         )}
 
-        {/* Individual Order Print Component */}
-        {printMode === 'order' && selectedOrder && (
-          <div className="hidden print:block print:w-full print:bg-white print:text-black font-sans text-xs p-4">
-            <div className="flex justify-between items-start border-b-2 border-slate-800 pb-4 mb-4">
-              <div>
-                <h1 className="text-xl font-black uppercase tracking-wider text-slate-900">MEDIDENT</h1>
-                <p className="text-[11px] text-slate-700">Mirpur, Dhaka, Bangladesh</p>
-              </div>
-              <div className="text-right">
-                <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">ORDER INVOICE</h2>
-                <p className="text-[11px] text-slate-700">Print Date: {new Date().toLocaleDateString('en-GB')}</p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-8 mb-5 text-[11px] border-b border-slate-300 pb-4">
-              <div className="space-y-1">
-                <p className="font-bold text-slate-800 text-xs mb-1 uppercase">Customer Details</p>
-                <div className="flex"><span className="w-24 font-bold text-slate-700">Name</span><span className="font-extrabold uppercase">: {selectedCustomerObj?.name || 'N/A'}</span></div>
-                <div className="flex"><span className="w-24 font-bold text-slate-700">Phone</span><span>: {selectedCustomerObj?.phone || 'N/A'}</span></div>
-                <div className="flex"><span className="w-24 font-bold text-slate-700">Address</span><span>: {autoAddress || 'N/A'}</span></div>
-              </div>
-              <div className="space-y-1">
-                <p className="font-bold text-slate-800 text-xs mb-1 uppercase">Order Info</p>
-                <div className="flex"><span className="w-28 font-bold text-slate-700">Order ID</span><span>: #{selectedOrder._id}</span></div>
-                <div className="flex"><span className="w-28 font-bold text-slate-700">Order Date</span><span>: {selectedOrder.orderDate ? new Date(selectedOrder.orderDate).toLocaleDateString('en-GB') : '-'}</span></div>
-                <div className="flex"><span className="w-28 font-bold text-slate-700">Order Status</span><span className="uppercase font-bold">: {selectedOrder.status || 'Pending'}</span></div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-2">Products Ordered</h3>
-              <table className="w-full border-collapse border border-slate-400 text-[11px]">
-                <thead>
-                  <tr className="bg-slate-200 text-slate-900 font-bold border-b border-slate-400">
-                    <th className="p-2 border-r border-slate-400 text-left">SL</th>
-                    <th className="p-2 border-r border-slate-400 text-left">Product Name</th>
-                    <th className="p-2 border-r border-slate-400 text-center">Qty</th>
-                    <th className="p-2 border-r border-slate-400 text-right">Unit Price</th>
-                    <th className="p-2 text-right">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedOrder.products?.map((prod, pIdx) => (
-                    <tr key={pIdx} className="border-b border-slate-300">
-                      <td className="p-2 border-r border-slate-300">{pIdx + 1}</td>
-                      <td className="p-2 border-r border-slate-300 font-medium">{prod.product?.name || prod.product || 'Product Item'}</td>
-                      <td className="p-2 border-r border-slate-300 text-center">{prod.quantity || prod.orderQty || 1}</td>
-                      <td className="p-2 border-r border-slate-300 text-right">৳{prod.unitPrice || 0}</td>
-                      <td className="p-2 text-right font-bold">৳{prod.afterDiscount || prod.totalPrice || 0}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {selectedOrder.payments && selectedOrder.payments.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-2">Payment History</h3>
-                <table className="w-full border-collapse border border-slate-400 text-[11px]">
-                  <thead>
-                    <tr className="bg-slate-200 text-slate-900 font-bold border-b border-slate-400">
-                      <th className="p-2 border-r border-slate-400 text-left">Payment Date</th>
-                      <th className="p-2 border-r border-slate-400 text-left">Method</th>
-                      <th className="p-2 border-r border-slate-400 text-center">Status</th>
-                      <th className="p-2 text-right">Amount Paid</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {selectedOrder.payments.map((pay, payIdx) => (
-                      <tr key={payIdx} className="border-b border-slate-300">
-                        <td className="p-2 border-r border-slate-300">{pay.date ? new Date(pay.date).toLocaleDateString('en-GB') : '-'}</td>
-                        <td className="p-2 border-r border-slate-300">{pay.paymentMethod || 'Cash'}</td>
-                        <td className="p-2 border-r border-slate-300 text-center uppercase font-bold">{pay.status || 'pending'}</td>
-                        <td className="p-2 text-right font-bold text-emerald-700">৳{pay.amount || 0}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-
-            <div className="w-64 border border-slate-400 text-[11px] ml-auto mb-6">
-              <div className="flex justify-between p-1.5 border-b border-slate-300 font-medium">
-                <span>Grand Total:</span>
-                <span className="font-bold">৳{selectedOrder.grandTotal || 0}</span>
-              </div>
-              <div className="flex justify-between p-1.5 border-b border-slate-300 font-medium">
-                <span>Paid Amount:</span>
-                <span className="font-bold text-emerald-700">৳{selectedOrder.paidAmount || 0}</span>
-              </div>
-              <div className="flex justify-between p-1.5 font-extrabold bg-slate-100">
-                <span>Due Amount:</span>
-                <span className="text-rose-700">৳{selectedOrder.dueAmount || 0}</span>
-              </div>
-            </div>
-
-            <div className="text-center mt-12 space-y-1">
-              <p className="font-bold tracking-widest text-[11px] text-slate-800">-- END OF ORDER INVOICE --</p>
-              <p className="text-[10px] font-semibold text-slate-800 pt-2 border-t border-slate-300">
-                This is a computer-generated invoice.
-              </p>
-            </div>
-          </div>
+        {isPrintingOrder && selectedOrder && (
+          <IndividualOrderPrint
+            companyInfo={companyInfo}
+            order={selectedOrder}
+            customerObj={selectedCustomerObj}
+            autoAddress={autoAddress}
+          />
         )}
       </div>
 
@@ -396,7 +358,6 @@ const ClientStatement = () => {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {/* Order Info Cards */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-sm">
                 <div>
                   <p className="text-xs text-slate-400 font-bold">Order Date</p>
@@ -406,7 +367,7 @@ const ClientStatement = () => {
                 </div>
                 <div>
                   <p className="text-xs text-slate-400 font-bold">Order Status</p>
-                  <p className="font-semibold text-blue-600 uppercase">{selectedOrder.status || 'Pending'}</p>
+                  <p className="font-semibold text-blue-600 uppercase">{selectedOrder.status || '-'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-slate-400 font-bold">Grand Total</p>
@@ -414,11 +375,11 @@ const ClientStatement = () => {
                 </div>
                 <div>
                   <p className="text-xs text-slate-400 font-bold">Due Amount</p>
-                  <p className="font-semibold text-rose-600">৳{selectedOrder.dueAmount || 0}</p>
+                  <p className="font-semibold text-rose-600">৳{modalDueAmount}</p>
                 </div>
               </div>
 
-              {/* Payments History Section */}
+              {/* Payments History Section with Total Footer */}
               <div>
                 <h4 className="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">Payment History</h4>
                 {selectedOrder.payments && selectedOrder.payments.length > 0 ? (
@@ -428,7 +389,6 @@ const ClientStatement = () => {
                         <tr className="bg-emerald-50 text-emerald-900 font-bold border-b border-slate-200">
                           <th className="p-3">Payment Date</th>
                           <th className="p-3">Method</th>
-                          <th className="p-3">Status</th>
                           <th className="p-3 text-right">Amount Paid</th>
                         </tr>
                       </thead>
@@ -439,14 +399,14 @@ const ClientStatement = () => {
                               {pay.date ? new Date(pay.date).toLocaleDateString('en-GB') : '-'}
                             </td>
                             <td className="p-3 font-medium text-slate-600">{pay.paymentMethod || 'Cash'}</td>
-                            <td className="p-3 uppercase font-bold text-[10px]">
-                              <span className={`px-2 py-0.5 rounded-full ${pay.status === 'approved' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                                {pay.status || 'pending'}
-                              </span>
-                            </td>
                             <td className="p-3 text-right font-extrabold text-emerald-600">৳{pay.amount || 0}</td>
                           </tr>
                         ))}
+                        {/* Total Paid Row inside Modal Table */}
+                        <tr className="bg-emerald-50/80 font-bold border-t border-slate-200">
+                          <td colSpan={2} className="p-3 text-right text-emerald-900">Total Paid:</td>
+                          <td className="p-3 text-right font-black text-emerald-700">৳{modalPaidAmount.toLocaleString()}</td>
+                        </tr>
                       </tbody>
                     </table>
                   </div>
@@ -476,7 +436,7 @@ const ClientStatement = () => {
                           <td className="p-3 font-medium text-slate-800">
                             {prod.product?.name || prod.product || 'Product Item'}
                           </td>
-                          <td className="p-3 text-center">{prod.quantity || prod.orderQty || 1}</td>
+                          <td className="p-3 text-center">{prod.quantity || prod.orderQty || 0}</td>
                           <td className="p-3 text-right">৳{prod.unitPrice || 0}</td>
                           <td className="p-3 text-right font-bold">৳{prod.afterDiscount || prod.totalPrice || 0}</td>
                         </tr>
@@ -487,10 +447,10 @@ const ClientStatement = () => {
               </div>
             </div>
 
-            <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-5">
+            <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-3">
               <button
                 onClick={handlePrintIndividualOrder}
-                className="bg-[#5752f0] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 cursor-pointer transition-all"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 cursor-pointer transition-all"
               >
                 <PrinterCheck className="w-4 h-4" /> Print Order
               </button>

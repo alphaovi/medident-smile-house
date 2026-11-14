@@ -5,6 +5,7 @@ import {
   MapPin,
   DollarSign,
   PackageCheck,
+  Loader2,
 } from "lucide-react";
 
 const ClientFilterSection = ({
@@ -22,7 +23,7 @@ const ClientFilterSection = ({
   setOrderStatus,
   autoAddress,
   filteredCustomers,
-  handleSearch,
+  isCustomerLoading,
 }) => {
   return (
     <div className="bg-white p-6 md:p-8 rounded-3xl border border-slate-200/80 shadow-sm space-y-6 w-full">
@@ -72,20 +73,28 @@ const ClientFilterSection = ({
               />
             </div>
           </div>
-          <select
-            value={selectedCustomer}
-            onChange={(e) => setSelectedCustomer(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:border-blue-500 transition-all cursor-pointer"
-          >
-            <option value="" disabled hidden>
-              -- Select Customer --
-            </option>
-            {filteredCustomers?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} {c.customId ? `(${c.customId})` : ""}
+          <div className="relative">
+            <select
+              value={selectedCustomer}
+              onChange={(e) => setSelectedCustomer(e.target.value)}
+              disabled={isCustomerLoading}
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-2.5 text-sm font-medium text-slate-800 focus:outline-none focus:border-blue-500 transition-all cursor-pointer disabled:opacity-60"
+            >
+              <option value="" disabled hidden>
+                {isCustomerLoading ? "Loading customers..." : "-- Select Customer --"}
               </option>
-            ))}
-          </select>
+              {filteredCustomers?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name} {c.customId ? `(${c.customId})` : ""}
+                </option>
+              ))}
+            </select>
+            {isCustomerLoading && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none flex items-center gap-1.5 text-xs text-blue-600 font-semibold bg-white px-2">
+                <Loader2 className="w-4 h-4 animate-spin" /> Loading...
+              </div>
+            )}
+          </div>
         </div>
 
         {/* AUTO ADDRESS */}
@@ -117,7 +126,7 @@ const ClientFilterSection = ({
           </select>
         </div>
 
-        {/* ORDER STATUS (NEW DROPDOWN) */}
+        {/* ORDER STATUS */}
         <div className="space-y-1.5">
           <label className="text-xs font-bold text-slate-600 tracking-wider flex items-center gap-2">
             <PackageCheck className="w-4 h-4 text-blue-600" /> ORDER STATUS
@@ -133,15 +142,6 @@ const ClientFilterSection = ({
             <option value="delivered">DELIVERED</option>
           </select>
         </div>
-      </div>
-
-      <div className="flex justify-end pt-2">
-        <button
-          onClick={handleSearch}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-8 py-3 rounded-2xl shadow-lg shadow-blue-500/20 flex items-center gap-2 transition-all cursor-pointer"
-        >
-          <Search className="w-4 h-4" /> Load Payment Summary
-        </button>
       </div>
     </div>
   );
