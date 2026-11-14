@@ -3,11 +3,10 @@ import ClientFilterSection from './ClientFilterSection';
 import ClientStatementTable from './ClientStatementTable';
 import ClientStatementSummary from './ClientStatementSummary';
 
-import { AlertCircle, X, Printer } from 'lucide-react';
+import { AlertCircle, X, Printer, PrinterCheck } from 'lucide-react';
 import GlobalStatementPrint from '../../../SharedPages/GlobalStatementPrint/GlobalStatementPrint';
 
 const ClientStatement = () => {
-  // const BASE_URL = import.meta.env.VITE_Test_API_URL;
   const BASE_URL = import.meta.env.VITE_API_URL;
 
   const [customersList, setCustomersList] = useState([]);
@@ -25,6 +24,9 @@ const ClientStatement = () => {
   // Modal State
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Print Mode State ('statement' | 'order' | null)
+  const [printMode, setPrintMode] = useState(null);
 
   const [toastMessage, setToastMessage] = useState(null);
   const OPENING_BALANCE = 0;
@@ -123,8 +125,20 @@ const ClientStatement = () => {
     );
   }, [tableData]);
 
-  const handlePrint = () => {
-    window.print();
+  const handlePrintStatement = () => {
+    setPrintMode('statement');
+    setTimeout(() => {
+      window.print();
+      setPrintMode(null);
+    }, 150);
+  };
+
+  const handlePrintIndividualOrder = () => {
+    setPrintMode('order');
+    setTimeout(() => {
+      window.print();
+      setPrintMode(null);
+    }, 150);
   };
 
   const handleViewOrder = (order) => {
@@ -132,7 +146,7 @@ const ClientStatement = () => {
     setIsModalOpen(true);
   };
 
-  // Print Configurations
+  // Print Configurations for Global Statement
   const printColumns = [
     { key: 'sl', label: 'SL', align: 'center' },
     { key: 'date', label: 'ORDER DATE', align: 'left' },
@@ -188,7 +202,7 @@ const ClientStatement = () => {
           </div>
           {isSearched && (
             <button
-              onClick={handlePrint}
+              onClick={handlePrintStatement}
               className="bg-slate-900 hover:bg-slate-800 text-white font-semibold px-6 py-2.5 rounded-2xl shadow-md flex items-center gap-2 transition-all cursor-pointer"
             >
               <Printer className="w-4 h-4" /> Print Statement
@@ -234,7 +248,8 @@ const ClientStatement = () => {
           </div>
         )}
 
-        {isSearched && (
+        {/* Global Statement Print Component */}
+        {isSearched && printMode === 'statement' && (
           <GlobalStatementPrint
             companyName="MEDIDENT"
             companyAddress="Mirpur, Dhaka, Bangladesh"
@@ -259,9 +274,114 @@ const ClientStatement = () => {
             summaryRows={printSummary}
           />
         )}
+
+        {/* Individual Order Print Component */}
+        {printMode === 'order' && selectedOrder && (
+          <div className="hidden print:block print:w-full print:bg-white print:text-black font-sans text-xs p-4">
+            <div className="flex justify-between items-start border-b-2 border-slate-800 pb-4 mb-4">
+              <div>
+                <h1 className="text-xl font-black uppercase tracking-wider text-slate-900">MEDIDENT</h1>
+                <p className="text-[11px] text-slate-700">Mirpur, Dhaka, Bangladesh</p>
+              </div>
+              <div className="text-right">
+                <h2 className="text-sm font-extrabold uppercase tracking-wide text-slate-900">ORDER INVOICE</h2>
+                <p className="text-[11px] text-slate-700">Print Date: {new Date().toLocaleDateString('en-GB')}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-8 mb-5 text-[11px] border-b border-slate-300 pb-4">
+              <div className="space-y-1">
+                <p className="font-bold text-slate-800 text-xs mb-1 uppercase">Customer Details</p>
+                <div className="flex"><span className="w-24 font-bold text-slate-700">Name</span><span className="font-extrabold uppercase">: {selectedCustomerObj?.name || 'N/A'}</span></div>
+                <div className="flex"><span className="w-24 font-bold text-slate-700">Phone</span><span>: {selectedCustomerObj?.phone || 'N/A'}</span></div>
+                <div className="flex"><span className="w-24 font-bold text-slate-700">Address</span><span>: {autoAddress || 'N/A'}</span></div>
+              </div>
+              <div className="space-y-1">
+                <p className="font-bold text-slate-800 text-xs mb-1 uppercase">Order Info</p>
+                <div className="flex"><span className="w-28 font-bold text-slate-700">Order ID</span><span>: #{selectedOrder._id}</span></div>
+                <div className="flex"><span className="w-28 font-bold text-slate-700">Order Date</span><span>: {selectedOrder.orderDate ? new Date(selectedOrder.orderDate).toLocaleDateString('en-GB') : '-'}</span></div>
+                <div className="flex"><span className="w-28 font-bold text-slate-700">Order Status</span><span className="uppercase font-bold">: {selectedOrder.status || 'Pending'}</span></div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-2">Products Ordered</h3>
+              <table className="w-full border-collapse border border-slate-400 text-[11px]">
+                <thead>
+                  <tr className="bg-slate-200 text-slate-900 font-bold border-b border-slate-400">
+                    <th className="p-2 border-r border-slate-400 text-left">SL</th>
+                    <th className="p-2 border-r border-slate-400 text-left">Product Name</th>
+                    <th className="p-2 border-r border-slate-400 text-center">Qty</th>
+                    <th className="p-2 border-r border-slate-400 text-right">Unit Price</th>
+                    <th className="p-2 text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedOrder.products?.map((prod, pIdx) => (
+                    <tr key={pIdx} className="border-b border-slate-300">
+                      <td className="p-2 border-r border-slate-300">{pIdx + 1}</td>
+                      <td className="p-2 border-r border-slate-300 font-medium">{prod.product?.name || prod.product || 'Product Item'}</td>
+                      <td className="p-2 border-r border-slate-300 text-center">{prod.quantity || prod.orderQty || 1}</td>
+                      <td className="p-2 border-r border-slate-300 text-right">৳{prod.unitPrice || 0}</td>
+                      <td className="p-2 text-right font-bold">৳{prod.afterDiscount || prod.totalPrice || 0}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {selectedOrder.payments && selectedOrder.payments.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-2">Payment History</h3>
+                <table className="w-full border-collapse border border-slate-400 text-[11px]">
+                  <thead>
+                    <tr className="bg-slate-200 text-slate-900 font-bold border-b border-slate-400">
+                      <th className="p-2 border-r border-slate-400 text-left">Payment Date</th>
+                      <th className="p-2 border-r border-slate-400 text-left">Method</th>
+                      <th className="p-2 border-r border-slate-400 text-center">Status</th>
+                      <th className="p-2 text-right">Amount Paid</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedOrder.payments.map((pay, payIdx) => (
+                      <tr key={payIdx} className="border-b border-slate-300">
+                        <td className="p-2 border-r border-slate-300">{pay.date ? new Date(pay.date).toLocaleDateString('en-GB') : '-'}</td>
+                        <td className="p-2 border-r border-slate-300">{pay.paymentMethod || 'Cash'}</td>
+                        <td className="p-2 border-r border-slate-300 text-center uppercase font-bold">{pay.status || 'pending'}</td>
+                        <td className="p-2 text-right font-bold text-emerald-700">৳{pay.amount || 0}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="w-64 border border-slate-400 text-[11px] ml-auto mb-6">
+              <div className="flex justify-between p-1.5 border-b border-slate-300 font-medium">
+                <span>Grand Total:</span>
+                <span className="font-bold">৳{selectedOrder.grandTotal || 0}</span>
+              </div>
+              <div className="flex justify-between p-1.5 border-b border-slate-300 font-medium">
+                <span>Paid Amount:</span>
+                <span className="font-bold text-emerald-700">৳{selectedOrder.paidAmount || 0}</span>
+              </div>
+              <div className="flex justify-between p-1.5 font-extrabold bg-slate-100">
+                <span>Due Amount:</span>
+                <span className="text-rose-700">৳{selectedOrder.dueAmount || 0}</span>
+              </div>
+            </div>
+
+            <div className="text-center mt-12 space-y-1">
+              <p className="font-bold tracking-widest text-[11px] text-slate-800">-- END OF ORDER INVOICE --</p>
+              <p className="text-[10px] font-semibold text-slate-800 pt-2 border-t border-slate-300">
+                This is a computer-generated invoice.
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Order Details Modal (Readonly label removed & Payments History added) */}
+      {/* Order Details Modal */}
       {isModalOpen && selectedOrder && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 print:hidden">
           <div className="bg-white w-full max-w-3xl rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
@@ -298,7 +418,7 @@ const ClientStatement = () => {
                 </div>
               </div>
 
-              {/* Payments History Section (কবে কত টাকা পেমেন্ট করেছে) */}
+              {/* Payments History Section */}
               <div>
                 <h4 className="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">Payment History</h4>
                 {selectedOrder.payments && selectedOrder.payments.length > 0 ? (
@@ -367,7 +487,13 @@ const ClientStatement = () => {
               </div>
             </div>
 
-            <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-end">
+            <div className="bg-slate-50 p-4 border-t border-slate-200 flex justify-end gap-5">
+              <button
+                onClick={handlePrintIndividualOrder}
+                className="bg-[#5752f0] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl font-semibold text-sm flex items-center gap-2 cursor-pointer transition-all"
+              >
+                <PrinterCheck className="w-4 h-4" /> Print Order
+              </button>
               <button
                 onClick={() => setIsModalOpen(false)}
                 className="bg-slate-900 text-white px-6 py-2.5 rounded-xl font-semibold text-sm hover:bg-slate-800 cursor-pointer"
