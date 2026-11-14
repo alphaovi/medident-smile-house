@@ -6,6 +6,7 @@ import CustomerList from "./CustomersList/CustomersList";
 
 import "./ManageCustomers.css";
 
+// 🟢 সঠিক সার্ভিস পাথ ও ইমপোর্ট এখানে যুক্ত করা হলো
 import { customerService } from "../../services/useCustomerService/useCustomerService";
 import { employeeSettingService } from "../../services/useEmployeeServices";
 import { stateService } from "../../services/useStateService/useStateService";
@@ -101,29 +102,31 @@ const ManageCustomers = () => {
     }
   };
 
-  if (loading) return <div className="loading-text">Loading Customers & Settings...</div>;
-  if (error) return <div className="error-text">{error}</div>;
+  if (loading) return <div className="loading-text p-10 text-center font-semibold">Loading Customers & Settings...</div>;
+  if (error) return <div className="error-text p-10 text-center text-red-500 font-semibold">{error}</div>;
 
   return (
-    <div className="manage-customers-container">
+    <div className="w-full min-h-screen px-4 md:px-6 lg:px-8 py-6 bg-slate-50 box-border manage-customers-container">
       <ToastContainer position="top-right" autoClose={3000} />
 
-      <div className="add-customer-banner">
+      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 add-customer-banner">
         <div className="banner-text">
-          <h2>Customer Management</h2>
-          <p>Manage your clients, states, and sales representatives easily.</p>
+          <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900">Customer Management</h2>
+          <p className="text-sm text-slate-500 mt-0.5">Manage your clients, states, and sales representatives easily.</p>
         </div>
-        <button className="add-btn" onClick={handleOpenAddModal}>
+        <button className="add-btn bg-teal-600 hover:bg-teal-700 text-white font-medium px-5 py-2.5 rounded-xl shadow-md transition-all cursor-pointer" onClick={handleOpenAddModal}>
           + Add Customer
         </button>
       </div>
 
-      <CustomerList 
-        customers={customers} 
-        employees={employees}   
-        onToggleStatus={handleToggleStatus} 
-        onEditClick={handleOpenEditModal} 
-      />
+      <div className="w-full">
+        <CustomerList 
+          customers={customers} 
+          employees={employees}   
+          onToggleStatus={handleToggleStatus} 
+          onEditClick={handleOpenEditModal} 
+        />
+      </div>
 
       {isModalOpen && (
         <AddCustomerModal
