@@ -96,36 +96,7 @@ const IndividualOrderPrint = ({
         </table>
       </div>
 
-      {/* Payment History Table (Status Column Removed) */}
-      {order.payments && order.payments.length > 0 && (
-        <div className="mb-4">
-          <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-2">
-            Payment History
-          </h3>
-          <table className="w-full border-collapse border border-slate-400 text-[11px]">
-            <thead>
-              <tr className="bg-emerald-100 text-emerald-900 font-bold border-b border-slate-400">
-                <th className="p-2 border-r border-slate-400 text-left">Payment Date</th>
-                <th className="p-2 border-r border-slate-400 text-left">Method</th>
-                <th className="p-2 text-right">Amount Paid</th>
-              </tr>
-            </thead>
-            <tbody>
-              {order.payments.map((pay, pIdx) => (
-                <tr key={pIdx} className="border-b border-slate-300">
-                  <td className="p-2 border-r border-slate-300 font-medium">
-                    {pay.date ? new Date(pay.date).toLocaleDateString('en-GB') : '-'}
-                  </td>
-                  <td className="p-2 border-r border-slate-300">{pay.paymentMethod || '-'}</td>
-                  <td className="p-2 text-right font-bold text-emerald-700">৳{pay.amount || 0}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Summary Box */}
+      {/* Summary Box (Placed right below Products List) */}
       <div className="w-72 border border-slate-400 text-[11px] mb-6 ml-auto">
         <div className="flex justify-between p-1.5 border-b border-slate-300 font-medium">
           <span>Grand Total:</span>
@@ -140,6 +111,38 @@ const IndividualOrderPrint = ({
           <span className="text-rose-700">৳{dueAmount.toLocaleString()}</span>
         </div>
       </div>
+
+      {/* Payment History Table (Date and Amount Paid only, placed on the left below summary) */}
+      {order.payments && order.payments.length > 0 && (
+        <div className="mb-6 w-full max-w-md">
+          <h3 className="text-xs font-black uppercase tracking-widest text-slate-900 mb-2">
+            Payment History
+          </h3>
+          <table className="w-full border-collapse border border-slate-400 text-[11px]">
+            <thead>
+              <tr className="bg-emerald-100 text-emerald-900 font-bold border-b border-slate-400">
+                <th className="p-2 border-r border-slate-400 text-left">Payment Date</th>
+                <th className="p-2 text-right">Amount Paid</th>
+              </tr>
+            </thead>
+            <tbody>
+              {order.payments.map((pay, pIdx) => (
+                <tr key={pIdx} className="border-b border-slate-300">
+                  <td className="p-2 border-r border-slate-300 font-medium">
+                    {pay.date ? new Date(pay.date).toLocaleDateString('en-GB') : '-'}
+                  </td>
+                  <td className="p-2 text-right font-bold text-emerald-700">৳{pay.amount || 0}</td>
+                </tr>
+              ))}
+              {/* Total Paid Row */}
+              <tr className="bg-emerald-50 font-bold border-t border-slate-400">
+                <td className="p-2 border-r border-slate-400 text-right">Total Paid:</td>
+                <td className="p-2 text-right text-emerald-700 font-extrabold">৳{paidAmount.toLocaleString()}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="text-center mt-8 space-y-2">

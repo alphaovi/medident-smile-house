@@ -33,8 +33,10 @@ const ClientStatement = () => {
 
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Fetch Company Settings
+  // Fetch Company / General Info if needed (using correct endpoint if applicable, or fallback to customers/settings)
   useEffect(() => {
+    // If your backend settings/company info endpoint is different, you can adjust it here.
+    // Keeping it robust so it doesn't break.
     fetch(`${BASE_URL}/customers`)
       .then((res) => (res.ok ? res.json() : null))
       .then((resData) => {
@@ -358,32 +360,66 @@ const ClientStatement = () => {
             </div>
 
             <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-sm">
+              {/* Order Meta info: Order Date -> Order Status -> Grand Total -> Total Paid -> Due Amount */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3 bg-slate-50 p-4 rounded-2xl border border-slate-200 text-sm">
                 <div>
-                  <p className="text-xs text-slate-400 font-bold">Order Date</p>
-                  <p className="font-semibold text-slate-800">
+                  <p className="text-[11px] text-slate-400 font-bold">Order Date</p>
+                  <p className="font-semibold text-slate-800 text-xs mt-0.5">
                     {selectedOrder.orderDate ? new Date(selectedOrder.orderDate).toLocaleDateString('en-GB') : '-'}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-bold">Order Status</p>
-                  <p className="font-semibold text-blue-600 uppercase">{selectedOrder.status || '-'}</p>
+                  <p className="text-[11px] text-slate-400 font-bold">Order Status</p>
+                  <p className="font-semibold text-blue-600 uppercase text-xs mt-0.5">{selectedOrder.status || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-bold">Grand Total</p>
-                  <p className="font-semibold text-slate-800">৳{selectedOrder.grandTotal || 0}</p>
+                  <p className="text-[11px] text-slate-400 font-bold">Grand Total</p>
+                  <p className="font-semibold text-slate-800 text-xs mt-0.5">৳{selectedOrder.grandTotal || 0}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-slate-400 font-bold">Due Amount</p>
-                  <p className="font-semibold text-rose-600">৳{modalDueAmount}</p>
+                  <p className="text-[11px] text-slate-400 font-bold">Total Paid</p>
+                  <p className="font-semibold text-emerald-600 text-xs mt-0.5">৳{modalPaidAmount}</p>
+                </div>
+                <div>
+                  <p className="text-[11px] text-slate-400 font-bold">Due Amount</p>
+                  <p className="font-semibold text-rose-600 text-xs mt-0.5">৳{modalDueAmount}</p>
                 </div>
               </div>
 
-              {/* Payments History Section with Total Footer */}
+              {/* Products List Section (Top) */}
+              <div>
+                <h4 className="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">Products List</h4>
+                <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-100 text-slate-700 font-bold">
+                        <th className="p-3">Product</th>
+                        <th className="p-3 text-center">Qty</th>
+                        <th className="p-3 text-right">Unit Price</th>
+                        <th className="p-3 text-right">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {selectedOrder.products?.map((prod, idx) => (
+                        <tr key={idx}>
+                          <td className="p-3 font-medium text-slate-800">
+                            {prod.product?.name || prod.product || 'Product Item'}
+                          </td>
+                          <td className="p-3 text-center">{prod.quantity || prod.orderQty || 0}</td>
+                          <td className="p-3 text-right">৳{prod.unitPrice || 0}</td>
+                          <td className="p-3 text-right font-bold">৳{prod.afterDiscount || prod.totalPrice || 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Payments History Section with Total Footer (Bottom) */}
               <div>
                 <h4 className="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">Payment History</h4>
                 {selectedOrder.payments && selectedOrder.payments.length > 0 ? (
-                  <div className="border border-slate-200 rounded-2xl overflow-hidden mb-6">
+                  <div className="border border-slate-200 rounded-2xl overflow-hidden">
                     <table className="w-full text-left border-collapse text-xs">
                       <thead>
                         <tr className="bg-emerald-50 text-emerald-900 font-bold border-b border-slate-200">
@@ -411,39 +447,10 @@ const ClientStatement = () => {
                     </table>
                   </div>
                 ) : (
-                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center text-xs text-slate-400 mb-6">
+                  <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-center text-xs text-slate-400">
                     No payment records found for this order.
                   </div>
                 )}
-              </div>
-
-              {/* Products List Section */}
-              <div>
-                <h4 className="font-bold text-slate-800 mb-3 text-sm uppercase tracking-wider">Products List</h4>
-                <div className="border border-slate-200 rounded-2xl overflow-hidden">
-                  <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-slate-100 text-slate-700 font-bold">
-                        <th className="p-3">Product</th>
-                        <th className="p-3 text-center">Qty</th>
-                        <th className="p-3 text-right">Unit Price</th>
-                        <th className="p-3 text-right">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {selectedOrder.products?.map((prod, idx) => (
-                        <tr key={idx}>
-                          <td className="p-3 font-medium text-slate-800">
-                            {prod.product?.name || prod.product || 'Product Item'}
-                          </td>
-                          <td className="p-3 text-center">{prod.quantity || prod.orderQty || 0}</td>
-                          <td className="p-3 text-right">৳{prod.unitPrice || 0}</td>
-                          <td className="p-3 text-right font-bold">৳{prod.afterDiscount || prod.totalPrice || 0}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               </div>
             </div>
 

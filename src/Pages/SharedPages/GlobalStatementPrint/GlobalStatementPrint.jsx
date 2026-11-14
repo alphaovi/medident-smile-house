@@ -44,7 +44,7 @@ const GlobalStatementPrint = ({
         </div>
       </div>
 
-      {/* Meta Info: Customer ID -> Customer Name -> Statement Period (As requested) */}
+      {/* Meta Info: Customer ID -> Customer Name -> Statement Period */}
       <div className="grid grid-cols-2 gap-8 mb-5 text-[11px] border-b border-slate-300 pb-4">
         <div className="space-y-1.5">
           {clientInfo.accountId && (
@@ -149,20 +149,22 @@ const GlobalStatementPrint = ({
         </tbody>
       </table>
 
-      {/* Summary Box */}
+      {/* Summary Box Moved to Right Side */}
       {summaryRows.length > 0 && (
-        <div className="w-72 border border-slate-400 text-[11px] mb-6">
-          {summaryRows.map((sRow, idx) => (
-            <div
-              key={idx}
-              className={`flex justify-between p-1.5 border-b border-slate-300 last:border-b-0 ${
-                sRow.isBold ? 'font-extrabold bg-slate-100' : 'font-medium'
-              }`}
-            >
-              <span>{sRow.label}</span>
-              <span>{sRow.value}</span>
-            </div>
-          ))}
+        <div className="flex justify-end mb-6">
+          <div className="w-72 border border-slate-400 text-[11px]">
+            {summaryRows.map((sRow, idx) => (
+              <div
+                key={idx}
+                className={`flex justify-between p-1.5 border-b border-slate-300 last:border-b-0 ${
+                  sRow.isBold ? 'font-extrabold bg-slate-100' : 'font-medium'
+                }`}
+              >
+                <span>{sRow.label}</span>
+                <span>{sRow.value}</span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -172,7 +174,7 @@ const GlobalStatementPrint = ({
           -- END OF STATEMENT --
         </p>
         <p className="text-[10px] text-slate-600">
-          Please note that any discrepancy must be notified within 15 days from the date of this statement.
+          Please note that find any issue must be notified within 15 days from the date of this statement.
         </p>
         <p className="text-[10px] font-semibold text-slate-800 pt-2 border-t border-slate-300">
           This is a computer generated statement and does not require any signature[cite: 10].
