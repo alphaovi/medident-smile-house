@@ -35,7 +35,7 @@ const ClientStatement = () => {
 
   // Fetch Company Settings
   useEffect(() => {
-    fetch(`${BASE_URL}/settings`)
+    fetch(`${BASE_URL}/customers`)
       .then((res) => (res.ok ? res.json() : null))
       .then((resData) => {
         if (resData) {
