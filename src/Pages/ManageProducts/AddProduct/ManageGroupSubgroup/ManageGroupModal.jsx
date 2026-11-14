@@ -53,17 +53,15 @@ const ManageGroupModal = ({ isOpen, onClose, onDataChange }) => {
     }
   };
 
-  // --- GROUP UPDATE (ADDED) ---
+  // Group Update
   const handleUpdateGroup = async (groupIdOrMongoId, updatePayload) => {
     try {
-      // Subgroup-er motoi groupId ba _id khuje ber kora
       const targetGroup = groups.find(
         (g) => g.id === groupIdOrMongoId || g._id === groupIdOrMongoId
       );
 
       const updateKey = targetGroup ? targetGroup.id : groupIdOrMongoId;
 
-      // Backend route /:id hishabe id (string) ba custom id nibe
       const response = await axios.patch(`${API_URL}/product-groups/${updateKey}`, {
         productGroup: updatePayload,
       });
@@ -82,13 +80,38 @@ const ManageGroupModal = ({ isOpen, onClose, onDataChange }) => {
   };
 
   // Group Delete
-  const handleDeleteGroup = async (id) => {
+  const handleDeleteGroup = async (groupIdOrMongoId) => {
     try {
-      await axios.delete(`${API_URL}/product-groups/${id}`);
-      setGroups((prev) => prev.filter((group) => group._id !== id && group.id !== id));
+      const targetGroup = groups.find(
+        (g) => g.id === groupIdOrMongoId || g._id === groupIdOrMongoId || g._id?.toString() === groupIdOrMongoId
+      );
+
+      if (!targetGroup) {
+        toast.error("Group not found!");
+        return;
+      }
+
+      const deleteKey = targetGroup.id; 
+      if (!deleteKey) {
+        toast.error("Group ID is missing!");
+        return;
+      }
+
+      const targetGroupId = targetGroup._id;
+      const targetGroupCustomId = targetGroup.id;
+
+      await axios.delete(`${API_URL}/product-groups/${deleteKey}`);
+      
+      setGroups((prev) => prev.filter((group) => group.id !== deleteKey && group._id !== groupIdOrMongoId));
+      setSubgroups((prev) => prev.filter((sub) => {
+        const subGroupRef = typeof sub.group === "string" ? sub.group : sub.group?._id || sub.group?.id;
+        return subGroupRef !== targetGroupId && subGroupRef !== targetGroupCustomId;
+      }));
+
       toast.success("Group deleted successfully!");
       if (onDataChange) onDataChange();
     } catch (error) {
+      console.error("Delete error:", error);
       toast.error(error.response?.data?.message || "Failed to delete group!");
     }
   };
@@ -108,24 +131,46 @@ const ManageGroupModal = ({ isOpen, onClose, onDataChange }) => {
     }
   };
 
-  // Subgroup Delete
+  // 🟢 Subgroup Delete (Fixed to properly prioritize custom string ID 'sub-xxxx' with automatic fallback)
   const handleDeleteSubgroup = async (subgroupIdOrMongoId) => {
     try {
       const targetSubgroup = subgroups.find(
-        (sub) => sub.id === subgroupIdOrMongoId || sub._id === subgroupIdOrMongoId
+        (sub) => sub.id === subgroupIdOrMongoId || sub._id === subgroupIdOrMongoId || sub._id?.toString() === subgroupIdOrMongoId
       );
 
-      const deleteKey = targetSubgroup ? targetSubgroup.id : subgroupIdOrMongoId;
+      if (!targetSubgroup) {
+        toast.error("Subgroup not found!");
+        return;
+      }
 
-      await axios.delete(`${API_URL}/product-subgroups/${deleteKey}`);
+      // প্রথমে কাস্টম আইডি (sub.id) দিয়ে ট্রাই করবে, না থাকলে _id ব্যবহার করবে
+      const primaryKey = targetSubgroup.id || targetSubgroup._id;
+      const secondaryKey = targetSubgroup.id ? targetSubgroup._id : null;
+
+      if (!primaryKey) {
+        toast.error("Subgroup ID is missing!");
+        return;
+      }
+
+      try {
+        await axios.delete(`${API_URL}/product-subgroups/${primaryKey}`);
+      } catch (firstErr) {
+        // প্রথমটি ফেইল করলে এবং সেকেন্ডারি আইডি থাকলে সেটি দিয়ে আবার ট্রাই করবে
+        if (secondaryKey) {
+          await axios.delete(`${API_URL}/product-subgroups/${secondaryKey}`);
+        } else {
+          throw firstErr;
+        }
+      }
 
       setSubgroups((prev) =>
-        prev.filter((sub) => sub.id !== deleteKey && sub._id !== subgroupIdOrMongoId)
+        prev.filter((sub) => sub.id !== targetSubgroup.id && sub._id !== targetSubgroup._id)
       );
 
       toast.success("Subgroup deleted successfully!");
       if (onDataChange) onDataChange();
     } catch (error) {
+      console.error("Subgroup delete error:", error);
       toast.error(error.response?.data?.message || "Failed to delete subgroup!");
     }
   };
@@ -139,7 +184,11 @@ const ManageGroupModal = ({ isOpen, onClose, onDataChange }) => {
 
       const updateKey = targetSubgroup ? targetSubgroup.id : subgroupIdOrMongoId;
 
-      const response = await axios.patch(`${API_URL}/product-subgroups/${updateKey}`, updatePayload);
+      const formattedPayload = updatePayload.productSubgroup 
+        ? updatePayload 
+        : { productSubgroup: updatePayload };
+
+      const response = await axios.patch(`${API_URL}/product-subgroups/${updateKey}`, formattedPayload);
       const updatedSub = response.data.data || response.data;
 
       setSubgroups((prev) =>

@@ -1,14 +1,29 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, PackagePlus } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { fetchGroups, fetchSubGroups } from "../../../services/addProduct/addProductServiceRequest";
 
 const AddProductFormModal = ({
   isOpen,
   onClose,
   onAddProduct,
-  groups,
-  subGroupsList = [],
 }) => {
+  // 🟢 TanStack Query দিয়ে সরাসরি লেটেস্ট গ্রুপ এবং সাবগ্রুপ ফেচ করা হলো (যাতে সবসময় ফ্রেশ ডেটা থাকে)
+  const { data: groups = [] } = useQuery({
+    queryKey: ["groups"],
+    queryFn: fetchGroups,
+    staleTime: 0, // ডেটা সাথে সাথে ফ্রেশ হিসেবে গণ্য হবে
+    refetchOnMount: "always", // মোদাল ওপেন হলেই ব্যাকগ্রাউন্ড বা ক্যাশ থেকে লেটেস্ট ডেটা সিঙ্ক করবে
+  });
+
+  const { data: subGroupsList = [] } = useQuery({
+    queryKey: ["subgroups"],
+    queryFn: fetchSubGroups,
+    staleTime: 0,
+    refetchOnMount: "always",
+  });
+
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [filteredSubGroups, setFilteredSubGroups] = useState([]);
 
@@ -40,6 +55,7 @@ const AddProductFormModal = ({
     }
   }, [isOpen]);
 
+  // গ্রুপ পরিবর্তনের সাথে সাথে সাবগ্রুপ ফিল্টার করা
   const handleGroupChange = (e) => {
     const groupId = e.target.value;
     setSelectedGroupId(groupId);
