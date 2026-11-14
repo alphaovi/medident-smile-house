@@ -1,10 +1,5 @@
-
 import { motion } from 'framer-motion';
 
-/**
- * Filter Bar Component for Client Ledger
- * Provides date-range picker, state, clinic, and doctor select options.
- */
 const LedgerFilterBar = ({
   fromDate,
   setFromDate,
@@ -12,23 +7,17 @@ const LedgerFilterBar = ({
   setToDate,
   selectedState,
   setSelectedState,
-  selectedClinic,
-  setSelectedClinic,
-  selectedDoctor,
-  setSelectedDoctor,
-  stateOptions,
-  clinicOptions,
-  doctorOptions,
+  selectedCustomer,
+  setSelectedCustomer,
+  stateOptions = [],
+  customerOptions = [],
 }) => {
-
-  // Helper function to convert ISO date (YYYY-MM-DD) to DD/MM/YYYY for display
   const formatToDDMMYYYY = (dateStr) => {
     if (!dateStr) return '';
     const [year, month, day] = dateStr.split('-');
     return `${day}/${month}/${year}`;
   };
 
-  // Helper to trigger browser native date picker on full-box click
   const handleContainerClick = (e) => {
     const input = e.currentTarget.querySelector('input[type="date"]');
     if (input) {
@@ -45,7 +34,7 @@ const LedgerFilterBar = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4 }}
-      className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6"
+      className="bg-white rounded-xl shadow-sm border border-slate-200/80 p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6"
     >
       {/* From Date Filter */}
       <div>
@@ -108,11 +97,7 @@ const LedgerFilterBar = ({
         </label>
         <select
           value={selectedState}
-          onChange={(e) => {
-            setSelectedState(e.target.value);
-            setSelectedClinic('ALL');
-            setSelectedDoctor('ALL');
-          }}
+          onChange={(e) => setSelectedState(e.target.value)}
           className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 text-slate-700"
         >
           {stateOptions.map((st) => (
@@ -123,40 +108,19 @@ const LedgerFilterBar = ({
         </select>
       </div>
 
-      {/* Clinic Selection */}
+      {/* Customer Selection */}
       <div>
         <label className="block text-xs font-medium text-slate-500 mb-1">
-          Clinic
+          Customer Name
         </label>
         <select
-          value={selectedClinic}
-          onChange={(e) => {
-            setSelectedClinic(e.target.value);
-            setSelectedDoctor('ALL');
-          }}
+          value={selectedCustomer}
+          onChange={(e) => setSelectedCustomer(e.target.value)}
           className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 text-slate-700"
         >
-          {clinicOptions.map((cl) => (
-            <option key={cl.id} value={cl.id}>
-              {cl.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Doctor Selection */}
-      <div>
-        <label className="block text-xs font-medium text-slate-500 mb-1">
-          Doctor
-        </label>
-        <select
-          value={selectedDoctor}
-          onChange={(e) => setSelectedDoctor(e.target.value)}
-          className="w-full px-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-slate-400 text-slate-700"
-        >
-          {doctorOptions.map((doc) => (
-            <option key={doc.id} value={doc.id}>
-              {doc.name}
+          {customerOptions.map((cust) => (
+            <option key={cust.id} value={cust.id}>
+              {cust.name}
             </option>
           ))}
         </select>

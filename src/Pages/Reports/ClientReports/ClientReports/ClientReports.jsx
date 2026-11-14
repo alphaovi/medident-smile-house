@@ -1,8 +1,7 @@
 import { Link } from "react-router";
 import { 
   FileText, 
-  Briefcase, 
-  FolderCheck, 
+  
   CreditCard, 
   Receipt,
   ArrowRight, 
@@ -23,28 +22,19 @@ const ClientReports = () => {
       lightBg: "bg-blue-50 text-blue-600",
       hoverBorder: "hover:border-blue-300",
     },
-    {
-      id: "work-summary",
-      title: "Work Summary",
-      description: "Analyze completed orders, active tasks, and overall work progress.",
-      path: "/reports/client-reports/work-summary",
-      icon: Briefcase,
-      badge: "Summary",
-      gradient: "from-emerald-500 to-teal-600",
-      lightBg: "bg-emerald-50 text-emerald-600",
-      hoverBorder: "hover:border-emerald-300",
+
+     {
+      id: "client-ledger",
+      title: "Client Ledger",
+      description: "Monitor debit/credit balances, invoice logs, and client account history.",
+      path: "/reports/client-reports/client-ledger",
+      icon: Receipt,
+      badge: "Ledger",
+      gradient: "from-rose-500 to-red-600",
+      lightBg: "bg-rose-50 text-rose-600",
+      hoverBorder: "hover:border-rose-300",
     },
-    {
-      id: "case-summary",
-      title: "Case Summary",
-      description: "Review detailed case histories, ongoing status, and medical reports.",
-      path: "/reports/client-reports/case-summary",
-      icon: FolderCheck,
-      badge: "Cases",
-      gradient: "from-amber-500 to-orange-600",
-      lightBg: "bg-amber-50 text-amber-600",
-      hoverBorder: "hover:border-amber-300",
-    },
+    
     {
       id: "payment-summary",
       title: "Payment Summary",
@@ -56,17 +46,7 @@ const ClientReports = () => {
       lightBg: "bg-purple-50 text-purple-600",
       hoverBorder: "hover:border-purple-300",
     },
-    {
-      id: "client-ledger",
-      title: "Client Ledger",
-      description: "Monitor debit/credit balances, invoice logs, and client account history.",
-      path: "/reports/client-reports/client-ledger",
-      icon: Receipt,
-      badge: "Ledger",
-      gradient: "from-rose-500 to-red-600",
-      lightBg: "bg-rose-50 text-rose-600",
-      hoverBorder: "hover:border-rose-300",
-    },
+   
     {
       id: "Over-Due",
       title: "Over Due",

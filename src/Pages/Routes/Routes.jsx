@@ -19,7 +19,7 @@ import EmployeeManagement from "../Settings/EmployeeManagement/EmployeeManagemen
 import SellReturn from "../Sales/SaleReturn/SellReturn";
 import ClientReports from "../Reports/ClientReports/ClientReports/ClientReports";
 import ClientStatement from "../Reports/ClientReports/ClientStatement/ClientStatement";
-import WorkSummary from "../Reports/ClientReports/WorkSummary/WorkSummary";
+import ClientLedger from "../Reports/ClientReports/ClientLedger/ClientLedger";
 
 
 
@@ -106,9 +106,10 @@ const router = createBrowserRouter([
         element: <ClientStatement></ClientStatement>,
       },
       {
-        path: "/reports/client-reports/work-summary",
-        element: <WorkSummary></WorkSummary>,
+        path: "/reports/client-reports/client-ledger",
+        element: <ClientLedger></ClientLedger>,
       },
+     
       // {
       //   path: "/reports/client-reports/case-summary",
       //   element: <CaseSummary></CaseSummary>,

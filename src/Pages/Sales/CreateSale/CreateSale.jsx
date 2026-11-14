@@ -1,9 +1,10 @@
 // src/components/sale/CreateSale.jsx
-import { useState, useEffect, useMemo, useRef } from "react";
-import { ShoppingCart, Box } from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { ShoppingCart, Box, Loader2 } from "lucide-react";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Swal from "sweetalert2";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import SaleHeader from "./SaleHeader";
 import SaleItemRow from "./SaleItemRow";
@@ -12,12 +13,7 @@ import SaleCalculation from "./SaleCalculation";
 import { fetchSaleDependencies, createSaleOrder } from "../../../services/saleOrderService/useSaleOrderServices";
 
 const CreateSale = ({ onSuccess = () => {} }) => {
-  const [states, setStates] = useState([]);
-  const [customers, setCustomers] = useState([]);
-  const [products, setProducts] = useState([]);
-  const [productsGroupSubgroup, setProductsGroupSubgroup] = useState([]);
-  const [subgroupsList, setSubgroupsList] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
   const [selectedState, setSelectedState] = useState(null);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -54,27 +50,21 @@ const CreateSale = ({ onSuccess = () => {} }) => {
 
   const [paidAmount, setPaidAmount] = useState(0);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setIsLoading(true);
-        const data = await fetchSaleDependencies();
+  // 🟢 React Query ব্যবহার করে ডিপেন্ডেন্সি ডেটা দ্রুত লোড ও ক্যাশ করা হলো
+  const { data: dependencyData, isLoading } = useQuery({
+    queryKey: ["saleDependencies"],
+    queryFn: fetchSaleDependencies,
+    staleTime: 1000 * 60 * 5, // ৫ মিনিট ডেটা ফ্রেশ রাখবে
+    cacheTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData, // ব্যাকগ্রাউন্ড রিফেচের সময়ও আগের ডেটা ধরে রাখবে
+  });
 
-        setStates(Array.isArray(data.states) ? data.states : []);
-        setCustomers(Array.isArray(data.customers) ? data.customers : []);
-        setProducts(Array.isArray(data.products) ? data.products : []);
-        setProductsGroupSubgroup(Array.isArray(data.productsGroupSubgroup) ? data.productsGroupSubgroup : []);
-        setSubgroupsList(Array.isArray(data.subgroups) ? data.subgroups : []);
-      } catch (err) {
-        console.error("Error loading dependency data:", err);
-        toast.error("Failed to load initial data for sales.");
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchData();
-  }, []);
+  const states = Array.isArray(dependencyData?.states) ? dependencyData.states : [];
+  const customers = Array.isArray(dependencyData?.customers) ? dependencyData.customers : [];
+  const products = Array.isArray(dependencyData?.products) ? dependencyData.products : [];
+  const productsGroupSubgroup = Array.isArray(dependencyData?.productsGroupSubgroup) ? dependencyData.productsGroupSubgroup : [];
+  const subgroupsList = Array.isArray(dependencyData?.subgroups) ? dependencyData.subgroups : [];
 
   const availableGroups = useMemo(() => {
     if (!Array.isArray(productsGroupSubgroup)) return [];
@@ -204,7 +194,6 @@ const CreateSale = ({ onSuccess = () => {} }) => {
           String(p.product?._id) === String(targetId)
       );
 
-      // 🟢 আইডি এক্সট্রাকশন আরও নিখুঁত করা হলো
       const groupId = matchedProd?.group?._id || matchedProd?.group || (typeof item.selectedGroup === "object" ? (item.selectedGroup?.value || item.selectedGroup?._id) : item.selectedGroup);
       const subGroupId = matchedProd?.subGroup?._id || matchedProd?.subGroup || (typeof item.selectedSubGroup === "object" ? (item.selectedSubGroup?.value || item.selectedSubGroup?._id) : item.selectedSubGroup);
       const productObjId = matchedProd?._id || matchedProd?.id || matchedProd?.product?._id || targetId;
@@ -250,6 +239,28 @@ const CreateSale = ({ onSuccess = () => {} }) => {
     };
   }, [items, globalDiscount, paidAmount, products]);
 
+  // 🟢 মিউটেশন ব্যবহার করে সেল অর্ডার সাবমিট করা এবং ক্যাশ ইনভ্যালিডেট করা
+  const createOrderMutation = useMutation({
+    mutationFn: createSaleOrder,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["saleDependencies"] });
+      toast.success("Sell order created successfully!", { autoClose: 2000 });
+      
+      setItems([{ ...initialRow }]);
+      setSelectedState(null);
+      setSelectedCustomer(null);
+      setOrderDate(getTodayISO());
+      setGlobalDiscount({ type: "percent", value: 0 });
+      setPaidAmount(0);
+
+      onSuccess();
+    },
+    onError: (error) => {
+      console.error("Submission error:", error);
+      toast.error(error.message || "Failed to save sale order.");
+    },
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -292,60 +303,49 @@ const CreateSale = ({ onSuccess = () => {} }) => {
       cancelButtonText: "Cancel",
     }).then(async (result) => {
       if (result.isConfirmed) {
-        try {
-          const paymentsArray = Number(paidAmount) > 0 
-            ? [{ date: new Date(orderDate).toISOString(), amount: Number(paidAmount), paymentMethod: "Cash" }]
-            : [];
+        const paymentsArray = Number(paidAmount) > 0 
+          ? [{ date: new Date(orderDate).toISOString(), amount: Number(paidAmount), paymentMethod: "Cash" }]
+          : [];
 
-          const saleOrderPayload = {
-            stateOrRegion: stateVal,
+        const saleOrderPayload = {
+          stateOrRegion: stateVal,
+          customer: customerId,
+          orderDate: new Date(orderDate).toISOString(),
+          products: validItems.map((item) => ({
+            state: stateVal,
             customer: customerId,
-            orderDate: new Date(orderDate).toISOString(),
-            products: validItems.map((item) => ({
-              state: stateVal,
-              customer: customerId,
-              group: typeof item.groupId === "object" ? item.groupId._id || item.groupId.value : item.groupId,
-              subGroup: typeof item.subGroupId === "object" ? item.subGroupId._id || item.subGroupId.value : item.subGroupId,
-              product: typeof item.productObjId === "object" ? item.productObjId._id || item.productObjId.value : item.productObjId,
-              quantity: Number(item.orderQty),
-              unitPrice: Number(item.unitPrice),
-              discountType: item.discountType === "flat" ? "fixed" : "percentage",
-              discountValue: Number(item.discountValue || 0),
-              discountAmount: Number(item.discountAmount || 0),
-              totalPrice: Number(item.totalPrice || 0),
-              afterDiscount: Number(item.afterDiscountPrice || 0),
-            })),
-            generalDiscountType: globalDiscount.type === "percent" ? "percentage" : "fixed",
-            generalDiscountValue: Number(globalDiscount.value || 0),
-            paidAmount: calculations.totalPaidCalculated,
-            payments: paymentsArray,
-            status: "pending",
-          };
+            group: typeof item.groupId === "object" ? item.groupId._id || item.groupId.value : item.groupId,
+            subGroup: typeof item.subGroupId === "object" ? item.subGroupId._id || item.subGroupId.value : item.subGroupId,
+            product: typeof item.productObjId === "object" ? item.productObjId._id || item.productObjId.value : item.productObjId,
+            quantity: Number(item.orderQty),
+            unitPrice: Number(item.unitPrice),
+            discountType: item.discountType === "flat" ? "fixed" : "percentage",
+            discountValue: Number(item.discountValue || 0),
+            discountAmount: Number(item.discountAmount || 0),
+            totalPrice: Number(item.totalPrice || 0),
+            afterDiscount: Number(item.afterDiscountPrice || 0),
+          })),
+          generalDiscountType: globalDiscount.type === "percent" ? "percentage" : "fixed",
+          generalDiscountValue: Number(globalDiscount.value || 0),
+          paidAmount: calculations.totalPaidCalculated,
+          payments: paymentsArray,
+          status: "pending",
+        };
 
-          // 🟢 সাবমিট করার আগে পেলোড কনসোলে চেক করা
-          console.log("🚀 [FRONTEND SUBMIT] Final Payload:", JSON.stringify(saleOrderPayload, null, 2));
-
-          await createSaleOrder(saleOrderPayload);
-
-          toast.success("Sell order created successfully!", { autoClose: 2000 });
-          
-          setItems([{ ...initialRow }]);
-          setSelectedState(null);
-          setSelectedCustomer(null);
-          setOrderDate(getTodayISO());
-          setGlobalDiscount({ type: "percent", value: 0 });
-          setPaidAmount(0);
-
-          onSuccess();
-        } catch (error) {
-          console.error("Submission error:", error);
-          toast.error(error.message || "Failed to save sale order.");
-        }
+        createOrderMutation.mutate(saleOrderPayload);
       }
     });
   };
 
-  if (isLoading) return <div className="p-6">Loading create sale form...</div>;
+  // প্রথমবার লোড হওয়ার সময় স্পিনার দেখাবে, ক্যাশ থাকলে ইনস্ট্যান্ট ওপেন হবে
+  if (isLoading && customers.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center p-20">
+        <Loader2 className="size-10 animate-spin text-teal-600 mb-3" />
+        <p className="text-sm font-semibold text-slate-600">Loading create sale form...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full min-h-[calc(100vh-20px)] mt-[10px] px-[20px] pb-10 bg-base-100 box-border">
@@ -424,9 +424,10 @@ const CreateSale = ({ onSuccess = () => {} }) => {
         <div className="pt-2 flex justify-end">
           <button
             type="submit"
+            disabled={createOrderMutation.isLoading}
             className="btn btn-sm bg-teal-600 hover:bg-teal-700 text-white px-8"
           >
-            Create Sale Order
+            {createOrderMutation.isLoading ? <Loader2 className="size-4 animate-spin" /> : "Create Sale Order"}
           </button>
         </div>
       </form>

@@ -88,16 +88,16 @@ const ManageSuppliers = () => {
   );
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="w-full min-h-screen px-4 md:px-6 lg:px-8 py-6 bg-slate-50 dark:bg-gray-900 box-border">
       <ToastContainer position="top-right" autoClose={2000} />
 
       {/* Header & Add Button */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+      <div className="w-full flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-white">
+          <h1 className="text-2xl md:text-3xl font-extrabold text-gray-800 dark:text-white tracking-tight">
             Manage Suppliers
           </h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
             Add, edit, and organize your business suppliers status
           </p>
         </div>
@@ -111,7 +111,7 @@ const ManageSuppliers = () => {
       </div>
 
       {/* Search Bar */}
-      <div className="mb-6 relative max-w-md">
+      <div className="mb-6 relative max-w-md w-full">
         <span className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-gray-400">
           <Search className="w-5 h-5" />
         </span>
@@ -125,8 +125,8 @@ const ManageSuppliers = () => {
       </div>
 
       {/* Suppliers Table List */}
-      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-gray-100 dark:border-gray-700 overflow-hidden">
+        <div className="w-full overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
@@ -140,7 +140,7 @@ const ManageSuppliers = () => {
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700 text-sm text-gray-700 dark:text-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan="5" className="py-8 text-center text-gray-400">
+                  <td colSpan="5" className="py-12 text-center text-gray-400 font-medium">
                     Loading suppliers from Database...
                   </td>
                 </tr>
@@ -153,9 +153,11 @@ const ManageSuppliers = () => {
                     <td className="py-4 px-6 font-medium text-indigo-600 dark:text-indigo-400">
                       {sup.supplierID}
                     </td>
-                    <td className="py-4 px-6 font-semibold flex items-center gap-2">
-                      <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
-                      <span className="truncate">{sup.supplierName}</span>
+                    <td className="py-4 px-6 font-semibold">
+                      <div className="flex items-center gap-2">
+                        <Building2 className="w-4 h-4 text-gray-400 shrink-0" />
+                        <span className="truncate">{sup.supplierName}</span>
+                      </div>
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-300">
@@ -197,7 +199,7 @@ const ManageSuppliers = () => {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="5" className="py-8 text-center text-gray-400">
+                  <td colSpan="5" className="py-12 text-center text-gray-400 font-medium">
                     No suppliers found.
                   </td>
                 </tr>

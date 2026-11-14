@@ -22,19 +22,26 @@ const AddProduct = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [entries, setEntries] = useState(10);
 
-  const { data: products = [], isLoading: loading } = useQuery({
+  // React Query অপ্টিমাইজেশন: staleTime ও placeholderData যুক্ত করা হয়েছে যাতে দ্রুত ডাটা দেখায়
+  const { data: products = [], isLoading: loading, isFetching } = useQuery({
     queryKey: ["products"],
     queryFn: fetchProducts,
+    staleTime: 1000 * 60 * 5, // ৫ মিনিট পর্যন্ত ডেটা ফ্রেশ রাখবে
+    cacheTime: 1000 * 60 * 10,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData, // ব্যাকগ্রাউন্ডে ফেচ হওয়ার সময়ও আগের ডেটা ধরে রাখবে (ফ্লিকার করবে না)
   });
 
   const { data: groups = [] } = useQuery({
     queryKey: ["groups"],
     queryFn: fetchGroups,
+    staleTime: 1000 * 60 * 10,
   });
 
   const { data: subGroups = [] } = useQuery({
     queryKey: ["subgroups"],
     queryFn: fetchSubGroups,
+    staleTime: 1000 * 60 * 10,
   });
 
   const createMutation = useMutation({
@@ -72,7 +79,7 @@ const AddProduct = () => {
 
   const handleAddProduct = (formData) => {
     const payload = {
-      id: formData.productId, // ইউজার প্রদত্ত কাস্টম আইডি (সর্বোচ্চ ১০ ক্যারেক্টার)
+      id: formData.productId, 
       name: formData.productName,
       code: formData.productId,
       group: formData.productGroup,
@@ -136,7 +143,15 @@ const AddProduct = () => {
     <motion.div initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
       <div className="bg-base-100 rounded-2xl border border-base-300 shadow-sm overflow-hidden">
         <div className="p-5 border-b border-base-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <h2 className="text-lg font-bold">Products List</h2>
+          <div className="flex items-center gap-3">
+            <h2 className="text-lg font-bold">Products List</h2>
+            {/* ব্যাকগ্রাউন্ডে ডেটা রিফেচ হলে ছোট ইন্ডিকেটর দেখাবে */}
+            {isFetching && !loading && (
+              <span className="flex items-center gap-1 text-xs text-primary font-medium animate-pulse">
+                <Loader2 className="size-3 animate-spin" /> Syncing...
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <button onClick={() => setIsGroupModalOpen(true)} className="btn text-white bg-teal-600 hover:bg-teal-700 btn-sm gap-2 border-0">
               <FolderPlus className="size-4" /> Add Group / Subgroup
@@ -176,7 +191,8 @@ const AddProduct = () => {
           </div>
         </div>
 
-        {loading ? (
+        {/* প্রথমবার লোড হওয়ার সময় স্পিনার দেখাবে, পরেরবার ক্যাশ থেকে ইনস্ট্যান্ট দেখাবে */}
+        {loading && products.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-base-content/60">
             <Loader2 className="size-8 animate-spin text-primary mb-2" />
             <p className="text-sm">Loading dataset...</p>
