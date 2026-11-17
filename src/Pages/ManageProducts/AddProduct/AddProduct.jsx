@@ -22,14 +22,13 @@ const AddProduct = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [entries, setEntries] = useState(10);
 
-  // React Query অপ্টিমাইজেশন: staleTime ও placeholderData যুক্ত করা হয়েছে যাতে দ্রুত ডাটা দেখায়
   const { data: products = [], isLoading: loading, isFetching } = useQuery({
     queryKey: ["products"],
     queryFn: fetchProducts,
-    staleTime: 1000 * 60 * 5, // ৫ মিনিট পর্যন্ত ডেটা ফ্রেশ রাখবে
+    staleTime: 1000 * 60 * 5,
     cacheTime: 1000 * 60 * 10,
     refetchOnWindowFocus: false,
-    placeholderData: (previousData) => previousData, // ব্যাকগ্রাউন্ডে ফেচ হওয়ার সময়ও আগের ডেটা ধরে রাখবে (ফ্লিকার করবে না)
+    placeholderData: (previousData) => previousData,
   });
 
   const { data: groups = [] } = useQuery({
@@ -99,25 +98,15 @@ const AddProduct = () => {
   };
 
   const handleUpdateProduct = (updatedData) => {
-    const id = updatedData.id || updatedData._id || updatedData.productId;
-    
-    if (!id) {
-      toast.error("Product ID is missing!");
+    const dbId = updatedData._id; // EditProductModal থেকে পাঠানো MongoDB এর আসল _id[cite: 8, 10]
+    const payload = updatedData.payload; // আপডেট করার ডাটা পে-লোড[cite: 8, 10]
+
+    if (!dbId) {
+      toast.error("Product Database ID is missing!");
       return;
     }
 
-    const payload = {
-      id: updatedData.productId,
-      name: updatedData.productName,
-      purchasePrice: Number(updatedData.buyingPrice),
-      sellingPrice: Number(updatedData.sellingPrice),
-      weight: Number(updatedData.weight),
-      unit: updatedData.unit,
-      group: updatedData.productGroup,
-      subGroup: updatedData.productSubGroup,
-    };
-
-    updateMutation.mutate({ id, payload });
+    updateMutation.mutate({ id: dbId, payload });
   };
 
   const handleDeleteProduct = (productId) => {
@@ -145,7 +134,6 @@ const AddProduct = () => {
         <div className="p-5 border-b border-base-300 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <h2 className="text-lg font-bold">Products List</h2>
-            {/* ব্যাকগ্রাউন্ডে ডেটা রিফেচ হলে ছোট ইন্ডিকেটর দেখাবে */}
             {isFetching && !loading && (
               <span className="flex items-center gap-1 text-xs text-primary font-medium animate-pulse">
                 <Loader2 className="size-3 animate-spin" /> Syncing...
@@ -191,7 +179,6 @@ const AddProduct = () => {
           </div>
         </div>
 
-        {/* প্রথমবার লোড হওয়ার সময় স্পিনার দেখাবে, পরেরবার ক্যাশ থেকে ইনস্ট্যান্ট দেখাবে */}
         {loading && products.length === 0 ? (
           <div className="flex flex-col items-center justify-center p-12 text-base-content/60">
             <Loader2 className="size-8 animate-spin text-primary mb-2" />

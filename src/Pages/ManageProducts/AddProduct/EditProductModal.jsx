@@ -101,27 +101,26 @@ const EditProductModal = ({ isOpen, onClose, product, groups = [], onUpdateProdu
       buttonsStyling: false,
     }).then((result) => {
       if (result.isConfirmed) {
-        const dbId = product._id; // ডাটাবেজ ফাইন্ড করার মূল আইডি (_id)
+        const dbId = product._id; // ডাটাবেজ ফাইন্ড করার মূল আইডি (_id)[cite: 8]
 
         const updatePayload = {
-          id: formData.productId, // নতুন কাস্টম আইডি যা ইউজার দিয়েছে
-          productName: formData.productName,
-          productGroup: formatGroup(formData.productGroup),          
-          productSubGroup: formData.productSubGroup, 
-          buyingPrice: Number(formData.buyingPrice),
+          id: formData.productId,          // নতুন কাস্টম আইডি যা ইউজার দিয়েছে[cite: 8]
+          code: formData.productId,        // ব্যাকএন্ড মডেলের code ফিল্ডের জন্য[cite: 3, 8]
+          name: formData.productName,      // ব্যাকএন্ড মডেলের name ফিল্ডের জন্য[cite: 3, 8]
+          group: formData.productGroup,       
+          subGroup: formData.productSubGroup,
+          purchasePrice: Number(formData.buyingPrice),
           sellingPrice: Number(formData.sellingPrice),
           unit: formData.unit,
           weight: Number(formData.weight || 0),
         };
 
-        onUpdateProduct({ ...updatePayload, _id: dbId });
+        // সঠিক MongoDB _id এবং পে-লোড একসাথে পাস করা হলো[cite: 8]
+        onUpdateProduct({ _id: dbId, payload: updatePayload });
         onClose();
       }
     });
   };
-
-  // Helper for group format if needed
-  const formatGroup = (val) => val;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
