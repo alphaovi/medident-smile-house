@@ -99,11 +99,12 @@ const PurchaseOrder = () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
       queryClient.invalidateQueries({ queryKey: ["inventories"] });
       
-      if (variables?.items) {
+      // 🟢 Fix: Shudhu status "Received" holei inventory price/stock sync hobe. "Ordered" ba "On Transit" hole hobe na!
+      if (variables?.status === "Received" && variables?.items) {
         await syncInventoryBuyingPrices(variables.items);
       }
 
-      toast.success("Purchase order created and inventory prices updated successfully!");
+      toast.success("Purchase order created successfully!");
     },
     onError: (error) => {
       toast.error(error.message || "Failed to create purchase order.");
@@ -117,11 +118,12 @@ const PurchaseOrder = () => {
       queryClient.invalidateQueries({ queryKey: ["purchase-orders"] });
       queryClient.invalidateQueries({ queryKey: ["inventories"] });
 
-      if (variables?.orderData?.items) {
+      // 🟢 Fix: Shudhu status "Received" holei inventory price/stock sync hobe.
+      if (variables?.orderData?.status === "Received" && variables?.orderData?.items) {
         await syncInventoryBuyingPrices(variables.orderData.items);
       }
 
-      toast.success("Purchase order and inventory prices updated successfully!");
+      toast.success("Purchase order updated successfully!");
     },
     onError: (error) => {
       toast.error(error.message || "Failed to update purchase order.");

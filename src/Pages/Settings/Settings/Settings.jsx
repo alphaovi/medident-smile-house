@@ -3,12 +3,9 @@ import {
   User,
   Users,
   Shield,
-  
   Settings as SettingsIcon,
-  
-  
-  
   Globe,
+  Landmark,
 } from "lucide-react";
 
 const settingsData = [
@@ -37,6 +34,13 @@ const settingsData = [
     title: "State/Division Management",
     path: "/settings/state",
     icon: <Globe className="w-6 h-6 text-white" />,
+    gradient: "from-amber-500 via-orange-500 to-red-500",
+    shadow: "shadow-amber-500/20",
+  },
+  {
+    title: "Bank Details Management",
+    path: "/settings/bank-details-management",
+    icon: <Landmark className="w-6 h-6 text-white" />,
     gradient: "from-amber-500 via-orange-500 to-red-500",
     shadow: "shadow-amber-500/20",
   },

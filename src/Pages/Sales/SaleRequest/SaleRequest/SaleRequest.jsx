@@ -44,9 +44,40 @@ const SaleRequest = () => {
     }
   };
 
+  const executeDeleteOrder = async (orderId) => {
+    try {
+      await useSaleOrderServices.deleteSaleOrder(orderId);
+      queryClient.invalidateQueries(["saleOrders"]);
+      toast.warn(`Order deleted successfully.`, { autoClose: 2000 });
+    } catch (error) {
+      toast.error(error.message || "Failed to delete order from server.");
+    }
+  };
+
   const handleDeleteOrder = (order) => {
     if (order.status?.toLowerCase() === "delivered") {
       toast.error("Delivered orders cannot be deleted directly! Send back to pending first.");
+      return;
+    }
+
+    const paidAmt = Number(order.paidAmount) || 0;
+
+    if (paidAmt > 0) {
+      Swal.fire({
+        title: "Payment Found on Invoice!",
+        text: "⚠️ Important Warning: Before proceeding, please check whether any payment has already been recorded against this invoice. If a paid amount exists, manually adjust it in the Accounts section and create the corresponding payment entry. Otherwise, the existing payment history of this invoice will be permanently lost and cannot be recovered.",
+        icon: "warning",
+        background: "#DC2626",
+        color: "#FFFFFF",
+        showCancelButton: true,
+        confirmButtonColor: "#991B1B",
+        cancelButtonColor: "#334155",
+        confirmButtonText: "Yes, delete it!",
+      }).then(async (result) => {
+        if (result.isConfirmed) {
+          await executeDeleteOrder(order._id);
+        }
+      });
       return;
     }
 
@@ -60,13 +91,7 @@ const SaleRequest = () => {
       confirmButtonText: "Yes, delete it!",
     }).then(async (result) => {
       if (result.isConfirmed) {
-        try {
-          await useSaleOrderServices.deleteSaleOrder(order._id);
-          queryClient.invalidateQueries(["saleOrders"]);
-          toast.warn(`Order deleted successfully.`, { autoClose: 2000 });
-        } catch (error) {
-          toast.error(error.message || "Failed to delete order from server.");
-        }
+        await executeDeleteOrder(order._id);
       }
     });
   };

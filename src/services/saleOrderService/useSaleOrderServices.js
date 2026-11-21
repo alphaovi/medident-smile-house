@@ -167,6 +167,24 @@ export const fetchSaleDependencies = async () => {
   }
 };
 
+// 🟢 7. Add Payment to Sale Order
+export const addPaymentToSaleOrder = async (id, paymentPayload) => {
+  const response = await fetch(`${API_URL}/sales-orders/${id}/payment`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(paymentPayload),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to record payment");
+  }
+
+  return data;
+};
+
 export const useSaleOrderServices = {
   createSaleOrder,
   getAllSaleOrders: fetchSaleOrders,
@@ -175,4 +193,5 @@ export const useSaleOrderServices = {
   updateSaleOrder,
   deleteSaleOrder,
   fetchSaleDependencies,
+  addPaymentToSaleOrder,
 };

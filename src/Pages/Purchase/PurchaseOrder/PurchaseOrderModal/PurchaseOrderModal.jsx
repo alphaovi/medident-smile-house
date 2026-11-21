@@ -228,7 +228,6 @@ const PurchaseOrderModal = ({
       const totalWithShippingAndVat =
         rawLinePrice + allocatedShipping + allocatedTransit + allocatedOther + allocatedVat;
 
-      // Ceiling if fractional part >= 0.50, otherwise flooring
       const fractionalPart = totalWithShippingAndVat % 1;
       const totalWithShipping =
         fractionalPart >= 0.5
@@ -286,7 +285,7 @@ const PurchaseOrderModal = ({
 
     Swal.fire({
       title: "Confirm Purchase Order?",
-      text: "This will create a new batch order and calculate average buying price in inventory.",
+      text: "This will create a new batch order with 'Ordered' status without affecting current stock.",
       icon: "question",
       showCancelButton: true,
       confirmButtonColor: "#0d9488",
@@ -317,6 +316,7 @@ const PurchaseOrderModal = ({
           totalWeight: calculations.totalBatchWeight || 0,
           baseSubtotal: calculations.rawSubtotal,
           grandTotal: calculations.grandTotal,
+          status: "Ordered", // 🟢 Ensure status is strictly "Ordered"
           items: validItems.map((item) => ({
             group: item.selectedGroup,
             subGroup: item.selectedSubGroup,
@@ -332,9 +332,8 @@ const PurchaseOrderModal = ({
             otherCost: Number(item.allocatedOther) || 0,
             unitCost: Number(item.unitCostAfterCalc || item.unitPrice) || 0,
             totalCost: Number(item.totalWithShipping || (item.orderQty * item.unitPrice)) || 0,
-            status: "Ordered",
+            status: "Ordered", // 🟢 Ensure item status is also strictly "Ordered"
           })),
-          status: "Ordered",
         };
 
         onSaveStoreProduct?.(payload);
