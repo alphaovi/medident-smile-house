@@ -134,7 +134,7 @@ const BankDetailsManagement = () => {
       <div className="w-full bg-white rounded-2xl border border-slate-200 shadow-sm p-5 md:p-6 mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold text-slate-900 tracking-tight">
-            Bank Details Management
+            Manage Accounts
           </h1>
           <p className="text-sm text-slate-500 mt-1">
             Manage bank accounts, branch info, and payment collection details.
@@ -166,7 +166,7 @@ const BankDetailsManagement = () => {
           type="text"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search by bank name, account name, account no, or branch..."
+          placeholder="Search by account name, account holder name, account no, or branch..."
           className="flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
         />
 

@@ -10,6 +10,8 @@ import settingsRoutes from "./settings.routes";
 import clientsReportsRoutes from "./clientsReports.routes";
 import notFoundRoutes from "./notFound.routes";
 import financeRoutes from "./finance.routes";
+import loginRoutes from "./login.routes";
+
 
 const router = createBrowserRouter([
   {
@@ -27,6 +29,9 @@ const router = createBrowserRouter([
       // Clients Report
       ...clientsReportsRoutes,
 
+
+      // login Page
+      ...loginRoutes,
       ...settingsRoutes,
 
       // {

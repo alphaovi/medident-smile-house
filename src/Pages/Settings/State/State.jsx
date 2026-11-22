@@ -74,7 +74,7 @@ const State = () => {
           className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl shadow-lg shadow-indigo-500/30 transition-all transform active:scale-95 cursor-pointer"
         >
           <Plus className="w-5 h-5" />
-          Add State
+          Add Area
         </button>
       </div>
 
@@ -100,7 +100,7 @@ const State = () => {
               <tr className="bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 text-sm uppercase tracking-wider border-b border-gray-200 dark:border-gray-700">
                 <th className="py-4 px-6 font-semibold w-20">#</th>
                 <th className="py-4 px-6 font-semibold">
-                  State / Division Name
+                  Areas
                 </th>
                 <th className="py-4 px-6 font-semibold text-center w-36">
                   Action

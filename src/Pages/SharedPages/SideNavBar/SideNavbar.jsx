@@ -63,6 +63,7 @@ const SideNavbar = () => {
           logo={medidentLogo}
           setIsMobileOpen={setIsMobileOpen}
         />
+        
 
         {/* Page Content */}
         <div className="m-5">

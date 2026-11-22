@@ -21,8 +21,8 @@ const BankDetailsTable = ({
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-xs uppercase tracking-wider">
               <th className="py-3.5 px-4 font-bold">#</th>
-              <th className="py-3.5 px-4 font-bold">Bank Name</th>
               <th className="py-3.5 px-4 font-bold">Account Name</th>
+              <th className="py-3.5 px-4 font-bold">Account Holder</th>
               <th className="py-3.5 px-4 font-bold">Account No</th>
               <th className="py-3.5 px-4 font-bold">Branch</th>
               <th className="py-3.5 px-4 font-bold">Details</th>

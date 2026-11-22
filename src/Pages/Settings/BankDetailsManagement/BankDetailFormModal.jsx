@@ -85,7 +85,7 @@ const BankDetailFormModal = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Bank Name <span className="text-rose-500">*</span>
+                Account Name <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -93,19 +93,18 @@ const BankDetailFormModal = ({
                 required
                 value={formData.bankName}
                 onChange={handleChange}
-                placeholder="e.g. Dutch-Bangla Bank PLC"
+                placeholder="e.g. Dutch-Bangla Bank PLC / BKASH"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
               />
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Account Number <span className="text-rose-500">*</span>
+                Account Number 
               </label>
               <input
                 type="text"
                 name="accountNo"
-                required
                 value={formData.accountNo}
                 onChange={handleChange}
                 placeholder="e.g. 123.101.456789"
@@ -117,7 +116,7 @@ const BankDetailFormModal = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-slate-700 mb-1">
-                Account Name <span className="text-rose-500">*</span>
+                Account Holder <span className="text-rose-500">*</span>
               </label>
               <input
                 type="text"
@@ -125,7 +124,7 @@ const BankDetailFormModal = ({
                 required
                 value={formData.accountName}
                 onChange={handleChange}
-                placeholder="e.g. Medident Dental Care"
+                placeholder="e.g. Sohel Chawdhory"
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 focus:outline-none focus:border-sky-500 focus:ring-2 focus:ring-sky-500/20"
               />
             </div>
