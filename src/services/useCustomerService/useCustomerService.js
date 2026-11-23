@@ -2,7 +2,7 @@
 
 const API_BASE_URL = 
   import.meta.env.VITE_API_URL || 
-  import.meta.env.VITE_Test_API_URL || 
+  
   "https://alphaovi-medident-backend.vercel.app/api/v1"; // আপনার লাইভ ব্যাকএন্ড ইউআরএল ফলব্যাক হিসেবে যুক্ত করা হলো
 
 export const customerService = {
