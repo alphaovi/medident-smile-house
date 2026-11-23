@@ -75,9 +75,7 @@ export const CreateAccountPage = ({ onSuccess, onSwitchToLogin }) => {
     }
 
     const rawBase =
-      import.meta.env.VITE_Test_API_URL ||
-      import.meta.env.VITE_API_URL ||
-      "http://localhost:5002/api/v1";
+      import.meta.env.VITE_API_URL || "http://localhost:5002/api/v1";
     const baseUrl = String(rawBase).replace(/\/+$/, "");
     const registerUrl = `${baseUrl}/users/register`;
 
@@ -103,7 +101,9 @@ export const CreateAccountPage = ({ onSuccess, onSwitchToLogin }) => {
       const resData = await response.json().catch(() => ({}));
 
       if (!response.ok || resData?.success === false) {
-        throw new Error(resData?.message || `Server error (${response.status})`);
+        throw new Error(
+          resData?.message || `Server error (${response.status})`,
+        );
       }
 
       const result = resData?.data ?? resData;
@@ -115,7 +115,7 @@ export const CreateAccountPage = ({ onSuccess, onSwitchToLogin }) => {
       setSuccessMsg(
         result?.message ||
           resData?.message ||
-          "Account created! Verification link sent to your email. Account remains pending until admin assigns your role."
+          "Account created! Verification link sent to your email. Account remains pending until admin assigns your role.",
       );
       setFirstName("");
       setLastName("");
@@ -260,8 +260,13 @@ export const CreateAccountPage = ({ onSuccess, onSwitchToLogin }) => {
               />
               <span>
                 I agree to the{" "}
-                <span className="text-[#1588d8] hover:underline">Terms of Service</span> &amp;{" "}
-                <span className="text-[#1588d8] hover:underline">Privacy Policy</span>
+                <span className="text-[#1588d8] hover:underline">
+                  Terms of Service
+                </span>{" "}
+                &amp;{" "}
+                <span className="text-[#1588d8] hover:underline">
+                  Privacy Policy
+                </span>
               </span>
             </label>
           </div>
