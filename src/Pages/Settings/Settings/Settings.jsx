@@ -1,12 +1,14 @@
+import { useMemo } from "react";
 import { Link } from "react-router";
 import {
   User,
   Users,
   Shield,
-  Settings as SettingsIcon,
   Globe,
   Landmark,
 } from "lucide-react";
+import { useAuth } from "../../../Contexts/AuthContext";
+import { getStoredUser } from "../../../services/auth/api";
 
 const settingsData = [
   {
@@ -50,10 +52,20 @@ const settingsData = [
     icon: <User className="w-6 h-6 text-white" />,
     gradient: "from-purple-600 via-indigo-600 to-blue-600",
     shadow: "shadow-purple-500/20",
+    adminOnly: true,
   },
 ];
 
 const Settings = () => {
+  const { user } = useAuth();
+  const activeUser = user || getStoredUser();
+  const isAdmin = String(activeUser?.role || "").toLowerCase() === "admin";
+
+  const visibleSettings = useMemo(
+    () => settingsData.filter((item) => !item.adminOnly || isAdmin),
+    [isAdmin]
+  );
+
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
       <div className="mb-8">
@@ -65,9 +77,9 @@ const Settings = () => {
         </p>
       </div>
 
-      {/* Responsive Cards Grid Container: Mobile e 1 ta, Tablet e 2 ta, PC/Desktop e 3 ta card pasapashi dekhabe */}
+      {/* Responsive Cards Grid Container */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-5">
-        {settingsData.map((item, index) => (
+        {visibleSettings.map((item, index) => (
           <Link
             key={index}
             to={item.path}

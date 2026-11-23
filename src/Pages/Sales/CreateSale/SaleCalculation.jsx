@@ -7,50 +7,48 @@ const SaleCalculation = ({
   setPaidAmount,
   calculations,
 }) => {
+  const inputValue =
+    globalDiscount.value === "" || globalDiscount.value === undefined
+      ? ""
+      : `${globalDiscount.value}${globalDiscount.type === "percent" ? "%" : ""}`;
+
+  const handleDiscountChange = (e) => {
+    const raw = e.target.value;
+    const isPercent = raw.includes("%");
+    const numericStr = raw.replace(/[^0-9.]/g, "");
+
+    setGlobalDiscount((prev) => ({
+      ...prev,
+      type: isPercent ? "percent" : "amount",
+      value: numericStr === "" ? "" : Number(numericStr),
+    }));
+  };
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1 items-start">
       {/* General Discount & Payments Input */}
       <div className="space-y-2 bg-base-200/40 p-3 rounded-xl border border-base-300">
         <h5 className="font-bold text-xs uppercase text-base-content/70 flex items-center gap-1.5">
           <Calculator className="size-4" /> General Discount & Payments
         </h5>
 
-        <div className="grid grid-cols-2 gap-2 text-xs">
+        <div className="grid grid-cols-1 gap-2 text-xs">
           <div>
             <label className="label py-0.5 text-[11px] font-semibold">
               Discount Type & Value
             </label>
-            <div className="flex gap-1">
+            <div className="flex gap-1.5">
               <input
-                type="number"
-                min="0"
-                value={globalDiscount.value}
-                onChange={(e) =>
-                  setGlobalDiscount((prev) => ({
-                    ...prev,
-                    value: e.target.value === "" ? "" : Number(e.target.value),
-                  }))
-                }
-                placeholder={globalDiscount.type === "percent" ? "%" : "৳"}
+                type="text"
+                value={inputValue}
+                onChange={handleDiscountChange}
+                placeholder="e.g. 10 or 10%"
                 className="input input-bordered input-xs w-full"
               />
-              <select
-                value={globalDiscount.type}
-                onChange={(e) =>
-                  setGlobalDiscount((prev) => ({
-                    ...prev,
-                    type: e.target.value,
-                  }))
-                }
-                className="select select-bordered select-xs font-bold text-teal-600"
-              >
-                <option value="percent">%</option>
-                <option value="amount">৳</option>
-              </select>
             </div>
           </div>
 
-          <div>
+          {/* <div>
             <label className="label py-0.5 text-[11px] font-semibold">
               Paid Amount (৳)
             </label>
@@ -61,7 +59,7 @@ const SaleCalculation = ({
               onChange={(e) => setPaidAmount(e.target.value)}
               className="input input-bordered input-xs w-full font-bold text-success"
             />
-          </div>
+          </div> */}
         </div>
       </div>
 
@@ -92,10 +90,10 @@ const SaleCalculation = ({
             </span>
           </div>
 
-          <div className="flex justify-between text-xs font-semibold text-success pt-0.5">
+          {/* <div className="flex justify-between text-xs font-semibold text-success pt-0.5">
             <span>Paid Amount:</span>
             <span>৳ {(Number(paidAmount) || 0).toLocaleString()}</span>
-          </div>
+          </div> */}
 
           <div className="flex justify-between text-xs font-bold text-error pt-0.5">
             <span>Due Amount:</span>

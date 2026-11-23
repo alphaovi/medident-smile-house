@@ -422,6 +422,22 @@ const EditSale = ({ editData, onUpdateSuccess = () => {} }) => {
 
   if (isLoading) return <div className="p-6">Loading edit form data...</div>;
 
+  const discountInputValue =
+    globalDiscount.value === "" || globalDiscount.value === undefined
+      ? ""
+      : `${globalDiscount.value}${globalDiscount.type === "percent" ? "%" : ""}`;
+
+  const handleGlobalDiscountInputChange = (e) => {
+    const raw = e.target.value;
+    const isPercent = raw.includes("%");
+    const numericStr = raw.replace(/[^0-9.]/g, "");
+
+    setGlobalDiscount({
+      type: isPercent ? "percent" : "flat",
+      value: numericStr === "" ? "" : Number(numericStr),
+    });
+  };
+
   return (
     <div className="w-full min-h-screen px-4 md:px-8 py-6 bg-base-100 box-border">
       <ToastContainer position="top-right" autoClose={3000} />
@@ -488,33 +504,26 @@ const EditSale = ({ editData, onUpdateSuccess = () => {} }) => {
           rawSubtotal={calculations.rawSubtotal}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
           <div className="w-full bg-base-100 rounded-2xl border border-base-300 p-5 shadow-sm space-y-4">
             <h4 className="font-bold text-sm tracking-wide text-base-content flex items-center gap-2">
               GENERAL DISCOUNT & PAYMENTS
             </h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className="text-xs font-semibold text-base-content/70 block mb-1">Discount Type & Value</label>
                 <div className="flex gap-2">
                   <input
-                    type="number"
-                    value={globalDiscount.value}
-                    onChange={(e) => setGlobalDiscount({ ...globalDiscount, value: e.target.value })}
+                    type="text"
+                    value={discountInputValue}
+                    onChange={handleGlobalDiscountInputChange}
+                    placeholder="e.g. 10 or 10%"
                     className="input input-bordered input-sm w-full"
                   />
-                  <select
-                    value={globalDiscount.type}
-                    onChange={(e) => setGlobalDiscount({ ...globalDiscount, type: e.target.value })}
-                    className="select select-bordered select-sm w-20"
-                  >
-                    <option value="percent">%</option>
-                    <option value="flat">৳</option>
-                  </select>
                 </div>
               </div>
 
-              <div>
+              {/* <div>
                 <label className="text-xs font-semibold text-base-content/70 block mb-1">Paid Amount (৳)</label>
                 <input
                   type="number"
@@ -525,7 +534,7 @@ const EditSale = ({ editData, onUpdateSuccess = () => {} }) => {
                 <div className="mt-[5px] text-[11px] text-gray-500 font-medium">
                   Previous Paid: <span className="text-emerald-600 font-semibold">৳{previousPaidTotal}</span> (Total Paid so far: ৳{calculations.totalPaidCalculated})
                 </div>
-              </div>
+              </div> */}
             </div>
           </div>
 
@@ -544,10 +553,10 @@ const EditSale = ({ editData, onUpdateSuccess = () => {} }) => {
                 <span>Grand Total:</span>
                 <span className="text-blue-600">৳{calculations.grandTotal.toFixed(2)}</span>
               </div>
-              <div className="flex justify-between text-emerald-600 font-medium">
+              {/* <div className="flex justify-between text-emerald-600 font-medium">
                 <span>Paid Amount:</span>
                 <span>৳{calculations.totalPaidCalculated.toFixed(2)}</span>
-              </div>
+              </div> */}
               <div className="flex justify-between text-rose-600 font-medium">
                 <span>Due Amount:</span>
                 <span>৳{calculations.dueAmount.toFixed(2)}</span>

@@ -34,17 +34,19 @@ const BankDetailFormModal = ({
         userEmail: owner.email || currentUser?.email || "",
         bankName: editingBank.bankName || "",
         accountNo: editingBank.accountNo || "",
-        accountName: editingBank.accountName || "",
+        accountName: editingBank.accountName || owner.name || "",
         branch: editingBank.branch || "",
         details: editingBank.details || "",
         isActive: editingBank.isActive !== undefined ? Boolean(editingBank.isActive) : true,
       });
     } else {
+      const defaultName = currentUser?.name || "";
       setFormData({
         ...INITIAL_BANK_FORM,
         userId: currentUser?._id || "",
-        userName: currentUser?.name || "",
+        userName: defaultName,
         userEmail: currentUser?.email || "",
+        accountName: defaultName,
       });
     }
   }, [editingBank, isOpen, currentUser, users]);
@@ -92,7 +94,13 @@ const BankDetailFormModal = ({
             userName={formData.userName}
             userEmail={formData.userEmail}
             onSelectUser={({ userId, name, email }) =>
-              setFormData((prev) => ({ ...prev, userId, userName: name, userEmail: email }))
+              setFormData((prev) => ({
+                ...prev,
+                userId,
+                userName: name,
+                userEmail: email,
+                accountName: name,
+              }))
             }
             onClearError={() => setError("")}
           />
