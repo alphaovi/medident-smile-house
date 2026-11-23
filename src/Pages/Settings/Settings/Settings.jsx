@@ -38,7 +38,7 @@ const settingsData = [
     shadow: "shadow-amber-500/20",
   },
   {
-    title: "Manage Financial Accounts",
+    title: "Financial Accounts",
     path: "/settings/bank-details-management",
     icon: <Landmark className="w-6 h-6 text-white" />,
     gradient: "from-amber-500 via-orange-500 to-red-500",

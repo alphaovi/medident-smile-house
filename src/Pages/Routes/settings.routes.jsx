@@ -6,6 +6,7 @@ import State from "../Settings/State/State";
 import EmployeeManagement from "../Settings/EmployeeManagement/EmployeeManagement"
 
 import BankDetailsManagement from "../Settings/BankDetailsManagement/BankDetailsManagement";
+import ProfileSettings from "../Settings/ProfileSettings/ProfileSettings";
 
 const settingsRoutes = [
 {
@@ -27,6 +28,10 @@ const settingsRoutes = [
       {
         path: "/settings/bank-details-management",
         element: <BankDetailsManagement></BankDetailsManagement>,
+      },
+      {
+        path: "/settings/profile",
+        element: <ProfileSettings></ProfileSettings>,
       },
 ]
 
