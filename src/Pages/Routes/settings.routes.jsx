@@ -8,6 +8,8 @@ import EmployeeManagement from "../Settings/EmployeeManagement/EmployeeManagemen
 import BankDetailsManagement from "../Settings/BankDetailsManagement/BankDetailsManagement";
 import ProfileSettings from "../Settings/ProfileSettings/ProfileSettings";
 
+import UserManagement from "../Settings/UserManagement/UserManagement";
+
 const settingsRoutes = [
 {
         path: "/settings",
@@ -32,6 +34,10 @@ const settingsRoutes = [
       {
         path: "/settings/profile",
         element: <ProfileSettings></ProfileSettings>,
+      },
+      {
+        path: "/settings/user-management",
+        element: <UserManagement></UserManagement>,
       },
 ]
 

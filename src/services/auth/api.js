@@ -1,6 +1,5 @@
 const rawBaseUrl =
-  import.meta.env.VITE_API_URL ||
-  "http://localhost:5002/api/v1";
+  import.meta.env.VITE_API_URL || "http://localhost:5002/api/v1";
 
 export const API_BASE_URL = rawBaseUrl.replace(/\/+$/, "");
 
@@ -19,7 +18,9 @@ if (typeof window !== "undefined" && !window.__MEDIDENT_AUTH__) {
 
 const notifyAuthChange = () => {
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new CustomEvent("auth-change", { detail: window.__MEDIDENT_AUTH__ }));
+    window.dispatchEvent(
+      new CustomEvent("auth-change", { detail: window.__MEDIDENT_AUTH__ })
+    );
   }
 };
 
@@ -71,6 +72,8 @@ export const clearAuthSession = () => {
 
   try {
     sessionStorage.removeItem(SESSION_STORAGE_KEY);
+    sessionStorage.removeItem("token");
+    sessionStorage.removeItem("user");
   } catch {
     // Ignore storage remove errors
   }
@@ -138,12 +141,19 @@ const markPageClosedOrAway = () => {
 
 export const getAuthToken = () => {
   const session = getValidSession();
-  return session?.token || null;
+  return session?.token || sessionStorage.getItem("token") || null;
 };
 
 export const getStoredUser = () => {
   const session = getValidSession();
-  return session?.user || null;
+  if (session?.user) return session.user;
+
+  try {
+    const rawUser = sessionStorage.getItem("user");
+    return rawUser ? JSON.parse(rawUser) : null;
+  } catch {
+    return null;
+  }
 };
 
 export const setAuthSession = (token, user) => {
@@ -165,6 +175,15 @@ export const setAuthSession = (token, user) => {
 };
 
 if (typeof window !== "undefined") {
+  const bootSession = getValidSession();
+  if (bootSession) {
+    writeRawSession({
+      ...bootSession,
+      lastActivityAt: Date.now(),
+      closedAt: null,
+    });
+  }
+
   const handlePageOpenOrFocus = () => {
     const session = getValidSession();
     if (!session) return;

@@ -1,15 +1,24 @@
 import { apiRequest, clearAuthSession, getStoredUser, setAuthSession } from "./api";
 
+const extractAuthPayload = (res) => {
+  const data = res?.data ?? res;
+  const token =
+    data?.token || data?.accessToken || res?.token || res?.accessToken || null;
+  const user = data?.user || res?.user || null;
+  return { data, token, user };
+};
+
 export const AuthService = {
   createUser: async (payload) => {
     const res = await apiRequest("/users/register", {
       method: "POST",
       body: JSON.stringify(payload),
     });
-    if (res.data?.token && res.data?.user) {
-      setAuthSession(res.data.token, res.data.user);
+    const { data, token, user } = extractAuthPayload(res);
+    if (token || user) {
+      setAuthSession(token, user);
     }
-    return res.data ?? res;
+    return data;
   },
 
   verifyAccount: async (token) => {
@@ -17,7 +26,7 @@ export const AuthService = {
       `/users/verify-account?token=${encodeURIComponent(token)}`,
       { method: "GET" }
     );
-    return res.data ?? res;
+    return res?.data ?? res;
   },
 
   login: async (payload) => {
@@ -25,10 +34,11 @@ export const AuthService = {
       method: "POST",
       body: JSON.stringify(payload),
     });
-    if (res.data?.token && res.data?.user) {
-      setAuthSession(res.data.token, res.data.user);
+    const { data, token, user } = extractAuthPayload(res);
+    if (token || user) {
+      setAuthSession(token, user);
     }
-    return res.data ?? res;
+    return data;
   },
 
   recoverAccount: async (email) => {
@@ -36,24 +46,35 @@ export const AuthService = {
       method: "POST",
       body: JSON.stringify({ email }),
     });
-    return res.data ?? res;
+    return res?.data ?? res;
   },
 
   getMe: async () => {
     const res = await apiRequest("/users/me");
-    return res.data ?? res;
+    return res?.data ?? res;
   },
 
   getAllUsers: async () => {
     const res = await apiRequest("/users");
-    return res.data ?? res;
+    return res?.data ?? res;
   },
 
-  getCurrentUser: () => {
-    return getStoredUser();
+  approveAndAssignRole: async (userId, role) => {
+    const res = await apiRequest(`/users/${userId}/approve`, {
+      method: "PATCH",
+      body: JSON.stringify({ role }),
+    });
+    return res?.data ?? res;
   },
 
-  logout: () => {
-    clearAuthSession();
+  updateUserActiveStatus: async (userId, isActive) => {
+    const res = await apiRequest(`/users/${userId}/status`, {
+      method: "PATCH",
+      body: JSON.stringify({ isActive }),
+    });
+    return res?.data ?? res;
   },
+
+  getCurrentUser: () => getStoredUser(),
+  logout: () => clearAuthSession(),
 };

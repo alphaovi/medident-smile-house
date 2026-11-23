@@ -44,6 +44,13 @@ const settingsData = [
     gradient: "from-amber-500 via-orange-500 to-red-500",
     shadow: "shadow-amber-500/20",
   },
+  {
+    title: "User Management",
+    path: "/settings/user-management",
+    icon: <User className="w-6 h-6 text-white" />,
+    gradient: "from-purple-600 via-indigo-600 to-blue-600",
+    shadow: "shadow-purple-500/20",
+  },
 ];
 
 const Settings = () => {

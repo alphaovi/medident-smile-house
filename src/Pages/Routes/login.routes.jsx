@@ -1,7 +1,8 @@
-import { AccountRecoveryPage } from "../Login/AccountRecoveryPage";
-import { CreateAccountPage } from "../Login/CreateAccountPage";
-import { LoginPage } from "../Login/LoginPage";
-import { VerifyAccountPage } from "../Login/VerifyAccountPage";
+import { LoginPage } from "../Auth/Login/LoginPage";
+import { CreateAccountPage } from "../Auth/Register/CreateAccountPage";
+import { AccountRecoveryPage} from "../Auth/Recovery/AccountRecoveryPage";
+import { VerifyAccountPage } from "../Auth/Verfiy/VerifyAccountPage";
+  
 
 const loginRoutes = [
   {
