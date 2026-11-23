@@ -11,12 +11,17 @@ import clientsReportsRoutes from "./clientsReports.routes";
 import notFoundRoutes from "./notFound.routes";
 import financeRoutes from "./finance.routes";
 import loginRoutes from "./login.routes";
-
+import PrivateRoute from "./PrivateRoute/PrivateRoute";
 
 const router = createBrowserRouter([
+ ...loginRoutes,
   {
     path: "/",
-    element: <Main />,
+    element: (
+      <PrivateRoute>
+        <Main />
+      </PrivateRoute>
+    ),
     children: [
       ...dashboardRoutes,
       ...productRoutes,
@@ -29,9 +34,7 @@ const router = createBrowserRouter([
       // Clients Report
       ...clientsReportsRoutes,
 
-
-      // login Page
-      ...loginRoutes,
+      
       ...settingsRoutes,
 
       // {

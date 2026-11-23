@@ -5,7 +5,7 @@ export const AUTH_PRIMARY_BTN_STYLE = {
 
 export const AuthCardLayout = ({ title, subtitle, children, className = "" }) => (
   <div
-    className="-m-5 min-h-[calc(100vh-4rem)] w-[calc(100%+2.5rem)] flex items-center justify-center p-6"
+    className="min-h-screen w-full flex items-center justify-center p-6"
     style={{
       background:
         "radial-gradient(circle at 20% 15%, #22e1f0 0%, #0b7ad8 52%, #0635ad 100%)",
